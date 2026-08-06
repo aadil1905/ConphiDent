@@ -1,11 +1,10 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
-import { clinicBrand } from "@/lib/brand";
+import { clinicDisplayName } from "@/lib/clinic-config";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import PaymentForm from "@/components/billing/PaymentForm";
 import SendInvoiceWhatsAppButton from "@/components/billing/SendInvoiceWhatsAppButton";
@@ -34,6 +33,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
   const effectiveStatus = outstanding === 0 ? "Paid" : invoice.dueDate && invoice.dueDate < new Date() ? "Overdue" : paid > 0 ? "Partially Paid" : "Unpaid";
   const treatmentTeeth = invoice.treatmentPlan?.selectedTeeth.length ? invoice.treatmentPlan.selectedTeeth.map((tooth) => tooth.toothNumber).join(", ") : invoice.treatmentPlan?.toothNumber;
   const treatmentName = invoice.treatmentPlan?.title || "Treatment";
+  const clinicName = clinicDisplayName(user.clinic);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -51,9 +51,9 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
 
       <section className="overflow-hidden rounded-[28px] border-2 border-slate-800 bg-white p-4 text-slate-950 shadow-sm sm:p-7">
         <div className="grid gap-4 border-b-2 border-slate-800 pb-4 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
-          <div className="text-xs font-semibold leading-relaxed"><p className="font-bold">{clinicBrand.doctorName.toUpperCase()}</p><p>{clinicBrand.qualification.replace(", ", "\n")}</p></div>
-          <div className="flex items-center justify-center gap-3 text-center"><Image src="/dental/dental-white-logo.png" alt="Dental White" width={62} height={62} className="size-14 object-contain" /><div><p className="font-serif text-xl font-bold leading-none sm:text-2xl">DR. DEEPIKA&apos;S<br />DENTAL WHITE</p><p className="mt-1 text-[9px] font-semibold uppercase tracking-wide">{clinicBrand.tagline}</p></div></div>
-          <div className="text-right text-xs font-medium leading-relaxed"><p>{clinicBrand.address}</p><p>{clinicBrand.phones.join(" / ")}</p></div>
+          <div className="text-xs font-semibold leading-relaxed"><p className="font-bold">{clinicName.toUpperCase()}</p><p>Clinic invoice</p></div>
+          <div className="flex items-center justify-center gap-3 text-center"><div className="grid size-14 place-items-center rounded-2xl bg-sky-700 text-xl font-black text-white">{clinicName.slice(0, 1).toUpperCase()}</div><div><p className="font-serif text-xl font-bold leading-none sm:text-2xl">{clinicName}</p><p className="mt-1 text-[9px] font-semibold uppercase tracking-wide">Patient care & clinical services</p></div></div>
+          <div className="text-right text-xs font-medium leading-relaxed"><p>{user.clinic.address || "Clinic address available on request"}</p><p>{user.clinic.phone || user.clinic.email || ""}</p></div>
         </div>
         <div className="grid gap-2 border-b border-slate-800 py-3 text-sm font-semibold sm:grid-cols-2"><p>No : <span className="ml-3 text-xl font-bold text-rose-700">{invoice.invoiceNumber}</span></p><p className="sm:text-right">Date : <span className="ml-2">{invoice.issueDate.toLocaleDateString("en-IN")}</span></p></div>
         <div className="space-y-3 border-b border-slate-800 py-3 text-sm"><p>Received with thanks from : <span className="ml-2 border-b border-slate-900 px-1 font-semibold">{invoice.patient.fullName}</span></p><p>The sum of Rs. : <span className="ml-2 border-b border-slate-900 px-1 font-semibold">{invoice.totalAmount.toLocaleString("en-IN")}</span></p></div>

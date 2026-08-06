@@ -78,11 +78,13 @@ export async function POST(request: NextRequest) {
           process.env.WHATSAPP_INTAKE_TEMPLATE,
           process.env.WHATSAPP_INTAKE_TEMPLATE_LANG || "en",
           [input.fullName, link],
+          user.clinicId,
         );
       } else {
         await sendTextMessage(
           whatsappTo,
-          `Hello ${input.fullName}, Dr. Deepika's Dental White has sent your secure patient-intake form. Please complete your medical history, consent, and signature within 48 hours:\n\n${link}`,
+          `Hello ${input.fullName}, ${user.clinic.brandName || user.clinic.name} has sent your secure patient-intake form. Please complete your medical history, consent, and signature within 48 hours:\n\n${link}`,
+          user.clinicId,
         );
       }
       await prisma.patientIntakeRequest.update({

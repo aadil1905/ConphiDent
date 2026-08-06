@@ -44,6 +44,12 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       </section>
 
       <section className="rounded-2xl border bg-card p-6 shadow-sm">
+        <h2 className="text-xl font-bold">WhatsApp</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Connect the clinic’s WhatsApp Business account through Meta without entering API credentials.</p>
+        <Link href="/dashboard/settings/whatsapp" className="mt-4 inline-flex rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">Open WhatsApp settings</Link>
+      </section>
+
+      <section className="rounded-2xl border bg-card p-6 shadow-sm">
         <h2 className="text-xl font-bold">Production launch</h2>
         <p className="mt-1 text-sm text-muted-foreground">Review environment setup, WhatsApp readiness, staff handover, and the production checklist before giving access to a clinic.</p>
         <Link href="/dashboard/launch" className="mt-4 inline-flex rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-700">Open launch centre</Link>
@@ -52,7 +58,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       <section className="rounded-2xl border bg-card p-6 shadow-sm">
         <h2 className="text-xl font-bold">Clinic profile</h2>
         <form action={updateClinicAction} className="mt-5 grid gap-4 sm:grid-cols-2">
-          <label className="text-sm font-semibold">Clinic name<input name="name" required defaultValue={user.clinic.name} className="mt-1.5 h-11 w-full rounded-xl border px-3 font-normal" /></label>
+          <label className="text-sm font-semibold">Legal clinic name<input name="name" required defaultValue={user.clinic.name} className="mt-1.5 h-11 w-full rounded-xl border px-3 font-normal" /></label>
+          <label className="text-sm font-semibold">Workspace display name<input name="brandName" defaultValue={user.clinic.brandName ?? ""} placeholder={user.clinic.name} className="mt-1.5 h-11 w-full rounded-xl border px-3 font-normal" /></label>
           <label className="text-sm font-semibold">Clinic phone<input name="phone" defaultValue={user.clinic.phone ?? ""} className="mt-1.5 h-11 w-full rounded-xl border px-3 font-normal" /></label>
           <label className="text-sm font-semibold">Clinic email<input name="email" type="email" defaultValue={user.clinic.email ?? ""} className="mt-1.5 h-11 w-full rounded-xl border px-3 font-normal" /></label>
           <label className="text-sm font-semibold">Clinic address<input name="address" defaultValue={user.clinic.address ?? ""} className="mt-1.5 h-11 w-full rounded-xl border px-3 font-normal" /></label>

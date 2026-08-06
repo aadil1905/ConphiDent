@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
 import { clearBooking, continueBooking, hasBooking, resumeBooking, startBooking, startReschedule } from "@/lib/booking";
-import { clearConversation } from "@/lib/ai";
-import { clinicBrand } from "@/lib/brand";
-import { defaultServices } from "@/lib/clinic-config";
+import { clearConversation, getAIReply } from "@/lib/ai";
+import { clinicDisplayName, formatClinicInformation, getClinicConfiguration } from "@/lib/clinic-config";
 import { detectIntent } from "@/lib/intent";
 import { currentLanguage, menuCopyFor, selectLanguage, welcomeFor } from "@/lib/language";
 import { sendListMessage, sendReplyButtons, sendTextMessage } from "@/lib/whatsapp";
-import { getConversationState } from "@/lib/whatsapp-conversations";
+import { getConversationState, recordInboundMessage, updateOutboundDeliveryStatus } from "@/lib/whatsapp-conversations";
+import { prisma } from "@/lib/prisma";
+import { premiumReceptionReply } from "@/lib/premium-receptionist";
+import { connectionForPhoneNumberId } from "@/lib/whatsapp-connection";
+import { runWithWhatsAppClinic } from "@/lib/whatsapp-context";
+import { currentWhatsAppClinicId } from "@/lib/whatsapp-context";
 
 export async function GET(req: NextRequest) {
   const mode = req.nextUrl.searchParams.get("hub.mode");
@@ -22,9 +26,10 @@ export async function GET(req: NextRequest) {
 }
 
 async function showLanguagePicker(to: string) {
+  const clinic = await getClinicConfiguration(currentWhatsAppClinicId());
   await sendListMessage(
     to,
-    `Welcome to ${clinicBrand.clinicName}. Please choose your language.`,
+    `Welcome to ${clinic ? clinicDisplayName(clinic) : "our clinic"}. Please choose your language.`,
     "Choose language",
     [{
       title: "Languages",
@@ -75,6 +80,21 @@ function hasValidSignature(rawBody: string, signature: string | null) {
   return received.length === expectedBuffer.length && timingSafeEqual(received, expectedBuffer);
 }
 
+function messageContent(message: { type?: string; text?: { body?: string }; interactive?: { type?: string; button_reply?: { id?: string }; list_reply?: { id?: string } } }) {
+  if (message.type === "text") return message.text?.body ?? "";
+  if (message.type === "interactive" && message.interactive?.type === "button_reply") return message.interactive.button_reply?.id ?? "";
+  if (message.type === "interactive" && message.interactive?.type === "list_reply") return message.interactive.list_reply?.id ?? "";
+  return "";
+}
+
+function isEmergency(value: string) {
+  return /\b(heavy|uncontrolled)\s+bleed|difficulty\s+breath|facial\s+(injury|swelling)|knocked[ -]?out|tooth.*out|severe\s+(pain|swelling)|accident|emergency|urgent\b|bahut\s+(dard|sujan)|khoon.*(band|ruk)/i.test(value);
+}
+
+function requestsHuman(value: string) {
+  return /\b(human|person|staff|receptionist|call me|call back|doctor se baat|baat karni|representative)\b/i.test(value);
+}
+
 export async function POST(req: NextRequest) {
   try {
     const rawBody = await req.text();
@@ -82,19 +102,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized webhook request." }, { status: 401 });
     }
     const body = JSON.parse(rawBody);
+    const phoneNumberId = body.entry?.[0]?.changes?.[0]?.value?.metadata?.phone_number_id;
+    const connection = typeof phoneNumberId === "string" ? await connectionForPhoneNumberId(phoneNumberId) : null;
+    // Existing installations can continue using their platform-owned connection until migrated.
+    if (phoneNumberId && !connection && !process.env.PHONE_NUMBER_ID) return NextResponse.json({ error: "Unknown WhatsApp phone number." }, { status: 404 });
+    const processMessage = async () => {
+    const statusUpdates = body.entry?.[0]?.changes?.[0]?.value?.statuses;
+    if (Array.isArray(statusUpdates)) {
+      await Promise.all(statusUpdates.map((status: { id?: string; status?: string; errors?: { title?: string }[] }) => {
+        if (!status.id || !status.status) return Promise.resolve();
+        return updateOutboundDeliveryStatus(status.id, status.status.toUpperCase(), status.errors?.[0]?.title);
+      }));
+    }
     const message = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
     if (!message) return NextResponse.json({ received: true });
 
     const from = message.from;
-    const userMessage = message.type === "text"
-      ? message.text?.body ?? ""
-      : message.type === "interactive" && message.interactive?.type === "button_reply"
-        ? message.interactive.button_reply.id
-        : message.type === "interactive" && message.interactive?.type === "list_reply"
-          ? message.interactive.list_reply.id
-          : "";
+    if (!from) return NextResponse.json({ received: true });
+    const userMessage = messageContent(message);
+    const mediaLabel = message.type === "image" ? "Image received" : message.type === "document" ? "Document received" : message.type === "audio" ? "Voice note received" : "";
+    const content = userMessage || mediaLabel;
+    const recorded = await recordInboundMessage(from, content || "Unsupported WhatsApp message", message.type?.toUpperCase() || "UNKNOWN", message.id);
+    if (!recorded) return NextResponse.json({ received: true });
 
-    if (!userMessage) return NextResponse.json({ received: true });
+    if (!userMessage) {
+      if (mediaLabel) await sendTextMessage(from, "Thank you — we have received your file. The clinic team will review it. For urgent pain, swelling, bleeding, breathing difficulty, or injury, please seek emergency dental care immediately.");
+      return NextResponse.json({ received: true });
+    }
 
     const conversation = await getConversationState(from);
     const normalized = cleanInput(userMessage);
@@ -146,6 +180,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true });
     }
 
+    if (isEmergency(userMessage)) {
+      await sendTextMessage(from, "I’m sorry you’re dealing with this. For severe pain or swelling, uncontrolled bleeding, facial injury, difficulty breathing, or a knocked-out tooth, please seek urgent emergency dental care now. I’ve flagged your message in the clinic inbox.");
+      return NextResponse.json({ received: true });
+    }
+
+    if (requestsHuman(userMessage)) {
+      const state = await getConversationState(from);
+      if (state) await prisma.whatsAppConversation.update({ where: { id: state.id }, data: { status: "OPEN", label: "Human handover requested" } });
+      await sendTextMessage(from, "Certainly. I’ve flagged this conversation for the clinic team. They will reply here as soon as possible; meanwhile, you can share your preferred appointment date or your question.");
+      return NextResponse.json({ received: true });
+    }
+
     if (await hasBooking(from)) {
       await continueBooking(from, userMessage);
       return NextResponse.json({ received: true });
@@ -159,35 +205,34 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === "SERVICES") {
-      const language = await currentLanguage(from);
-      const copy = menuCopyFor(language);
-      const serviceMessage = defaultServices.length
-        ? `${copy.servicesTitle}\n\n${defaultServices.map((service) => `- ${service.name}${service.description ? `: ${service.description}` : ""}`).join("\n")}`
-        : copy.servicesEmpty;
-      await sendTextMessage(from, serviceMessage);
+      const reply = await premiumReceptionReply("services");
+      const clinic = await getClinicConfiguration(currentWhatsAppClinicId());
+      const services = clinic?.services ?? [];
+      await sendTextMessage(from, reply || `${menuCopyFor(await currentLanguage(from)).servicesTitle}\n\n${services.length ? services.map((service) => `- ${service.name}${service.description ? `: ${service.description}` : ""}`).join("\n") : menuCopyFor(await currentLanguage(from)).servicesEmpty}`);
       return NextResponse.json({ received: true });
     }
 
     if (action === "CONTACT") {
-      const copy = menuCopyFor(await currentLanguage(from));
-      const contactMessage = [
-        copy.contactTitle,
-        clinicBrand.clinicName,
-        `${copy.phone}: ${clinicBrand.phones.join(" / ")}`,
-        `${copy.email}: ${clinicBrand.email}`,
-        `${copy.address}: ${clinicBrand.address}`,
-        "",
-        copy.hours,
-        copy.monFri,
-        copy.saturday,
-        copy.sunday,
-      ].join("\n");
-      await sendTextMessage(from, contactMessage);
+      const reply = await premiumReceptionReply("contact hours");
+      const clinic = await getClinicConfiguration(currentWhatsAppClinicId());
+      await sendTextMessage(from, reply || formatClinicInformation(clinic));
       return NextResponse.json({ received: true });
     }
 
-    await showMainMenu(from);
+    try {
+      const deterministicReply = await premiumReceptionReply(userMessage);
+      if (deterministicReply) await sendTextMessage(from, deterministicReply);
+      else {
+        const reply = await getAIReply(from, userMessage);
+        await sendTextMessage(from, reply.message);
+      }
+    } catch (error) {
+      console.error("WhatsApp AI fallback error:", error);
+      await sendTextMessage(from, `${menuCopyFor(await currentLanguage(from)).fallback}\n\nYou can also type “human” to request a clinic team member.`);
+    }
     return NextResponse.json({ received: true });
+    };
+    return connection ? runWithWhatsAppClinic(connection.clinicId, processMessage) : processMessage();
   } catch (error) {
     console.error(error);
     return NextResponse.json({ success: false, error: "Unable to process webhook." }, { status: 500 });

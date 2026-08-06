@@ -95,6 +95,13 @@ export default async function DashboardPage() {
         appointmentTime: "asc",
       },
       take: 7,
+      select: {
+        id: true,
+        appointmentTime: true,
+        patientName: true,
+        treatment: true,
+        status: true,
+      },
     })),
 
     safeDashboardQuery("total patients", 0, () => prisma.patient.count({ where: { clinicId: user.clinicId } })),
@@ -153,6 +160,7 @@ export default async function DashboardPage() {
         },
       ],
       take: 4,
+      select: { id: true },
     })),
 
     safeDashboardQuery("recent WhatsApp conversations", [], () => prisma.whatsAppConversation.findMany({

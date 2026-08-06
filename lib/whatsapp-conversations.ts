@@ -1,8 +1,11 @@
 import { prisma } from "@/lib/prisma";
+import { currentWhatsAppClinicId } from "@/lib/whatsapp-context";
 
 let primaryClinicPromise: ReturnType<typeof prisma.clinic.findFirst> | null = null;
 
 export async function primaryClinic() {
+  const scopedClinicId = currentWhatsAppClinicId();
+  if (scopedClinicId) return prisma.clinic.findUnique({ where: { id: scopedClinicId } });
   primaryClinicPromise ??= prisma.clinic.findFirst({ orderBy: { id: "asc" } });
   return primaryClinicPromise;
 }
@@ -23,22 +26,35 @@ async function findConversation(phone: string) {
   return prisma.whatsAppConversation.findUnique({ where: { clinicId_phone: { clinicId: clinic.id, phone } } });
 }
 
-export async function recordInboundMessage(phone: string, content: string, messageType = "TEXT") {
+export async function recordInboundMessage(phone: string, content: string, messageType = "TEXT", providerMessageId?: string) {
   const conversation = await getConversation(phone);
-  await prisma.$transaction([
-    prisma.whatsAppMessage.create({ data: { conversationId: conversation.id, direction: "INBOUND", content, messageType } }),
-    prisma.lead.upsert({
-      where: { clinicId_phone: { clinicId: conversation.clinicId, phone } },
-      create: { clinicId: conversation.clinicId, phone, fullName: `WhatsApp lead ${phone.slice(-4)}`, source: "WhatsApp", activities: { create: { type: "WHATSAPP_ENQUIRY", content: "New WhatsApp conversation started" } } },
-      update: {},
-    }),
-  ]);
-  return conversation;
+  try {
+    await prisma.$transaction([
+      prisma.whatsAppMessage.create({ data: { conversationId: conversation.id, providerMessageId, direction: "INBOUND", content, messageType } }),
+      prisma.lead.upsert({
+        where: { clinicId_phone: { clinicId: conversation.clinicId, phone } },
+        create: { clinicId: conversation.clinicId, phone, fullName: `WhatsApp lead ${phone.slice(-4)}`, source: "WhatsApp", activities: { create: { type: "WHATSAPP_ENQUIRY", content: "New WhatsApp conversation started" } } },
+        update: { lastContactedAt: new Date() },
+      }),
+    ]);
+    return conversation;
+  } catch (error) {
+    // Meta can retry the same webhook delivery. The provider message id is our durable idempotency key.
+    if (providerMessageId && typeof error === "object" && error && "code" in error && error.code === "P2002") return null;
+    throw error;
+  }
 }
 
-export async function recordOutboundMessage(phone: string, content: string, messageType = "TEXT") {
+export async function recordOutboundMessage(phone: string, content: string, messageType = "TEXT", providerMessageId?: string) {
   const conversation = await getConversation(phone);
-  await prisma.whatsAppMessage.create({ data: { conversationId: conversation.id, direction: "OUTBOUND", content, messageType } });
+  await prisma.whatsAppMessage.create({ data: { conversationId: conversation.id, providerMessageId, direction: "OUTBOUND", content, messageType, deliveryStatus: "SENT", statusUpdatedAt: new Date() } });
+}
+
+export async function updateOutboundDeliveryStatus(providerMessageId: string, status: string, failureReason?: string) {
+  await prisma.whatsAppMessage.updateMany({
+    where: { providerMessageId },
+    data: { deliveryStatus: status, statusUpdatedAt: new Date(), failureReason: failureReason || null },
+  });
 }
 
 export async function getRecentConversationMessages(phone: string) {

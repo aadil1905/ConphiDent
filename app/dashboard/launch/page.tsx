@@ -17,7 +17,7 @@ export default async function LaunchPage() {
   const environment = [
     { label: "Database connection", ready: Boolean(process.env.DATABASE_URL && process.env.DIRECT_URL) },
     { label: "OpenAI key", ready: Boolean(process.env.OPENAI_API_KEY) },
-    { label: "WhatsApp credentials", ready: Boolean(process.env.PHONE_NUMBER_ID && process.env.WHATSAPP_TOKEN && process.env.VERIFY_TOKEN) },
+    { label: "WhatsApp onboarding platform", ready: Boolean(process.env.META_APP_ID && process.env.META_APP_SECRET && process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID && process.env.WHATSAPP_CREDENTIAL_ENCRYPTION_KEY && process.env.VERIFY_TOKEN) },
     { label: "Session secret", ready: Boolean(process.env.AUTH_SECRET) },
     { label: "Cron secret", ready: Boolean(process.env.CRON_SECRET), optional: true },
   ];

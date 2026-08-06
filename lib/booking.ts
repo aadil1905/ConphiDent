@@ -546,7 +546,7 @@ export async function sendAbandonedBookingReminders() {
 
     await sendReplyButtons(booking.conversation.phone, text, [
       { id: "CONTINUE_BOOKING", title: "Continue booking" },
-    ]);
+    ], booking.conversation.clinicId);
     await prisma.whatsAppBooking.update({
       where: { id: booking.id },
       data: { reason: reminderReason(booking.reason) },

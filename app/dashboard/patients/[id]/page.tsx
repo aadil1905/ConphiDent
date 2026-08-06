@@ -1,7 +1,6 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
@@ -60,16 +59,6 @@ function money(amount: number | null | undefined) {
   return `₹${(amount ?? 0).toLocaleString("en-IN")}`;
 }
 
-function parseMedicalHistory(value: string | null | undefined) {
-  if (!value) return [];
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
-  } catch {
-    return [];
-  }
-}
-
 function sameVisit(date: Date, selectedVisit: string) {
   return dateKey(date) === selectedVisit;
 }
@@ -85,21 +74,6 @@ function EmptyState({ children }: { children: React.ReactNode }) {
   return (
     <div className="rounded-2xl border border-dashed bg-muted/20 p-5 text-sm text-muted-foreground">
       {children}
-    </div>
-  );
-}
-
-function ConsentImageFrame({ src, alt }: { src: string; alt: string }) {
-  return (
-    <div className="flex min-h-24 w-full items-center justify-center overflow-hidden rounded-xl border border-slate-100 bg-white px-3 py-2 sm:min-h-28">
-      <Image
-        src={src}
-        alt={alt}
-        width={600}
-        height={180}
-        unoptimized
-        className="ml-auto block h-auto max-h-24 w-[72%] max-w-full object-contain object-right sm:max-h-28"
-      />
     </div>
   );
 }
@@ -155,17 +129,6 @@ export default async function PatientPage({
     .sort((left, right) => right.date.getTime() - left.date.getTime());
   const selectedVisit = visit && visitMap.has(visit) ? visit : visits[0]?.key;
 
-  const visitAppointments = selectedVisit
-    ? patient.appointments.filter((appointment) =>
-        sameVisit(appointment.appointmentDate, selectedVisit),
-      )
-    : patient.appointments;
-  const visitRecords = selectedVisit
-    ? patient.clinicalRecords.filter((record) => sameVisit(record.visitDate, selectedVisit))
-    : patient.clinicalRecords;
-  const visitConsentRecord =
-    visitRecords.find((record) => record.consentGiven || record.consentSignedAt) ??
-    visitRecords[0];
   const signedIntake = patient.intakeRequests[0];
   const visitPrescriptions = selectedVisit
     ? patient.prescriptions.filter((prescription) =>
@@ -343,58 +306,13 @@ export default async function PatientPage({
           <CardHeader>
             <div className="flex items-center justify-between gap-3">
               <CardTitle className="flex items-center gap-2"><Stethoscope className="size-5 text-primary" /> Clinical workspace</CardTitle>
-              <div className="flex gap-2"><Link href={`/dashboard/clinical-records/new?patientId=${patient.id}`} className="inline-flex items-center gap-1.5 rounded-lg border bg-white px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary/5"><Pencil className="size-3.5" /> Create new</Link><Link href={`/dashboard/clinical-workspace/${patient.id}?visitDate=${selectedVisit ?? ""}&fromPatient=1`} className="inline-flex items-center gap-1.5 rounded-lg border bg-white px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary/5">Continue workspace</Link></div>
+              <div className="flex gap-2"><Link href={`/dashboard/clinical-workspace/${patient.id}?new=1&fromPatient=1`} className="inline-flex items-center gap-1.5 rounded-lg border bg-white px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary/5"><Pencil className="size-3.5" /> Create new</Link><Link href={`/dashboard/clinical-workspace/${patient.id}?visitDate=${selectedVisit ?? ""}&fromPatient=1`} className="inline-flex items-center gap-1.5 rounded-lg border bg-white px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary/5">Continue workspace</Link></div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <DentalChartSummary entries={visitDentalChartEntries} />
 
-            {visitAppointments.length > 0 && (
-              <div className="space-y-3">
-                {visitAppointments.map((appointment) => (
-                  <div key={appointment.id} className="rounded-2xl border bg-muted/20 p-4 text-sm">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="font-semibold">
-                        {formatDate(appointment.appointmentDate)} · {appointment.appointmentTime}
-                      </p>
-                      <StatusBadge status={appointment.status as AppointmentStatus} />
-                    </div>
-                    <p className="mt-2 text-muted-foreground">
-                      Reason for visit: <span className="font-medium text-foreground">{appointment.treatment}</span>
-                    </p>
-                    {appointment.notes && <p className="mt-2 whitespace-pre-wrap">{appointment.notes}</p>}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {visitConsentRecord && (
-              <div
-                className={`flex flex-col gap-3 rounded-2xl border p-4 text-sm sm:flex-row sm:items-center sm:justify-between ${
-                  visitConsentRecord.consentGiven
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-                    : "border-amber-200 bg-amber-50 text-amber-900"
-                }`}
-              >
-                <div>
-                  <p className="font-bold">Visit consent</p>
-                  <p className="mt-1">
-                    {visitConsentRecord.consentGiven
-                      ? "Patient consent is recorded for this visit."
-                      : "Consent has not been recorded for this visit."}
-                  </p>
-                  {visitConsentRecord.consentNotes && (
-                    <p className="mt-1 opacity-80">{visitConsentRecord.consentNotes}</p>
-                  )}
-                </div>
-                {visitConsentRecord.consentSignedAt && (
-                  <p className="shrink-0 text-xs font-semibold">
-                    Signed {formatDateTime(visitConsentRecord.consentSignedAt)}
-                  </p>
-                )}
-              </div>
-            )}
-
+            {/*
             {visitRecords.length === 0 ? (
               <EmptyState>No clinical workspace data is saved for this visit.</EmptyState>
             ) : (
@@ -500,6 +418,7 @@ export default async function PatientPage({
                 ))}
               </div>
             )}
+            */}
           </CardContent>
         </Card>
 

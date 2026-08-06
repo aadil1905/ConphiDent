@@ -1,7 +1,7 @@
 "use client";
 
 import { ScanLine, Sparkles, Stethoscope } from "lucide-react";
-import { useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState, useTransition } from "react";
 import { saveDentalChartEntriesAction } from "@/app/dashboard/clinical-workspace/actions";
 
 type Entry = { toothNumber: string; condition: string; notes: string | null };
@@ -31,7 +31,18 @@ const conditionClasses: Record<string, string> = {
   WATCH: "border-orange-200 bg-orange-50 text-orange-700",
 };
 
-function ToothRow({ title, teeth, selectedTeeth, entries, onSelect }: {
+const ToothButton = memo(function ToothButton({ tooth, condition, selected, onSelect }: {
+  tooth: string; condition: string; selected: boolean; onSelect: (tooth: string, additive: boolean) => void;
+}) {
+  return <button type="button" onClick={(event) => onSelect(tooth, event.ctrlKey || event.metaKey)}
+    className={`inline-flex min-h-[72px] min-w-0 flex-col items-center justify-center rounded-xl border px-1 py-2 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 ${conditionClasses[condition] || conditionClasses.HEALTHY} ${selected ? "ring-2 ring-violet-600 ring-offset-2" : ""}`}
+    aria-label={`Tooth ${tooth}, ${conditionLabels[condition] || "Healthy"}`}>
+    <span className="w-full text-center text-sm font-bold leading-none">{tooth}</span>
+    <span className="mt-1 w-full text-center text-[10px] font-semibold leading-none opacity-80">{conditionShortLabels[condition] || "H."}</span>
+  </button>;
+});
+
+const ToothRow = memo(function ToothRow({ title, teeth, selectedTeeth, entries, onSelect }: {
   title: string; teeth: string[]; selectedTeeth: string[]; entries: Map<string, Entry>; onSelect: (tooth: string, additive: boolean) => void;
 }) {
   return <div>
@@ -44,38 +55,47 @@ function ToothRow({ title, teeth, selectedTeeth, entries, onSelect }: {
         const entry = entries.get(tooth);
         const condition = entry?.condition || "HEALTHY";
         const selected = selectedTeeth.includes(tooth);
-        return <button key={tooth} type="button" onClick={(event) => onSelect(tooth, event.ctrlKey || event.metaKey)}
-          className={`inline-flex min-h-[72px] min-w-0 flex-col items-center justify-center rounded-xl border px-1 py-2 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 ${conditionClasses[condition] || conditionClasses.HEALTHY} ${selected ? "ring-2 ring-violet-600 ring-offset-2" : ""}`}
-          aria-label={`Tooth ${tooth}, ${conditionLabels[condition] || "Healthy"}`}>
-          <span className="w-full text-center text-sm font-bold leading-none">{tooth}</span>
-          <span className="mt-1 w-full text-center text-[10px] font-semibold leading-none opacity-80">{conditionShortLabels[condition] || "H."}</span>
-        </button>;
+        return <ToothButton key={tooth} tooth={tooth} condition={condition} selected={selected} onSelect={onSelect} />;
       })}
     </div>
   </div>;
-}
+});
 
 function SummaryCard({ label, value, tone = "text-slate-900" }: { label: string; value: number; tone?: string }) {
   return <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm"><p className="text-xs text-slate-500">{label}</p><p className={`mt-1 text-2xl font-bold ${tone}`}>{value}</p></div>;
 }
 
-export default function DentalChartEditor({ patientId, entries, visitDate }: { patientId: number; entries: Entry[]; visitDate: string }) {
+export default function DentalChartEditor({ patientId, entries, visitDate, isNewWorkspace = false }: { patientId: number; entries: Entry[]; visitDate: string; isNewWorkspace?: boolean }) {
+  const [isSaving, startSaving] = useTransition();
   const [selectedTooth, setSelectedTooth] = useState(entries[0]?.toothNumber || "18");
   const [selectedTeeth, setSelectedTeeth] = useState<string[]>([entries[0]?.toothNumber || "18"]);
   const [view, setView] = useState<View>("chart");
   const [scanRun, setScanRun] = useState(false);
-  const entryMap = useMemo(() => new Map(entries.map((entry) => [entry.toothNumber, entry])), [entries]);
+  const [optimisticEntries, setOptimisticEntries] = useState(entries);
+  const entryMap = useMemo(() => new Map(optimisticEntries.map((entry) => [entry.toothNumber, entry])), [optimisticEntries]);
   const selectedEntry = entryMap.get(selectedTooth);
   const selectedCondition = selectedEntry?.condition || "HEALTHY";
   const values = Array.from(entryMap.values());
   const needsReview = values.filter((entry) => ["CARIES", "WATCH", "ROOT_CANAL"].includes(entry.condition)).length;
   const completedCare = values.filter((entry) => ["FILLING", "CROWN", "ROOT_CANAL", "IMPLANT"].includes(entry.condition)).length;
 
-  const selectTooth = (tooth: string, additive: boolean) => {
+  const selectTooth = useCallback((tooth: string, additive: boolean) => {
     setSelectedTooth(tooth);
     setSelectedTeeth((current) => additive ? (current.includes(tooth) ? current.filter((item) => item !== tooth) : [...current, tooth]) : [tooth]);
     setView("chart");
-  };
+  }, []);
+  const saveEntries = useCallback((formData: FormData) => {
+    const condition = String(formData.get("condition") || "HEALTHY");
+    const notes = String(formData.get("notes") || "").trim() || null;
+    setOptimisticEntries((current) => {
+      const next = new Map(current.map((entry) => [entry.toothNumber, entry]));
+      selectedTeeth.forEach((toothNumber) => next.set(toothNumber, { toothNumber, condition, notes }));
+      return Array.from(next.values());
+    });
+    startSaving(async () => {
+      await saveDentalChartEntriesAction(formData);
+    });
+  }, [selectedTeeth]);
   const tabs: Array<{ id: View; label: string; icon: typeof Stethoscope }> = [
     { id: "chart", label: "Chart", icon: Stethoscope }, { id: "scan", label: "Scan", icon: ScanLine }, { id: "insights", label: "Insights", icon: Sparkles },
   ];
@@ -123,10 +143,10 @@ export default function DentalChartEditor({ patientId, entries, visitDate }: { p
       <div className="mt-4 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-800">
         Saving under visit date <span className="font-bold">{visitDate}</span>. To save another visit, change the date above first.
       </div>
-      <form action={saveDentalChartEntriesAction} className="mt-6 space-y-4"><input type="hidden" name="patientId" value={patientId} /><input type="hidden" name="toothNumbers" value={selectedTeeth.join(",")} /><input type="hidden" name="visitDate" value={visitDate} />
+      <form action={saveEntries} className="mt-6 space-y-4"><input type="hidden" name="patientId" value={patientId} /><input type="hidden" name="toothNumbers" value={selectedTeeth.join(",")} /><input type="hidden" name="visitDate" value={visitDate} />{isNewWorkspace && <input type="hidden" name="allowNewWorkspace" value="1" />}
         <label className="block text-sm font-semibold text-slate-700">Condition<select name="condition" defaultValue={selectedCondition} key={`${selectedTooth}-${selectedCondition}`} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-slate-900 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100">{Object.entries(conditionLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
         <label className="block text-sm font-semibold text-slate-700">Clinical note<textarea name="notes" defaultValue={selectedEntry?.notes || ""} key={`${selectedTooth}-${selectedEntry?.notes || ""}`} placeholder="Finding, material, advice, or planned treatment" className="mt-2 min-h-36 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-slate-900 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100" /></label>
-        <button type="submit" className="w-full rounded-xl bg-sky-700 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-sky-800">Save selected teeth</button>
+        <button type="submit" disabled={isSaving} className="w-full rounded-xl bg-sky-700 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-sky-800 disabled:cursor-wait disabled:opacity-70">{isSaving ? "Saving selected teeth..." : "Save selected teeth"}</button>
       </form>
     </aside>
   </div>;

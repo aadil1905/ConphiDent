@@ -1,4 +1,7 @@
 .git
+.env
+.env.local
+.env.*.local
 .npm-cache
 .next
 node_modules

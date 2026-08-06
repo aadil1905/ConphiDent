@@ -13,6 +13,7 @@ export async function updateClinicAction(formData: FormData) {
     where: { id: owner.clinicId },
     data: {
       name: String(formData.get("name") || "").trim(),
+      brandName: String(formData.get("brandName") || "").trim() || null,
       phone: String(formData.get("phone") || "").trim() || null,
       email: String(formData.get("email") || "").trim() || null,
       address: String(formData.get("address") || "").trim() || null,
@@ -25,7 +26,7 @@ export async function updateClinicAction(formData: FormData) {
     action: "CLINIC_PROFILE_UPDATED",
     entityType: "CLINIC",
     entityId: String(owner.clinicId),
-    detail: "Updated clinic profile details",
+    detail: "Updated clinic profile",
   });
 
   revalidatePath("/dashboard/settings");

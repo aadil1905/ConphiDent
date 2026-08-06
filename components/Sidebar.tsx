@@ -11,7 +11,9 @@ import {
   ClipboardList,
   LayoutDashboard,
   MessagesSquare,
+  MessageCircle,
   PackageCheck,
+  FlaskConical,
   ClipboardCheck,
   ReceiptIndianRupee,
   Settings,
@@ -20,12 +22,14 @@ import {
   UserRoundPlus,
   Menu,
   X,
+  Shield,
 } from "lucide-react";
 
 const navigationGroups = [
   { label: "Workspace", items: [
     { href: "/dashboard", label: "Today", icon: LayoutDashboard },
     { href: "/dashboard/conversations", label: "Inbox", icon: MessagesSquare },
+    { href: "/dashboard/whatsapp-operations", label: "WhatsApp", icon: MessageCircle },
     { href: "/dashboard/appointments", label: "Schedule", icon: CalendarDays },
     { href: "/dashboard/huddle", label: "Today’s priorities", icon: ClipboardCheck },
     { href: "/dashboard/patients", label: "Patients", icon: Users },
@@ -38,12 +42,13 @@ const navigationGroups = [
   { label: "Manage", items: [
     { href: "/dashboard/leads", label: "Leads", icon: UserRoundPlus },
     { href: "/dashboard/follow-ups", label: "Work queue", icon: BellRing },
+    { href: "/dashboard/laboratory", label: "Laboratory", icon: FlaskConical },
     { href: "/dashboard/operations", label: "Operations", icon: PackageCheck },
     { href: "/dashboard/analytics", label: "Reports", icon: BarChart3 },
   ] },
 ];
 
-export default function Sidebar({ role }: { role: string }) {
+export default function Sidebar({ role, clinicName, logoUrl, platformAdmin }: { role: string; clinicName: string; logoUrl?: string | null; platformAdmin: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -72,7 +77,7 @@ export default function Sidebar({ role }: { role: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed left-4 top-4 z-[70] inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white/95 text-slate-800 shadow-lg shadow-slate-900/10 backdrop-blur transition hover:bg-slate-50"
+        className="fixed left-4 top-4 z-[70] inline-flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-white/95 text-[var(--heading)] shadow-lg shadow-[#123b5d]/10 backdrop-blur transition hover:bg-[var(--surface-muted)]"
         aria-label="Open navigation menu"
       >
         <Menu className="h-5 w-5" />
@@ -82,40 +87,28 @@ export default function Sidebar({ role }: { role: string }) {
         <button
           type="button"
           aria-label="Close navigation menu"
-          className="fixed inset-0 z-[75] bg-slate-950/30 backdrop-blur-[2px]"
+          className="fixed inset-0 z-[75] bg-[#123b5d]/35 backdrop-blur-[2px]"
           onClick={() => setOpen(false)}
         />
       )}
 
       <aside
-        className={`fixed left-0 top-0 z-[80] flex h-screen w-[min(88vw,320px)] shrink-0 flex-col border-r border-slate-200 bg-white shadow-2xl shadow-slate-900/20 transition-transform duration-200 ${
+        className={`fixed left-0 top-0 z-[80] flex h-screen w-[min(88vw,320px)] shrink-0 flex-col border-r border-border bg-white shadow-2xl shadow-[#123b5d]/20 transition-transform duration-200 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
 
       {/* =================== HEADER =================== */}
 
-      <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-5">
+      <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-5">
         <Link href="/dashboard" className="flex items-center gap-3">
 
-          <Image
-            src="/dental/dental-white-logo.png"
-            alt="Dental White"
-            width={56}
-            height={56}
-            className="h-14 w-14 rounded-2xl object-contain"
-            draggable={false}
-          />
+          {logoUrl?.startsWith("/") ? <div className="h-14 w-14 overflow-hidden rounded-xl border border-border bg-white p-1"><Image src={logoUrl} alt={`${clinicName} logo`} width={56} height={56} className="h-full w-full object-contain" /></div> : <div className="grid h-14 w-14 place-items-center rounded-xl bg-primary text-xl font-black text-white">{clinicName.slice(0, 1).toUpperCase()}</div>}
 
           <div className="leading-tight">
 
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-cyan-600">
-              DR. DEEPIKA&apos;S
-            </p>
-
-            <h2 className="text-xl font-black tracking-tight text-slate-900">
-              DENTAL WHITE
-            </h2>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">CLINIC WORKSPACE</p>
+            <h2 className="max-w-[190px] truncate text-xl font-black tracking-tight text-[var(--heading)]">{clinicName}</h2>
 
           </div>
 
@@ -123,7 +116,7 @@ export default function Sidebar({ role }: { role: string }) {
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-50"
+          className="grid h-10 w-10 place-items-center rounded-xl border border-border text-[var(--text-muted)] transition hover:bg-[var(--surface-muted)]"
           aria-label="Close navigation menu"
         >
           <X className="h-5 w-5" />
@@ -135,7 +128,7 @@ export default function Sidebar({ role }: { role: string }) {
       <nav className="flex-1 space-y-6 overflow-y-auto px-4 py-6">
         {navigationGroups.map((group) => (
           <div key={group.label} className="space-y-1">
-            <p className="px-4 pb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">{group.label}</p>
+            <p className="px-4 pb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-muted)]">{group.label}</p>
             {group.items.map(({ href, label, icon: Icon }) => {
           const active =
             href === "/dashboard"
@@ -153,8 +146,8 @@ export default function Sidebar({ role }: { role: string }) {
               onClick={() => setOpen(false)}
               className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200 ${
                 active
-                  ? "bg-gradient-to-r from-indigo-50 to-sky-100 text-indigo-700 shadow-sm ring-1 ring-sky-100"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  ? "bg-[var(--primary-soft)] text-primary shadow-sm ring-1 ring-[var(--border)]"
+                  : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--heading)]"
               }`}
             >
               <Icon className="h-5 w-5" />
@@ -168,7 +161,7 @@ export default function Sidebar({ role }: { role: string }) {
 
       {/* =================== FOOTER =================== */}
 
-      <div className="border-t border-slate-200 p-4">
+      <div className="border-t border-border p-4">
 
         {role === "OWNER" && (
           <Link
@@ -178,16 +171,17 @@ export default function Sidebar({ role }: { role: string }) {
             onMouseLeave={cancelPrefetch}
             onFocus={() => router.prefetch("/dashboard/settings")}
             onClick={() => setOpen(false)}
-            className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+            className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--heading)]"
           >
             <Settings className="h-5 w-5" />
             Clinic settings
           </Link>
         )}
+        {platformAdmin && <Link href="/platform" onClick={() => setOpen(false)} className="mt-1 flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--heading)]"><Shield className="h-5 w-5" />Platform admin</Link>}
 
-        <div className="mt-4 rounded-xl bg-slate-50 p-3 text-center">
-          <p className="text-xs font-semibold text-slate-500">
-            DR. DEEPIKA&apos;S DENTAL WHITE
+        <div className="mt-4 rounded-xl bg-[var(--primary-soft)] p-3 text-center">
+          <p className="text-xs font-semibold text-[var(--text-muted)]">
+            PRIVATE CLINIC WORKSPACE
           </p>
         </div>
 

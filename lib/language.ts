@@ -1,4 +1,5 @@
-import { clinicBrand } from "./brand";
+import { clinicDisplayName, getClinicConfiguration } from "./clinic-config";
+import { currentWhatsAppClinicId } from "./whatsapp-context";
 import { getConversationLanguage, setConversationLanguage } from "./whatsapp-conversations";
 
 export type ClinicLanguage = "en" | "hi" | "mr";
@@ -77,7 +78,8 @@ export function menuCopyFor(language: ClinicLanguage) {
 }
 
 export async function welcomeFor(language: ClinicLanguage) {
-  const clinicName = clinicBrand.clinicName || "Dr. Deepika's Dental White";
+  const clinic = await getClinicConfiguration(currentWhatsAppClinicId());
+  const clinicName = clinic ? clinicDisplayName(clinic) : "our clinic";
 
   if (language === "hi") {
     return {

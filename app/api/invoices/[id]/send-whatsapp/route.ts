@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { formatClinicInformation, getClinicConfiguration } from "@/lib/clinic-config";
+import { clinicDisplayName, formatClinicInformation, getClinicConfiguration } from "@/lib/clinic-config";
 import { prisma } from "@/lib/prisma";
 import { sendTextMessage } from "@/lib/whatsapp";
 import { requireApiPermission } from "@/lib/tenant";
@@ -34,7 +34,7 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     const dueLine = invoice.dueDate ? `Due date: ${invoice.dueDate.toLocaleDateString("en-IN")}` : "Due date: Not set";
     const message = [
       `Hello ${invoice.patient.fullName},`,
-      `Your invoice ${invoice.invoiceNumber} from Dr. Deepika's Dental White is ready.`,
+      `Your invoice ${invoice.invoiceNumber} from ${clinic ? clinicDisplayName(clinic) : "your clinic"} is ready.`,
       treatmentLine,
       `Total: Rs. ${invoice.totalAmount.toLocaleString("en-IN")}`,
       `Paid: Rs. ${paid.toLocaleString("en-IN")}`,
@@ -46,7 +46,7 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
       "Please reply here if you need any help.",
     ].join("\n");
 
-    await sendTextMessage(invoice.patient.phone, message);
+    await sendTextMessage(invoice.patient.phone, message, user.clinicId);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error(error);

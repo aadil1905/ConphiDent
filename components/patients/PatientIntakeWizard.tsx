@@ -139,8 +139,17 @@ export default function PatientIntakeWizard({ defaultName = "", defaultPhone = "
 
   useEffect(() => {
     if (step !== 2 || !request || request.status === "COMPLETED") return;
-    const interval = window.setInterval(() => void refreshStatus(), 4000);
-    return () => window.clearInterval(interval);
+    let interval: number | undefined;
+    const schedule = () => {
+      if (interval) window.clearInterval(interval);
+      if (!document.hidden) interval = window.setInterval(() => void refreshStatus(), 8000);
+    };
+    schedule();
+    document.addEventListener("visibilitychange", schedule);
+    return () => {
+      if (interval) window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", schedule);
+    };
   }, [step, request, refreshStatus]);
 
   async function createAndSend() {

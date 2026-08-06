@@ -36,6 +36,10 @@ function localDayRange(dayKey: string) {
   return { start, end };
 }
 
+function todayKey() {
+  return dateKey(new Date());
+}
+
 export async function saveDentalChartEntryAction(formData: FormData) {
   formData.set("toothNumbers", String(formData.get("toothNumber") || ""));
   await saveDentalChartEntriesAction(formData);
@@ -48,6 +52,7 @@ export async function saveDentalChartEntriesAction(formData: FormData) {
   const condition = String(formData.get("condition") || "HEALTHY");
   const notes = String(formData.get("notes") || "").trim() || null;
   const visitDateInput = String(formData.get("visitDate") || "").trim();
+  const allowNewWorkspace = String(formData.get("allowNewWorkspace") || "") === "1";
   if (
     !Number.isInteger(patientId) ||
     toothNumbers.length === 0 ||
@@ -61,10 +66,10 @@ export async function saveDentalChartEntriesAction(formData: FormData) {
     where: { patientId, status: "Completed", appointmentDate: { gte: localDayRange(visitDateInput).start, lte: localDayRange(visitDateInput).end } },
     select: { appointmentDate: true },
   });
-  if (!appointmentForVisit) return;
+  if (!appointmentForVisit && (!allowNewWorkspace || visitDateInput !== todayKey())) return;
 
   const { start: visitStart, end: visitEnd } = localDayRange(visitDateInput);
-  const visitDate = appointmentForVisit.appointmentDate;
+  const visitDate = appointmentForVisit?.appointmentDate ?? localDayRange(visitDateInput).start;
 
   const [existingChartEntries, existingRecords] = await Promise.all([
     prisma.dentalChartEntry.findMany({ where: { patientId, toothNumber: { in: toothNumbers }, visitDate: { gte: visitStart, lte: visitEnd } } }),
@@ -88,7 +93,6 @@ export async function saveDentalChartEntriesAction(formData: FormData) {
     ];
   }));
   revalidatePath(`/dashboard/clinical-workspace/${patientId}`);
-  revalidatePath(`/dashboard/patients/${patientId}`);
 }
 
 export async function clearVisitDentalWorkspaceAction(formData: FormData) {

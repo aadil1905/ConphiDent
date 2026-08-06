@@ -1,0 +1,5 @@
+ALTER TABLE "FollowUpTask"
+  ADD COLUMN "channel" TEXT NOT NULL DEFAULT 'WHATSAPP',
+  ADD COLUMN "cancelledAt" TIMESTAMP(3),
+  ADD COLUMN "snoozedUntil" TIMESTAMP(3),
+  ADD COLUMN "metadata" TEXT;

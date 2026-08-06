@@ -57,11 +57,11 @@ export default async function PatientClinicalWorkspace({
   searchParams,
 }: {
   params: Promise<{ patientId: string }>;
-  searchParams: Promise<{ visitDate?: string; fromPatient?: string }>;
+  searchParams: Promise<{ visitDate?: string; fromPatient?: string; new?: string }>;
 }) {
   const user = await requireUser();
   const { patientId } = await params;
-  const { visitDate, fromPatient } = await searchParams;
+  const { visitDate, fromPatient, new: newWorkspace } = await searchParams;
   const id = Number(patientId);
 
   const patient = await prisma.patient.findFirst({
@@ -89,13 +89,13 @@ export default async function PatientClinicalWorkspace({
   const appointmentDates = completedAppointments.map((appointment) =>
     dateKey(appointment.appointmentDate),
   );
-  const hasCompletedAppointmentDates = appointmentDates.length > 0;
   const availableDates = Array.from(new Set(appointmentDates));
   const requestedDate =
     visitDate && /^\d{4}-\d{2}-\d{2}$/.test(visitDate) && availableDates.includes(visitDate)
       ? visitDate
       : null;
-  const selectedVisitDate = requestedDate || appointmentDates[0] || todayKey();
+  const isNewWorkspace = newWorkspace === "1";
+  const selectedVisitDate = isNewWorkspace ? todayKey() : requestedDate || appointmentDates[0] || todayKey();
 
   const visitDates = Array.from(new Set([selectedVisitDate, ...availableDates])).sort((left, right) =>
     right.localeCompare(left),
@@ -109,7 +109,8 @@ export default async function PatientClinicalWorkspace({
     (record) => dateKey(record.visitDate) === selectedVisitDate,
   );
   const selectedRange = localDayRange(selectedVisitDate);
-  const dentalChartEntries = hasCompletedAppointmentDates
+  const canEditSelectedWorkspace = isNewWorkspace || appointmentsForSelectedDate.length > 0;
+  const dentalChartEntries = canEditSelectedWorkspace
     ? await prisma.dentalChartEntry.findMany({
         where: {
           patientId: patient.id,
@@ -176,7 +177,7 @@ export default async function PatientClinicalWorkspace({
           ))}
         </div>
 
-        {!hasCompletedAppointmentDates && (
+        {!canEditSelectedWorkspace && (
           <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-800">
             This patient has no completed appointment yet. Complete the appointment first, then
             clinical notes can be saved under that exact appointment date.
@@ -199,7 +200,7 @@ export default async function PatientClinicalWorkspace({
           </div>
         )}
 
-        {hasCompletedAppointmentDates && (
+        {appointmentsForSelectedDate.length > 0 && (
           <form action={clearVisitDentalWorkspaceAction} className="mt-4">
             <input type="hidden" name="patientId" value={patient.id} />
             <input type="hidden" name="visitDate" value={selectedVisitDate} />
@@ -216,12 +217,13 @@ export default async function PatientClinicalWorkspace({
         )}
       </section>
 
-      {hasCompletedAppointmentDates ? (
+      {canEditSelectedWorkspace ? (
         <DentalChartEditor
           key={`${patient.id}-${selectedVisitDate}`}
           patientId={patient.id}
           entries={dentalChartEntries}
           visitDate={selectedVisitDate}
+          isNewWorkspace={isNewWorkspace}
         />
       ) : (
         <section className="rounded-3xl border border-dashed border-slate-200 bg-white p-8 text-center shadow-sm">

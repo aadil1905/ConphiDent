@@ -1,0 +1,28 @@
+import { MessageCircle, RefreshCw, ShieldCheck } from "lucide-react";
+import { requireOwner } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { ConnectWhatsAppButton } from "@/components/whatsapp/ConnectWhatsAppButton";
+import { disconnectWhatsAppAction, sendWhatsAppTestAction, syncWhatsAppAction } from "./actions";
+
+const format = (value?: Date | null) => value ? value.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "Not yet";
+
+export default async function WhatsAppSettingsPage() {
+  const user = await requireOwner();
+  const [connection, logs, templates, automations] = await Promise.all([
+    prisma.clinicWhatsAppConnection.findUnique({ where: { clinicId: user.clinicId }, select: { id: true, displayPhoneNumber: true, verifiedName: true, businessName: true, qualityRating: true, messagingLimit: true, connectedAt: true, lastVerifiedAt: true, webhookVerifiedAt: true, lastSyncedAt: true, disconnectedAt: true } }),
+    prisma.whatsAppConnectionLog.findMany({ where: { clinicId: user.clinicId }, orderBy: { createdAt: "desc" }, take: 8 }),
+    prisma.whatsAppTemplate.count({ where: { clinicId: user.clinicId } }),
+    prisma.whatsAppAutomation.count({ where: { clinicId: user.clinicId, enabled: true } }),
+  ]);
+  const connected = Boolean(connection && !connection.disconnectedAt);
+  const details = [
+    ["Business", connection?.businessName || "Synced from Meta on next refresh"], ["Phone / display name", connection?.verifiedName || connection?.displayPhoneNumber || "Not available"],
+    ["Quality rating", connection?.qualityRating || "Not reported by Meta"], ["Messaging limit", connection?.messagingLimit || "Not reported by Meta"],
+    ["Webhook", connection?.webhookVerifiedAt ? "Verified" : "Awaiting verification"], ["Last sync", format(connection?.lastSyncedAt)],
+  ];
+  return <div className="mx-auto max-w-4xl space-y-6"><header><p className="text-sm font-bold uppercase tracking-[0.16em] text-sky-700">Settings</p><h1 className="mt-2 text-3xl font-bold tracking-tight">WhatsApp</h1><p className="mt-2 text-muted-foreground">Official Meta Cloud API connection. Staff never enter or see API keys, tokens, or phone-number IDs.</p></header>
+    <section className="rounded-2xl border bg-card p-6 shadow-sm"><div className="flex items-start gap-4"><div className="grid size-11 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><MessageCircle className="size-6" /></div><div className="flex-1"><h2 className="text-xl font-bold">{connected ? "WhatsApp connected" : "Connect your WhatsApp Business account"}</h2>{connected ? <><p className="mt-1 text-sm text-muted-foreground">{connection?.displayPhoneNumber || "Business number"} is connected through Meta.</p><div className="mt-5 grid gap-3 text-sm sm:grid-cols-2">{details.map(([label, value]) => <div key={label} className="rounded-xl bg-muted/50 p-3"><dt className="text-muted-foreground">{label}</dt><dd className="mt-1 font-semibold">{value}</dd></div>)}</div><div className="mt-5 flex flex-wrap gap-3"><form action={syncWhatsAppAction}><button className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold hover:bg-muted"><RefreshCw className="size-4" />Sync now</button></form><form action={disconnectWhatsAppAction}><button className="rounded-xl border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50">Disconnect</button></form></div><form action={sendWhatsAppTestAction} className="mt-5 flex max-w-lg flex-wrap gap-2"><input name="phone" inputMode="tel" required placeholder="Test recipient, e.g. 919876543210" className="min-w-60 flex-1 rounded-xl border bg-background px-3 py-2 text-sm" /><button className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Send test message</button></form></> : <><p className="mt-1 text-sm text-muted-foreground">Meta will guide you through login, selecting or creating your WhatsApp Business Account, and phone verification.</p><div className="mt-5"><ConnectWhatsAppButton /></div></>}</div></div></section>
+    <section className="grid gap-4 sm:grid-cols-2"><div className="rounded-2xl border bg-card p-5"><p className="text-sm text-muted-foreground">Templates</p><p className="mt-1 text-2xl font-bold">{templates}</p><p className="mt-1 text-sm text-muted-foreground">Per-clinic template records</p></div><div className="rounded-2xl border bg-card p-5"><p className="text-sm text-muted-foreground">Active automations</p><p className="mt-1 text-2xl font-bold">{automations}</p><p className="mt-1 text-sm text-muted-foreground">Per-clinic automation records</p></div></section>
+    <section className="rounded-2xl border bg-card p-6 shadow-sm"><h2 className="text-lg font-bold">Connection activity</h2>{logs.length ? <ul className="mt-4 divide-y">{logs.map(log => <li key={log.id} className="flex items-start justify-between gap-4 py-3 text-sm"><div><p className="font-semibold">{log.event.replaceAll("_", " ")}</p>{log.detail && <p className="mt-1 text-muted-foreground">{log.detail}</p>}</div><time className="shrink-0 text-muted-foreground">{format(log.createdAt)}</time></li>)}</ul> : <p className="mt-3 text-sm text-muted-foreground">No connection activity recorded yet.</p>}</section>
+    <section className="rounded-2xl border border-sky-200 bg-sky-50 p-5 text-sm text-sky-950"><div className="flex gap-3"><ShieldCheck className="size-5 shrink-0" /><div><p className="font-bold">Credentials stay private</p><p className="mt-1">Meta credentials are encrypted at rest, used only on the server, and never returned to the browser. Each new clinic must complete its own Embedded Signup.</p></div></div></section></div>;
+}

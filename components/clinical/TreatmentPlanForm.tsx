@@ -70,7 +70,7 @@ export default function TreatmentPlanForm({
 }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
-  const [serviceId, setServiceId] = useState(editingPlan?.serviceId ? String(editingPlan.serviceId) : "");
+  const [serviceId] = useState(editingPlan?.serviceId ? String(editingPlan.serviceId) : "");
   const [patientId, setPatientId] = useState(editingPlan ? String(editingPlan.patientId) : initialPatientId);
   const [selectedTeeth, setSelectedTeeth] = useState<string[]>(
     (editingPlan?.selectedTeeth.map((tooth) => tooth.toothNumber) || initialToothNumbers).filter((tooth) => toothNumbers.includes(tooth)),

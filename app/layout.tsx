@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
 import { Toaster } from "@/components/ui/sonner";
-import { clinicBrand } from "@/lib/brand";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: `${clinicBrand.doctorName} | ${clinicBrand.clinicName}`,
-  description: `${clinicBrand.clinicName} dashboard and chatbot for ${clinicBrand.address}.`,
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://www.conphident.live"),
+  title: { default: "ConphiDent | The operating system for modern dental clinics", template: "%s | ConphiDent" },
+  description: "ConphiDent connects your dental clinic's WhatsApp, appointments, CRM, clinical work, billing and operations in one intelligent workspace.",
+  alternates: { canonical: "/" },
+  openGraph: { type: "website", locale: "en_IN", siteName: "ConphiDent", title: "ConphiDent | The operating system for modern dental clinics", description: "More confident care. One connected clinic." },
+  twitter: { card: "summary_large_image", title: "ConphiDent | The operating system for modern dental clinics", description: "More confident care. One connected clinic." },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({

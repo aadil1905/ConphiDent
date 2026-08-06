@@ -51,7 +51,25 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
     prisma.appointment.count({ where }),
     prisma.appointment.findMany({
       where,
-      include: { patient: { include: { intakeRequests: { orderBy: { createdAt: "desc" }, take: 1 } } } },
+      select: {
+        id: true,
+        patientName: true,
+        phone: true,
+        appointmentDate: true,
+        appointmentTime: true,
+        treatment: true,
+        status: true,
+        source: true,
+        patient: {
+          select: {
+            intakeRequests: {
+              select: { status: true },
+              orderBy: { createdAt: "desc" },
+              take: 1,
+            },
+          },
+        },
+      },
       orderBy: sortOptions[activeSort],
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,

@@ -4,16 +4,26 @@ import { requirePermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import DeleteSubmitButton from "@/components/dashboard/DeleteSubmitButton";
 import { deleteFollowUpAction } from "@/app/dashboard/delete-actions";
-import { completeFollowUpAction, generateFollowUpsAction, sendFollowUpAction } from "./actions";
+import { cancelFollowUpAction, completeFollowUpAction, generateFollowUpsAction, sendFollowUpAction, snoozeFollowUpAction } from "./actions";
 
 const typeLabel: Record<string, string> = {
   LEAD_NURTURE: "Unbooked enquiry",
   MISSED_APPOINTMENT: "Missed appointment",
+  CANCELLATION_RECOVERY: "Cancellation recovery",
   REACTIVATION: "Inactive patient",
+  APPOINTMENT_FOLLOW_UP: "Appointment follow-up",
+  TREATMENT_FOLLOW_UP: "Treatment follow-up",
+  LABORATORY_FOLLOW_UP: "Laboratory follow-up",
+  PAYMENT_FOLLOW_UP: "Payment follow-up",
+  RECALL_FOLLOW_UP: "Recall follow-up",
+  NEW_PATIENT_FOLLOW_UP: "New patient follow-up",
 };
 const typeStyle: Record<string, string> = {
   LEAD_NURTURE: "bg-violet-50 text-violet-700",
   MISSED_APPOINTMENT: "bg-amber-50 text-amber-800",
+  CANCELLATION_RECOVERY: "bg-orange-50 text-orange-800",
+  TREATMENT_FOLLOW_UP: "bg-fuchsia-50 text-fuchsia-800",
+  RECALL_FOLLOW_UP: "bg-sky-50 text-sky-700",
   REACTIVATION: "bg-sky-50 text-sky-700",
 };
 
@@ -41,9 +51,7 @@ export default async function FollowUpsPage() {
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary">Work queue</p>
           <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">Follow-ups and recovery</h1>
-          <p className="mt-2 max-w-2xl text-muted-foreground">
-            One staff-owned queue for unbooked enquiries, missed appointments, and patients due for a check-up.
-          </p>
+          <p className="mt-2 max-w-2xl text-muted-foreground">One staff-owned queue for appointments, treatments, laboratory, payments, recalls, enquiries and missed visits.</p>
         </div>
         <div className="flex flex-wrap gap-2"><Link href="/dashboard/conversations" className="inline-flex h-11 items-center rounded-xl border bg-white px-4 text-sm font-semibold text-slate-800 transition hover:bg-slate-50">Open inbox</Link><form action={generateFollowUpsAction}>
           <button className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90">
@@ -124,6 +132,8 @@ export default async function FollowUpsPage() {
                         </button>
                       </form>
                     )}
+                    {!["COMPLETED", "CANCELLED"].includes(task.status) && <form action={snoozeFollowUpAction} className="flex gap-1"><input type="hidden" name="id" value={task.id} /><input required name="scheduledFor" type="datetime-local" className="h-10 rounded-xl border px-2 text-xs" /><button className="h-10 rounded-xl border px-3 text-sm font-semibold">Snooze</button></form>}
+                    {!["COMPLETED", "CANCELLED"].includes(task.status) && <form action={cancelFollowUpAction}><input type="hidden" name="id" value={task.id} /><button className="h-10 rounded-xl border border-rose-200 px-3 text-sm font-semibold text-rose-700 hover:bg-rose-50">Cancel</button></form>}
                     <form action={deleteFollowUpAction}>
                       <input type="hidden" name="id" value={task.id} />
                       <DeleteSubmitButton confirmMessage={`Delete follow-up for ${task.patientName}?`} />

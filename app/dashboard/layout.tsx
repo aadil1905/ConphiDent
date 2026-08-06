@@ -1,7 +1,8 @@
 import Sidebar from "@/components/Sidebar";
 import Navbar from "@/components/Navbar";
 import { requireUser } from "@/lib/auth";
-import { clinicBrand } from "@/lib/brand";
+import { clinicDisplayName } from "@/lib/clinic-config";
+import { isPlatformAdmin } from "@/lib/platform";
 import LogoutButton from "./logout-button";
 import DashboardInteractionFeedback from "@/components/dashboard/DashboardInteractionFeedback";
 
@@ -15,7 +16,7 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen overflow-x-hidden bg-background">
       <DashboardInteractionFeedback />
-      <Sidebar role={user.role} />
+      <Sidebar role={user.role} clinicName={clinicDisplayName(user.clinic)} logoUrl={user.clinic.logoUrl} platformAdmin={isPlatformAdmin(user)} />
 
       <main className="min-w-0">
         <div className="relative">
@@ -23,8 +24,8 @@ export default async function DashboardLayout({
             user={{
               fullName: user.fullName,
               role: user.role,
-              clinicName: clinicBrand.doctorName,
-              clinicAddress: clinicBrand.address,
+              clinicName: clinicDisplayName(user.clinic),
+              clinicAddress: user.clinic.address || "Your secure clinic workspace",
             }}
             notifications={[]}
           />

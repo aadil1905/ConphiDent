@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import EditAppointmentButton from "./EditAppointmentButton";
 import DeleteAppointmentDialog from "./DeleteAppointmentDialog";
 import SendReminderButton from "./SendReminderButton";
+import SendPatientResponseLinkButton from "./SendPatientResponseLinkButton";
 
 import type { Appointment } from "@/types/appointment";
 
@@ -74,9 +75,10 @@ export default function AppointmentActions({
   );
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
       <EditAppointmentButton appointmentId={appointment.id} />
       <SendReminderButton appointmentId={appointment.id} sentAt={reminderSentAt ?? null} />
+      <SendPatientResponseLinkButton appointmentId={appointment.id} />
 
       <Button
         onClick={() => updateStatus("Confirmed")}

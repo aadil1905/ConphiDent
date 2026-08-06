@@ -33,6 +33,10 @@ export async function getClinicConfiguration(clinicId?: number) {
   });
 }
 
+export function clinicDisplayName(clinic: { name: string; brandName?: string | null }) {
+  return clinic.brandName?.trim() || clinic.name;
+}
+
 const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 export function formatClinicInformation(clinic: Awaited<ReturnType<typeof getClinicConfiguration>> | null | undefined) {

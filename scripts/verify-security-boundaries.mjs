@@ -9,8 +9,11 @@ const checks = [
   ["app/api/invoices/route.ts", "clinicId: user.clinicId"],
   ["app/api/invoices/[id]/payments/route.ts", "patient: { clinicId: user.clinicId }"],
   ["app/api/invoices/[id]/send-whatsapp/route.ts", "patient: { clinicId: user.clinicId }"],
-  ["app/api/missed-calls/route.ts", "MISSED_CALL_WEBHOOK_SECRET"],
   ["app/api/webhook/route.ts", "x-hub-signature-256"],
+  ["app/platform/actions.ts", "requirePlatformAdmin"],
+  ["app/platform/page.tsx", "requirePlatformAdmin"],
+  ["lib/auth.ts", "session.user.clinic.status !== \"ACTIVE\""],
+  ["lib/whatsapp.ts", "runWithWhatsAppClinic"],
   ["app/dashboard/billing/[id]/page.tsx", "patient: { clinicId: user.clinicId }"],
   ["app/dashboard/billing/page.tsx", "patient: { clinicId: user.clinicId }"],
   ["app/dashboard/billing/new/page.tsx", "clinicId: user.clinicId"],
@@ -26,7 +29,7 @@ const checks = [
   ["app/api/public-intake/[token]/route.ts", "status: { notIn: [\"COMPLETED\", \"REVIEWED\"] }"],
   ["app/dashboard/patients/[id]/page.tsx", "clinicId: user.clinicId"],
   ["app/dashboard/patients/[id]/edit/page.tsx", "clinicId: user.clinicId"],
-  ["proxy.ts", "const publicApi = [\"/api/webhook\", \"/api/health\", \"/api/cron/follow-ups\", \"/api/public-intake\"]"],
+  ["proxy.ts", "const publicApi = [\"/api/webhook\", \"/api/health\", \"/api/cron/follow-ups\", \"/api/public-intake\", \"/api/demo-requests\"]"],
 ];
 
 const failures = checks.flatMap(([file, expected]) => {
