@@ -36,7 +36,11 @@ export async function POST(request: Request) {
         invoice = await prisma.$transaction(async (tx) => {
           const invoiceNumber = data.invoiceNumber.trim();
           const created = await tx.invoice.create({ data: { invoiceNumber, patientId: patient.id, treatmentPlanId, issueDate: localDate(data.issueDate), dueDate: data.dueDate ? localDate(data.dueDate) : null, totalAmount: data.totalAmount, status: amountPaidToday === data.totalAmount ? "Paid" : amountPaidToday > 0 ? "Partially Paid" : "Unpaid", notes: data.notes || null } });
-          if (amountPaidToday > 0) await tx.payment.create({ data: { invoiceId: created.id, amount: amountPaidToday, method: data.paymentMethod || "Cash", paidAt: new Date(), notes: data.paymentNotes || null, recordedBy: user.fullName } });
+          await tx.auditLog.create({ data: { clinicId: user.clinicId, userId: user.id, action: "INVOICE_CREATED", entityType: "INVOICE", entityId: String(created.id), detail: `Created invoice ${invoiceNumber} for patient #${patient.id}` } });
+          if (amountPaidToday > 0) {
+            const payment = await tx.payment.create({ data: { invoiceId: created.id, amount: amountPaidToday, method: data.paymentMethod || "Cash", paidAt: new Date(), notes: data.paymentNotes || null, recordedBy: user.fullName } });
+            await tx.auditLog.create({ data: { clinicId: user.clinicId, userId: user.id, action: "PAYMENT_RECORDED", entityType: "PAYMENT", entityId: String(payment.id), detail: `Recorded opening payment of ${amountPaidToday} on invoice ${invoiceNumber}` } });
+          }
           return created;
         }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
         break;

@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { appointmentSchema } from "@/lib/validations";
 import { ZodError } from "zod";
-import { getCurrentUser } from "@/lib/auth";
+import { requireApiFeature } from "@/lib/tenant";
 import { findScheduleConflict } from "@/lib/schedule-conflicts";
+import { Prisma } from "@prisma/client";
+
+class AppointmentNotFoundError extends Error {}
+class ScheduleConflictError extends Error {}
 
 type RouteContext = {
   params: Promise<{
@@ -16,8 +20,8 @@ export async function PATCH(
   { params }: RouteContext
 ) {
   try {
-    const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Please sign in again." }, { status: 401 });
+    const { user, response } = await requireApiFeature("appointments", "manageSchedule");
+    if (!user) return response;
     const { id } = await params;
     const appointmentId = Number(id);
     if (!Number.isInteger(appointmentId) || appointmentId < 1) {
@@ -50,19 +54,18 @@ export async function PATCH(
     const shouldSavePatient = data.status === "Completed";
     const providerId = data.providerId === undefined ? existingAppointment.providerId : data.providerId;
     const chairId = data.chairId === undefined ? existingAppointment.chairId : data.chairId;
-    const conflict = await findScheduleConflict({ clinicId: user.clinicId, appointmentDate: data.appointmentDate ? new Date(data.appointmentDate) : existingAppointment.appointmentDate, appointmentTime: data.appointmentTime ?? existingAppointment.appointmentTime, providerId, chairId, excludeAppointmentId: existingAppointment.id });
-    if (conflict) return NextResponse.json({ error: `${conflict.provider?.name || conflict.chair?.name || "The selected resource"} is already booked at this time for ${conflict.patientName}.` }, { status: 409 });
-    const completedPatient = shouldSavePatient
-      ? await prisma.patient.upsert({
-          where: { clinicId_phone: { clinicId: user.clinicId, phone: nextPhone } },
-          update: { fullName: nextPatientName },
-          create: { clinicId: user.clinicId, fullName: nextPatientName, phone: nextPhone },
-        })
-      : null;
-
-    const appointment = await prisma.appointment.update({
-      where: { id: existingAppointment.id },
-      data: {
+    let appointment;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        appointment = await prisma.$transaction(async (tx) => {
+          const current = await tx.appointment.findFirst({ where: { id: existingAppointment.id, clinicId: user.clinicId, archivedAt: null }, select: { id: true } });
+          if (!current) throw new AppointmentNotFoundError();
+          const conflict = await findScheduleConflict({ clinicId: user.clinicId, appointmentDate: data.appointmentDate ? new Date(data.appointmentDate) : existingAppointment.appointmentDate, appointmentTime: data.appointmentTime ?? existingAppointment.appointmentTime, providerId, chairId, excludeAppointmentId: existingAppointment.id }, tx);
+          if (conflict) throw new ScheduleConflictError(`${conflict.provider?.name || conflict.chair?.name || "The selected resource"} is already booked at this time for ${conflict.patientName}.`);
+          const completedPatient = shouldSavePatient ? await tx.patient.upsert({ where: { clinicId_phone: { clinicId: user.clinicId, phone: nextPhone } }, update: { fullName: nextPatientName }, create: { clinicId: user.clinicId, fullName: nextPatientName, phone: nextPhone } }) : null;
+          return tx.appointment.update({
+            where: { id: existingAppointment.id },
+            data: {
         patientName:
           data.patientName !== undefined
             ? data.patientName
@@ -102,12 +105,22 @@ export async function PATCH(
         chairId,
 
         patientId: completedPatient?.id,
-      },
-    });
+            },
+          });
+        }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+        break;
+      } catch (error) {
+        if (error instanceof AppointmentNotFoundError || error instanceof ScheduleConflictError) throw error;
+        if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2034" || attempt === 2) throw error;
+      }
+    }
+    if (!appointment) throw new Error("Could not update appointment.");
 
     return NextResponse.json(appointment);
   } catch (error) {
     console.error(error);
+    if (error instanceof ScheduleConflictError) return NextResponse.json({ error: error.message }, { status: 409 });
+    if (error instanceof AppointmentNotFoundError) return NextResponse.json({ error: "Appointment not found." }, { status: 404 });
     if (error instanceof ZodError) {
       return NextResponse.json({ error: "Validation failed.", issues: error.flatten() }, { status: 400 });
     }
@@ -123,8 +136,8 @@ export async function DELETE(
   { params }: RouteContext
 ) {
   try {
-    const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Please sign in again." }, { status: 401 });
+    const { user, response } = await requireApiFeature("appointments", "manageSchedule");
+    if (!user) return response;
     const { id } = await params;
     const appointmentId = Number(id);
     if (!Number.isInteger(appointmentId) || appointmentId < 1) {

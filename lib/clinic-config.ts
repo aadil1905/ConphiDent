@@ -28,6 +28,11 @@ export async function getClinicConfiguration(clinicId?: number) {
       services: { where: { active: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] },
       hours: { orderBy: { dayOfWeek: "asc" } },
       whatsapp: true,
+      locations: {
+        where: { active: true },
+        orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+        include: { hours: { orderBy: [{ dayOfWeek: "asc" }, { sortOrder: "asc" }] } },
+      },
       faqs: { where: { active: true }, orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], take: 20 },
     },
   });
@@ -41,16 +46,18 @@ const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Frida
 
 export function formatClinicInformation(clinic: Awaited<ReturnType<typeof getClinicConfiguration>> | null | undefined) {
   if (!clinic) return "Clinic details are being updated. Please contact the clinic team directly for assistance.";
+  const primaryLocation = clinic.locations.find((location) => location.isPrimary) || clinic.locations[0];
 
   const contactLines = [
     clinic.name,
-    clinic.phone ? `Phone: ${clinic.phone}` : null,
-    clinic.email ? `Email: ${clinic.email}` : null,
-    clinic.address ? `Address: ${clinic.address}` : null,
+    primaryLocation?.phone || clinic.phone ? `Phone: ${primaryLocation?.phone || clinic.phone}` : null,
+    primaryLocation?.email || clinic.email ? `Email: ${primaryLocation?.email || clinic.email}` : null,
+    primaryLocation?.address || clinic.address ? `Address: ${primaryLocation?.address || clinic.address}` : null,
   ].filter(Boolean);
 
-  const hourLines = clinic.hours.length
-    ? clinic.hours.map((item) => `${dayNames[item.dayOfWeek] || `Day ${item.dayOfWeek}`}: ${item.isClosed ? "Closed" : `${item.openTime} - ${item.closeTime}`}`)
+  const effectiveHours = primaryLocation?.hours.length ? primaryLocation.hours : clinic.hours;
+  const hourLines = effectiveHours.length
+    ? effectiveHours.map((item) => `${dayNames[item.dayOfWeek] || `Day ${item.dayOfWeek}`}: ${item.isClosed ? "Closed" : `${item.openTime} - ${item.closeTime}`}`)
     : defaultHours.map((item) => `${dayNames[item.dayOfWeek]}: ${item.isClosed ? "Closed" : `${item.openTime} - ${item.closeTime}`}`);
 
   return [...contactLines, "", "Clinic hours:", ...hourLines].join("\n").trim();

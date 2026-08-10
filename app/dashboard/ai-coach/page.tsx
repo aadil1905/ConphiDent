@@ -4,9 +4,11 @@ import { redirect } from "next/navigation";
 import { BotMessageSquare, ShieldCheck, Sparkles } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
+import { requireFeature } from "@/lib/features";
 import { addFaqAction, toggleFaqAction } from "./actions";
 
 export default async function AICoachPage() {
+  await requireFeature("ai_coach");
   const user = await requireUser();
   if (user.role !== "OWNER") redirect("/dashboard");
   const faqs = await prisma.clinicFAQ.findMany({ where: { clinicId: user.clinicId }, orderBy: [{ active: "desc" }, { createdAt: "desc" }] });

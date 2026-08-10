@@ -28,7 +28,7 @@ export default async function ReportsPage() {
     }),
     prisma.followUpTask.findMany({
       where: { clinicId: user.clinicId, createdAt: { gte: from } },
-      select: { status: true, taskType: true, createdAt: true },
+      select: { status: true, taskType: true, sourceType: true, outcome: true, createdAt: true },
     }),
   ]);
 
@@ -38,8 +38,13 @@ export default async function ReportsPage() {
   const converted = allLeads.filter((lead) => lead.stage === "CONVERTED").length;
   const lost = allLeads.filter((lead) => lead.stage === "LOST").length;
   const recovered = allLeads.filter((lead) => lead.recoveredAt).length;
+  const actionableFollowUps = followUps.filter((task) => !["CANCELLED"].includes(task.status));
   const pendingFollowUps = followUps.filter((task) => task.status === "PENDING").length;
-  const completedFollowUps = followUps.filter((task) => task.status === "COMPLETED" || task.status === "SENT").length;
+  const sentFollowUps = followUps.filter((task) => task.status === "SENT").length;
+  const completedFollowUps = followUps.filter((task) => task.status === "COMPLETED").length;
+  const failedFollowUps = followUps.filter((task) => task.status === "FAILED").length;
+  const invoiceRecoveryTasks = followUps.filter((task) => task.sourceType === "INVOICE").length;
+  const recoveryRate = percentage(completedFollowUps, actionableFollowUps.length);
   const aiValue = allLeads
     .filter((lead) => lead.source.toLowerCase() === "whatsapp" && lead.stage === "CONVERTED")
     .reduce((sum, lead) => sum + (lead.conversionValue || 0), 0);
@@ -70,6 +75,7 @@ export default async function ReportsPage() {
     { label: "Appointment → treatment", value: `${percentage(converted, booked)}%`, help: `${converted} conversions from booked leads`, icon: TrendingUp, tone: "bg-emerald-50 text-emerald-700" },
     { label: "Recovered leads", value: recovered.toString(), help: `${lost} leads currently marked lost`, icon: RefreshCcw, tone: "bg-cyan-50 text-cyan-700" },
     { label: "AI-attributed value", value: currency(aiValue), help: "WhatsApp leads marked Converted", icon: CircleDollarSign, tone: "bg-amber-50 text-amber-800" },
+    { label: "Recovery completion", value: `${recoveryRate}%`, help: `${completedFollowUps} completed recovery task(s) in 30 days`, icon: UserRoundCheck, tone: "bg-emerald-50 text-emerald-700" },
   ];
 
   const insight = pendingFollowUps > 0
@@ -108,7 +114,8 @@ export default async function ReportsPage() {
         <article className="rounded-2xl border border-border bg-card p-6 shadow-sm">
           <div className="flex items-center gap-2"><CalendarClock className="size-5 text-primary" /><h2 className="text-lg font-bold">Follow-up performance</h2></div>
           <p className="mt-1 text-sm text-muted-foreground">Tasks created in the last 30 days.</p>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2"><div className="rounded-xl bg-amber-50 p-4"><p className="text-sm text-amber-900">Awaiting action</p><p className="mt-2 text-3xl font-bold text-amber-950">{pendingFollowUps}</p></div><div className="rounded-xl bg-emerald-50 p-4"><p className="text-sm text-emerald-800">Sent or completed</p><p className="mt-2 text-3xl font-bold text-emerald-900">{completedFollowUps}</p></div></div>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2"><div className="rounded-xl bg-amber-50 p-4"><p className="text-sm text-amber-900">Awaiting action</p><p className="mt-2 text-3xl font-bold text-amber-950">{pendingFollowUps}</p><p className="mt-1 text-xs text-amber-800">{sentFollowUps} sent, awaiting outcome</p></div><div className="rounded-xl bg-emerald-50 p-4"><p className="text-sm text-emerald-800">Completed recovery</p><p className="mt-2 text-3xl font-bold text-emerald-900">{completedFollowUps}</p><p className="mt-1 text-xs text-emerald-800">{invoiceRecoveryTasks} invoice recovery task(s)</p></div></div>
+          {failedFollowUps > 0 && <p className="mt-3 rounded-xl bg-rose-50 p-3 text-sm font-medium text-rose-800">{failedFollowUps} recovery attempt{failedFollowUps === 1 ? "" : "s"} failed and needs a retry or different channel.</p>}
           <p className="mt-5 rounded-xl bg-sky-50 p-4 text-sm leading-6 text-sky-950">{insight}</p>
           <Link href="/dashboard/follow-ups" className="mt-5 inline-flex text-sm font-semibold text-primary hover:underline">Open follow-up workspace →</Link>
         </article>

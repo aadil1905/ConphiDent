@@ -2,8 +2,10 @@ import AppointmentForm from "../../../../components/appointments/AppointmentForm
 import PageIntro from "@/components/dashboard/PageIntro";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/permissions";
+import { requireFeature } from "@/lib/features";
 
 export default async function NewAppointmentPage({ searchParams }: { searchParams: Promise<{ returnTo?: string; patientId?: string }> }) {
+  await requireFeature("appointments");
   const user = await requirePermission("manageSchedule");
   const { returnTo, patientId } = await searchParams;
   const safeReturnTo = returnTo?.startsWith("/dashboard/patients/") ? returnTo : undefined;

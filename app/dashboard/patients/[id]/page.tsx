@@ -21,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import StatusBadge from "@/components/appointments/StatusBadge";
 import DentalChartSummary from "@/components/clinical/DentalChartSummary";
 import type { AppointmentStatus } from "@/types/appointment";
+import { preparePatientPortalAction } from "./actions";
 
 function formatDate(date: Date) {
   return date.toLocaleDateString("en-IN", {
@@ -114,6 +115,7 @@ export default async function PatientPage({
         orderBy: { completedAt: "desc" },
         take: 1,
       },
+      portalAccess: true,
     },
   });
 
@@ -159,7 +161,6 @@ export default async function PatientPage({
     0,
   );
   const outstanding = totalBilled - totalPaid;
-
   return (
     <div className="mx-auto max-w-[1480px] space-y-6">
       <section className="overflow-hidden rounded-3xl border bg-gradient-to-br from-white via-white to-primary/[0.06] shadow-sm">
@@ -211,6 +212,12 @@ export default async function PatientPage({
         </div>
       </section>
 
+      <section className="rounded-2xl border border-sky-200 bg-sky-50 p-5">
+        <p className="text-sm font-bold text-sky-950">Patient portal</p>
+        {patient.portalAccess ? <p className="mt-1 text-sm text-sky-900">Foundation prepared. Patient sign-in is intentionally unavailable until a verified SMS or production WhatsApp OTP channel is configured and tested.</p> : <p className="mt-1 text-sm text-sky-900">Prepare this patient&apos;s portal record now. This does not grant access or send a message.</p>}
+        <form action={preparePatientPortalAction} className="mt-3"><input type="hidden" name="patientId" value={patient.id} /><button className="rounded-xl border border-sky-300 bg-white px-4 py-2 text-sm font-semibold text-sky-900 hover:bg-sky-100">{patient.portalAccess ? "Refresh portal readiness" : "Prepare patient portal"}</button></form>
+      </section>
+
       <Card className="border-slate-200/80 shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-lg">
@@ -245,7 +252,7 @@ export default async function PatientPage({
       </Card>
 
       <div className="space-y-6">
-        <div className="grid items-stretch gap-6 lg:grid-cols-2">
+        <div className="grid items-start gap-6 lg:grid-cols-2">
         <Card className="border-slate-200/80 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between gap-4">
             <CardTitle className="flex items-center gap-2">
@@ -287,6 +294,42 @@ export default async function PatientPage({
           </CardContent>
         </Card>
 
+        {/* Patient timeline, communication, recovery, and laboratory summaries are intentionally omitted here. */}
+        {/*
+        <div className="grid items-start gap-6 xl:grid-cols-2">
+          <Card className="border-slate-200/80 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between gap-4">
+              <CardTitle className="flex items-center gap-2"><MessageCircle className="size-5 text-primary" /> Communication</CardTitle>
+              <Link href="/dashboard/conversations" className="text-sm font-semibold text-primary hover:underline">Open inbox</Link>
+            </CardHeader>
+            <CardContent>
+              {!conversation ? <EmptyState>No WhatsApp conversation is linked to this patient&apos;s phone yet.</EmptyState> : (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted/50 p-3 text-sm"><span className="font-semibold">{conversation.status.replaceAll("_", " ")}</span><span className="text-muted-foreground">Last activity {formatDateTime(conversation.lastMessageAt)}</span></div>
+                  {conversation.messages.slice(0, 5).map((message) => <div key={message.id} className={`rounded-xl p-3 text-sm ${message.direction === "OUTBOUND" ? "ml-6 bg-primary/10" : "mr-6 bg-muted/60"}`}><p className="whitespace-pre-wrap">{message.content}</p><p className="mt-1 text-xs text-muted-foreground">{message.direction === "OUTBOUND" ? "Clinic" : "Patient"} · {formatDateTime(message.createdAt)} · {message.deliveryStatus}</p></div>)}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-200/80 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between gap-4">
+              <CardTitle className="flex items-center gap-2"><BellRing className="size-5 text-primary" /> Follow-up and laboratory</CardTitle>
+              <div className="flex gap-3"><Link href="/dashboard/follow-ups" className="text-sm font-semibold text-primary hover:underline">Recovery queue</Link><Link href="/dashboard/laboratory" className="text-sm font-semibold text-primary hover:underline">Lab cases</Link></div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {followUps.length === 0 ? <EmptyState>No recovery tasks are open or recorded for this patient.</EmptyState> : <div className="space-y-2">{followUps.slice(0, 4).map((task) => <div key={task.id} className="flex items-center justify-between gap-3 rounded-xl border p-3 text-sm"><div className="min-w-0"><p className="font-semibold">{task.taskType.replaceAll("_", " ")}</p><p className="truncate text-muted-foreground">{task.status} · due {formatDateTime(task.scheduledFor)}</p></div><span className="shrink-0 text-xs font-semibold text-primary">{task.channel}</span></div>)}</div>}
+              {patient.labCases.length === 0 ? <p className="text-sm text-muted-foreground">No laboratory cases are attached to this patient.</p> : <div className="space-y-2">{patient.labCases.slice(0, 4).map((labCase) => <div key={labCase.id} className="flex items-center justify-between gap-3 rounded-xl bg-amber-50/70 p-3 text-sm"><div><p className="font-semibold">{labCase.caseType} · {labCase.labName}</p><p className="text-muted-foreground">{labCase.status.replaceAll("_", " ")}{labCase.dueDate ? ` · due ${formatDate(labCase.dueDate)}` : ""}</p></div><FlaskConical className="size-4 shrink-0 text-amber-700" /></div>)}</div>}
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className="border-slate-200/80 shadow-sm">
+          <CardHeader><CardTitle className="flex items-center gap-2"><History className="size-5 text-primary" /> Patient activity timeline</CardTitle><p className="text-sm text-muted-foreground">Chronological events from care, revenue, laboratory, recovery, and WhatsApp activity.</p></CardHeader>
+          <CardContent>{timeline.length === 0 ? <EmptyState>No patient activity has been recorded yet.</EmptyState> : <ol className="divide-y">{timeline.map((event) => <li key={event.id} className="flex gap-3 py-3 text-sm"><span className={`mt-0.5 size-2 shrink-0 rounded-full bg-current ${event.tone}`} /><div className="min-w-0 flex-1"><Link href={event.href} className="font-semibold hover:text-primary hover:underline">{event.title}</Link><p className="mt-1 text-xs text-muted-foreground">{formatDateTime(event.at)}</p></div></li>)}</ol>}</CardContent>
+        </Card>
+
+        */}
         <Card className="border-slate-200/80 bg-slate-50/70 shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Visit overview</CardTitle>

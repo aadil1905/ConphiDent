@@ -6,12 +6,12 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   BarChart3,
+  Bot,
   BellRing,
   CalendarDays,
   ClipboardList,
   LayoutDashboard,
   MessagesSquare,
-  MessageCircle,
   PackageCheck,
   FlaskConical,
   ClipboardCheck,
@@ -22,33 +22,33 @@ import {
   UserRoundPlus,
   Menu,
   X,
-  Shield,
 } from "lucide-react";
+import type { FeatureKey } from "@/lib/features";
 
 const navigationGroups = [
   { label: "Workspace", items: [
     { href: "/dashboard", label: "Today", icon: LayoutDashboard },
-    { href: "/dashboard/conversations", label: "Inbox", icon: MessagesSquare },
-    { href: "/dashboard/whatsapp-operations", label: "WhatsApp", icon: MessageCircle },
-    { href: "/dashboard/appointments", label: "Schedule", icon: CalendarDays },
+    { href: "/dashboard/conversations", label: "Inbox", icon: MessagesSquare, feature: "whatsapp" },
+    { href: "/dashboard/automation", label: "Automation", icon: Bot, feature: "whatsapp" },
+    { href: "/dashboard/appointments", label: "Schedule", icon: CalendarDays, feature: "appointments" },
     { href: "/dashboard/huddle", label: "Today’s priorities", icon: ClipboardCheck },
-    { href: "/dashboard/patients", label: "Patients", icon: Users },
+    { href: "/dashboard/patients", label: "Patients", icon: Users, feature: "patients" },
   ] },
   { label: "Patient care & revenue", items: [
-    { href: "/dashboard/clinical-workspace", label: "Clinical", icon: Stethoscope },
-    { href: "/dashboard/treatment-plans", label: "Treatment plans", icon: ClipboardList },
-    { href: "/dashboard/billing", label: "Revenue", icon: ReceiptIndianRupee },
+    { href: "/dashboard/clinical-workspace", label: "Clinical", icon: Stethoscope, feature: "clinical" },
+    { href: "/dashboard/treatment-plans", label: "Treatment plans", icon: ClipboardList, feature: "clinical" },
+    { href: "/dashboard/billing", label: "Revenue", icon: ReceiptIndianRupee, feature: "billing" },
   ] },
   { label: "Manage", items: [
-    { href: "/dashboard/leads", label: "Leads", icon: UserRoundPlus },
-    { href: "/dashboard/follow-ups", label: "Work queue", icon: BellRing },
-    { href: "/dashboard/laboratory", label: "Laboratory", icon: FlaskConical },
-    { href: "/dashboard/operations", label: "Operations", icon: PackageCheck },
-    { href: "/dashboard/analytics", label: "Reports", icon: BarChart3 },
+    { href: "/dashboard/leads", label: "Leads", icon: UserRoundPlus, feature: "crm" },
+    { href: "/dashboard/follow-ups", label: "Work queue", icon: BellRing, feature: "follow_ups" },
+    { href: "/dashboard/laboratory", label: "Laboratory", icon: FlaskConical, feature: "laboratory" },
+    { href: "/dashboard/operations", label: "Operations", icon: PackageCheck, feature: "inventory" },
+    { href: "/dashboard/analytics", label: "Reports", icon: BarChart3, feature: "reports" },
   ] },
 ];
 
-export default function Sidebar({ role, clinicName, logoUrl, platformAdmin }: { role: string; clinicName: string; logoUrl?: string | null; platformAdmin: boolean }) {
+export default function Sidebar({ role, clinicName, logoUrl, features }: { role: string; clinicName: string; logoUrl?: string | null; features: Record<FeatureKey, boolean> }) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -129,7 +129,7 @@ export default function Sidebar({ role, clinicName, logoUrl, platformAdmin }: { 
         {navigationGroups.map((group) => (
           <div key={group.label} className="space-y-1">
             <p className="px-4 pb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-muted)]">{group.label}</p>
-            {group.items.map(({ href, label, icon: Icon }) => {
+            {group.items.filter((item) => !item.feature || features[item.feature as FeatureKey]).map(({ href, label, icon: Icon }) => {
           const active =
             href === "/dashboard"
               ? pathname === href
@@ -177,7 +177,6 @@ export default function Sidebar({ role, clinicName, logoUrl, platformAdmin }: { 
             Clinic settings
           </Link>
         )}
-        {platformAdmin && <Link href="/platform" onClick={() => setOpen(false)} className="mt-1 flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--heading)]"><Shield className="h-5 w-5" />Platform admin</Link>}
 
         <div className="mt-4 rounded-xl bg-[var(--primary-soft)] p-3 text-center">
           <p className="text-xs font-semibold text-[var(--text-muted)]">

@@ -29,7 +29,9 @@ export async function updateLeadAction(formData: FormData) {
   const user = await requireUser();
   const id = Number(formData.get("id"));
   const stage = String(formData.get("stage") || "NEW");
-  if (!Number.isInteger(id) || !stages.includes(stage)) return;
+  // A conversion must create or link a real patient record.  Keep the stage
+  // update action from producing orphaned "CONVERTED" leads.
+  if (!Number.isInteger(id) || !stages.includes(stage) || stage === "CONVERTED") return;
   const lossReason = String(formData.get("lossReason") || "").trim() || null;
   const notes = String(formData.get("notes") || "").trim() || null;
   const followUp = String(formData.get("nextFollowUpAt") || "");
@@ -49,6 +51,44 @@ export async function updateLeadAction(formData: FormData) {
     if (recovered) await prisma.leadActivity.create({ data: { leadId: id, type: "LEAD_RECOVERED", content: "Lead was recovered from Lost" } });
   }
   revalidatePath(leadsPath);
+}
+
+export async function convertLeadToPatientAction(formData: FormData) {
+  const user = await requireUser();
+  const id = Number(formData.get("id"));
+  if (!Number.isInteger(id)) return;
+
+  await prisma.$transaction(async (tx) => {
+    const lead = await tx.lead.findFirst({
+      where: { id, clinicId: user.clinicId },
+      select: { id: true, clinicId: true, fullName: true, phone: true, email: true, patientId: true },
+    });
+    if (!lead) return;
+
+    const existingPatient = lead.patientId
+      ? await tx.patient.findFirst({ where: { id: lead.patientId, clinicId: user.clinicId }, select: { id: true } })
+      : await tx.patient.findUnique({ where: { clinicId_phone: { clinicId: user.clinicId, phone: lead.phone } }, select: { id: true } });
+    const patient = existingPatient ?? await tx.patient.create({
+      data: { clinicId: lead.clinicId, fullName: lead.fullName, phone: lead.phone, email: lead.email },
+      select: { id: true },
+    });
+
+    await tx.lead.update({
+      where: { id: lead.id },
+      data: { patientId: patient.id, stage: "CONVERTED", nextFollowUpAt: null, lastContactedAt: new Date() },
+    });
+    await tx.whatsAppConversation.updateMany({
+      where: { clinicId: user.clinicId, phone: lead.phone },
+      data: { patientId: patient.id, leadId: lead.id },
+    });
+    await tx.leadActivity.create({
+      data: { leadId: lead.id, type: "LEAD_CONVERTED", content: `Lead converted to patient #${patient.id}` },
+    });
+  });
+
+  revalidatePath(leadsPath);
+  revalidatePath("/dashboard/patients");
+  revalidatePath("/dashboard/conversations");
 }
 
 export async function recoverLostLeadAction(formData: FormData) {

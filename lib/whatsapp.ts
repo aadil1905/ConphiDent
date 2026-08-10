@@ -1,4 +1,4 @@
-import { recordOutboundMessage } from "./whatsapp-conversations";
+import { isWhatsAppContactOptedOut, recordOutboundMessage } from "./whatsapp-conversations";
 import { currentWhatsAppClinicId, runWithWhatsAppClinic } from "./whatsapp-context";
 import { decryptWhatsAppToken } from "./whatsapp-connection";
 import { prisma } from "./prisma";
@@ -56,12 +56,19 @@ async function withinClinic<T>(clinicId: number | undefined, work: () => Promise
   return clinicId ? runWithWhatsAppClinic(clinicId, work) : work();
 }
 
+async function ensureContactCanReceiveWhatsApp(phone: string) {
+  if (await isWhatsAppContactOptedOut(phone)) {
+    throw new Error("This WhatsApp contact has opted out. Ask them to send START before messaging again.");
+  }
+}
+
 export async function sendTextMessage(
   to: string,
   message: string,
   clinicId?: number,
 ) {
   return withinClinic(clinicId, async () => {
+  await ensureContactCanReceiveWhatsApp(to);
   const result = await sendRequest({
     messaging_product: "whatsapp",
     recipient_type: "individual",
@@ -85,6 +92,7 @@ export async function sendTemplateMessage(
   clinicId?: number,
 ) {
   return withinClinic(clinicId, async () => {
+  await ensureContactCanReceiveWhatsApp(to);
   const result = await sendRequest({
     messaging_product: "whatsapp",
     recipient_type: "individual",
@@ -125,6 +133,7 @@ export async function sendReplyButtons(
   clinicId?: number,
 ) {
   return withinClinic(clinicId, async () => {
+  await ensureContactCanReceiveWhatsApp(to);
   const result = await sendRequest({
     messaging_product: "whatsapp",
     recipient_type: "individual",
@@ -166,6 +175,7 @@ export async function sendListMessage(
   clinicId?: number,
 ) {
   return withinClinic(clinicId, async () => {
+  await ensureContactCanReceiveWhatsApp(to);
   const result = await sendRequest({
     messaging_product: "whatsapp",
     recipient_type: "individual",

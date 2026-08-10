@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/permissions";
-import { createStaffAction, toggleStaffAction, updateClinicAction } from "./actions";
+import { createStaffAction, toggleStaffAction, updateBillingIdentityAction, updateClinicAction } from "./actions";
 
 const actionLabels: Record<string, string> = {
   CLINIC_PROFILE_UPDATED: "Clinic profile updated",
@@ -14,7 +14,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const user = await requirePermission("manageClinic");
 
   const { error } = await searchParams;
-  const [staff, auditLogs] = await Promise.all([
+  const [staff, auditLogs, billingIdentity] = await Promise.all([
     prisma.user.findMany({
       where: { clinicId: user.clinicId },
       orderBy: [{ role: "asc" }, { fullName: "asc" }],
@@ -25,6 +25,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       orderBy: { createdAt: "desc" },
       take: 20,
     }),
+    prisma.clinic.findUnique({ where: { id: user.clinicId }, select: { gstin: true, registrationNumber: true, invoicePrefix: true, receiptPrefix: true, invoiceFooter: true, paymentDetails: true } }),
   ]);
 
   return (
@@ -35,7 +36,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         <p className="mt-2 text-muted-foreground">Only the clinic owner can manage clinic details and staff accounts.</p>
       </header>
 
-      {error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">Could not add staff. Check the email is unused and the password has at least 10 characters.</p>}
+      {error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">Could not add staff. Check the email is unused and use a 12+ character password with upper- and lower-case letters plus a number.</p>}
 
       <section className="rounded-2xl border bg-card p-6 shadow-sm">
         <h2 className="text-xl font-bold">Clinic operations</h2>
@@ -56,6 +57,12 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       </section>
 
       <section className="rounded-2xl border bg-card p-6 shadow-sm">
+        <h2 className="text-xl font-bold">Your account security</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Change your password, review active sessions, and sign out other devices.</p>
+        <Link href="/dashboard/settings/security" className="mt-4 inline-flex rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold hover:bg-slate-50">Open security settings</Link>
+      </section>
+
+      <section className="rounded-2xl border bg-card p-6 shadow-sm">
         <h2 className="text-xl font-bold">Clinic profile</h2>
         <form action={updateClinicAction} className="mt-5 grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-semibold">Legal clinic name<input name="name" required defaultValue={user.clinic.name} className="mt-1.5 h-11 w-full rounded-xl border px-3 font-normal" /></label>
@@ -68,11 +75,25 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       </section>
 
       <section className="rounded-2xl border bg-card p-6 shadow-sm">
+        <h2 className="text-xl font-bold">Billing identity</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Shown on professional invoices and receipts. Enter only details that apply to this clinic.</p>
+        <form action={updateBillingIdentityAction} className="mt-5 grid gap-4 sm:grid-cols-2">
+          <label className="text-sm font-semibold">GSTIN<input name="gstin" defaultValue={billingIdentity?.gstin ?? ""} maxLength={20} className="mt-1.5 h-11 w-full rounded-xl border px-3 font-normal" /></label>
+          <label className="text-sm font-semibold">Registration number<input name="registrationNumber" defaultValue={billingIdentity?.registrationNumber ?? ""} maxLength={100} className="mt-1.5 h-11 w-full rounded-xl border px-3 font-normal" /></label>
+          <label className="text-sm font-semibold">Invoice prefix<input name="invoicePrefix" defaultValue={billingIdentity?.invoicePrefix ?? "INV"} maxLength={12} className="mt-1.5 h-11 w-full rounded-xl border px-3 font-normal" /></label>
+          <label className="text-sm font-semibold">Receipt prefix<input name="receiptPrefix" defaultValue={billingIdentity?.receiptPrefix ?? "RCT"} maxLength={12} className="mt-1.5 h-11 w-full rounded-xl border px-3 font-normal" /></label>
+          <label className="text-sm font-semibold sm:col-span-2">Payment details<textarea name="paymentDetails" defaultValue={billingIdentity?.paymentDetails ?? ""} maxLength={1500} rows={3} placeholder="Optional bank, UPI, or payment instructions" className="mt-1.5 w-full rounded-xl border px-3 py-2 font-normal" /></label>
+          <label className="text-sm font-semibold sm:col-span-2">Document footer<textarea name="invoiceFooter" defaultValue={billingIdentity?.invoiceFooter ?? ""} maxLength={500} rows={2} placeholder="Optional terms, thank-you message, or payment note" className="mt-1.5 w-full rounded-xl border px-3 py-2 font-normal" /></label>
+          <button className="h-11 w-fit rounded-xl bg-slate-900 px-5 font-semibold text-white hover:bg-slate-700">Save billing identity</button>
+        </form>
+      </section>
+
+      <section className="rounded-2xl border bg-card p-6 shadow-sm">
         <h2 className="text-xl font-bold">Add staff member</h2>
         <form action={createStaffAction} className="mt-5 grid gap-4 md:grid-cols-2">
           <input name="fullName" required placeholder="Full name" className="h-11 rounded-xl border px-3" />
           <input name="email" type="email" required placeholder="Staff email" className="h-11 rounded-xl border px-3" />
-          <input name="password" type="password" minLength={10} required placeholder="Temporary password (10+ characters)" className="h-11 rounded-xl border px-3" />
+          <input name="password" type="password" minLength={12} required placeholder="Temporary password (12+ characters)" className="h-11 rounded-xl border px-3" />
           <select name="role" defaultValue="RECEPTIONIST" className="h-11 rounded-xl border bg-white px-3"><option value="RECEPTIONIST">Receptionist</option><option value="DENTIST">Dentist</option></select>
           <button className="h-11 w-fit rounded-xl bg-slate-900 px-5 font-semibold text-white hover:bg-slate-700">Add staff login</button>
         </form>

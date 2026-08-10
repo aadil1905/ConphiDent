@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/permissions";
 import DeleteSubmitButton from "@/components/dashboard/DeleteSubmitButton";
 import { deleteLeadAction } from "@/app/dashboard/delete-actions";
-import { recoverLostLeadAction, saveLeadAction, updateLeadAction } from "./actions";
+import { convertLeadToPatientAction, recoverLostLeadAction, saveLeadAction, updateLeadAction } from "./actions";
 
 const stages = ["NEW", "CONTACTED", "BOOKED", "VISITED", "CONVERTED", "LOST"];
 const sources = ["Manual", "WhatsApp", "Website", "Google", "Referral", "Walk-in"];
@@ -35,7 +35,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   const [leads, stageCounts, staff] = await Promise.all([
     prisma.lead.findMany({
       where,
-      include: { owner: { select: { id: true, fullName: true } }, activities: { orderBy: { createdAt: "desc" }, take: 1 } },
+      include: { owner: { select: { id: true, fullName: true } }, patient: { select: { id: true } }, activities: { orderBy: { createdAt: "desc" }, take: 1 } },
       orderBy: { updatedAt: "desc" },
       take: 50,
     }),
@@ -164,6 +164,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                     <p className="mt-2 text-xs text-muted-foreground">
                       Last activity: {lead.activities[0]?.content || "No activity"}
                     </p>
+                    {lead.patient && <a href={`/dashboard/patients/${lead.patient.id}`} className="workspace-link mt-2 inline-flex">Open patient 360</a>}
                   </div>
                   <div className="flex min-w-0 flex-col gap-2 xl:w-[430px]">
                     <form action={updateLeadAction} className="grid gap-2 sm:grid-cols-2">
@@ -172,18 +173,28 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                         <option value="">Unassigned</option>
                         {staff.map((member) => <option key={member.id} value={member.id}>{member.fullName}</option>)}
                       </select>
-                      <select name="stage" defaultValue={lead.stage} className="h-10 rounded-lg border bg-card px-3 text-sm">
-                        {stages.map((stage) => <option key={stage} value={stage}>{stage}</option>)}
-                      </select>
+                      {lead.stage === "CONVERTED" ? (
+                        <div className="flex h-10 items-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800">Converted to patient</div>
+                      ) : (
+                        <select name="stage" defaultValue={lead.stage} className="h-10 rounded-lg border bg-card px-3 text-sm">
+                          {stages.filter((stage) => stage !== "CONVERTED").map((stage) => <option key={stage} value={stage}>{stage}</option>)}
+                        </select>
+                      )}
                       <input name="nextFollowUpAt" type="datetime-local" defaultValue={lead.nextFollowUpAt ? lead.nextFollowUpAt.toISOString().slice(0, 16) : ""} className="h-10 rounded-lg border px-3 text-sm" />
                       <input name="lossReason" defaultValue={lead.lossReason || ""} placeholder="Loss reason (if lost)" className="h-10 rounded-lg border px-3 text-sm" />
                       <input name="conversionValue" type="number" min="0" defaultValue={lead.conversionValue ?? ""} placeholder="Conversion value (Rs.)" className="h-10 rounded-lg border px-3 text-sm" />
                       <input name="notes" defaultValue={lead.notes || ""} placeholder="Update note" className="h-10 rounded-lg border px-3 text-sm sm:col-span-2" />
-                      <button className="h-10 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-700 sm:col-span-2">
-                        Update lead
-                      </button>
+                      {lead.stage !== "CONVERTED" && <button className="h-10 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-700 sm:col-span-2">Update lead</button>}
                     </form>
                     <div className="flex flex-wrap gap-2">
+                      {lead.stage !== "CONVERTED" && (
+                        <form action={convertLeadToPatientAction}>
+                          <input type="hidden" name="id" value={lead.id} />
+                          <button className="inline-flex h-9 items-center gap-2 rounded-lg bg-emerald-700 px-3 text-sm font-semibold text-white hover:bg-emerald-800">
+                            <CircleCheckBig className="size-4" />Convert to patient
+                          </button>
+                        </form>
+                      )}
                       {lead.stage === "LOST" && (
                         <form action={recoverLostLeadAction}>
                           <input type="hidden" name="id" value={lead.id} />

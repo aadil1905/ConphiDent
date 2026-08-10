@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { z } from "zod";
-import { requireApiUser } from "@/lib/tenant";
+import { requireApiFeature } from "@/lib/tenant";
 
 const chatRequestSchema = z.object({ message: z.string().trim().min(1).max(2_000) });
 
@@ -12,7 +12,7 @@ function getClient() {
 
 export async function POST(req: Request) {
   try {
-    const { user, response } = await requireApiUser();
+    const { user, response } = await requireApiFeature("ai_coach");
     if (!user) return response;
     const { message } = chatRequestSchema.parse(await req.json());
 

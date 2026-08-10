@@ -4,11 +4,11 @@ import { stdin as input, stdout as output } from "process";
 
 const email = "aadilsayyed7383@gmail.com";
 const rl = createInterface({ input, output });
-const password = await rl.question("Enter new dashboard password (10+ chars): ");
+const password = await rl.question("Enter new dashboard password (12+ chars, upper- and lower-case letters, and a number): ");
 rl.close();
 
-if (password.length < 10) {
-  console.error("Password must be at least 10 characters.");
+if (password.length < 12 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password)) {
+  console.error("Password must use at least 12 characters with upper- and lower-case letters and a number.");
   process.exit(1);
 }
 

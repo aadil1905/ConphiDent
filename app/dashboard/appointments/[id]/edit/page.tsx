@@ -2,9 +2,11 @@ import { notFound } from "next/navigation";
 
 import AppointmentForm from "@/components/appointments/AppointmentForm";
 import { requireUser } from "@/lib/auth";
+import { requireFeature } from "@/lib/features";
 import { prisma } from "@/lib/prisma";
 
 export default async function EditAppointmentPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireFeature("appointments");
   const user = await requireUser();
   const { id } = await params;
   const appointmentId = Number(id);

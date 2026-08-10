@@ -20,9 +20,9 @@ export async function sendFollowUpAction(formData: FormData) {
 
   try {
     await sendTextMessage(task.phone, task.message, user.clinicId);
-    await prisma.followUpTask.update({ where: { id: task.id }, data: { status: "SENT", sentAt: new Date(), errorMessage: null } });
+    await prisma.followUpTask.update({ where: { id: task.id }, data: { status: "SENT", sentAt: new Date(), lastAttemptAt: new Date(), attemptCount: { increment: 1 }, errorMessage: null } });
   } catch (error) {
-    await prisma.followUpTask.update({ where: { id: task.id }, data: { status: "FAILED", errorMessage: error instanceof Error ? error.message : "Unable to send WhatsApp message" } });
+    await prisma.followUpTask.update({ where: { id: task.id }, data: { status: "FAILED", lastAttemptAt: new Date(), attemptCount: { increment: 1 }, errorMessage: error instanceof Error ? error.message : "Unable to send WhatsApp message" } });
   }
   revalidatePath("/dashboard/follow-ups");
 }
@@ -30,7 +30,21 @@ export async function sendFollowUpAction(formData: FormData) {
 export async function completeFollowUpAction(formData: FormData) {
   const user = await requireUser();
   const id = Number(formData.get("id"));
-  await prisma.followUpTask.updateMany({ where: { id, clinicId: user.clinicId, status: { in: ["PENDING", "SENT", "FAILED"] } }, data: { status: "COMPLETED", completedAt: new Date() } });
+  const outcome = String(formData.get("outcome") || "OTHER").trim().slice(0, 80);
+  await prisma.followUpTask.updateMany({ where: { id, clinicId: user.clinicId, status: { in: ["PENDING", "SENT", "FAILED"] } }, data: { status: "COMPLETED", outcome, completedAt: new Date() } });
+  revalidatePath("/dashboard/follow-ups");
+}
+
+export async function assignFollowUpAction(formData: FormData) {
+  const user = await requireUser();
+  const id = Number(formData.get("id"));
+  const assignedUserId = Number(formData.get("assignedUserId")) || null;
+  if (!Number.isInteger(id)) return;
+  if (assignedUserId) {
+    const assignee = await prisma.user.findFirst({ where: { id: assignedUserId, clinicId: user.clinicId, active: true }, select: { id: true } });
+    if (!assignee) return;
+  }
+  await prisma.followUpTask.updateMany({ where: { id, clinicId: user.clinicId, status: { notIn: ["COMPLETED", "CANCELLED"] } }, data: { assignedUserId } });
   revalidatePath("/dashboard/follow-ups");
 }
 

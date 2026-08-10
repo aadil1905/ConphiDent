@@ -47,6 +47,7 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     ].join("\n");
 
     await sendTextMessage(invoice.patient.phone, message, user.clinicId);
+    await prisma.auditLog.create({ data: { clinicId: user.clinicId, userId: user.id, action: "INVOICE_WHATSAPP_SENT", entityType: "INVOICE", entityId: String(invoice.id), detail: `Invoice ${invoice.invoiceNumber} sent to the patient WhatsApp contact` } });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error(error);

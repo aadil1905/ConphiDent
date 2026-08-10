@@ -4,11 +4,13 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
+import { requireFeature } from "@/lib/features";
 import StatusBadge from "@/components/appointments/StatusBadge";
 
 function formatDay(date: Date) { return date.toISOString().slice(0, 10); }
 
 export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
+  await requireFeature("appointments");
   const user = await requireUser();
   const { week } = await searchParams;
   const start = week ? new Date(`${week}T00:00:00`) : new Date();

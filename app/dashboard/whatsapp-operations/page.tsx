@@ -5,8 +5,8 @@ import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { cancelScheduledMessageAction, retryScheduledMessageAction } from "./actions";
 
-const labels: Record<string, string> = { SCHEDULED: "Scheduled", PROCESSING: "Sending", SENT: "Sent", FAILED: "Failed", CANCELLED: "Cancelled", DELIVERED: "Delivered", READ: "Read", QUEUED: "Queued" };
-const tone: Record<string, string> = { SCHEDULED: "bg-sky-100 text-sky-800", PROCESSING: "bg-amber-100 text-amber-800", SENT: "bg-emerald-100 text-emerald-800", FAILED: "bg-rose-100 text-rose-800", CANCELLED: "bg-slate-100 text-slate-700", DELIVERED: "bg-emerald-100 text-emerald-800", READ: "bg-violet-100 text-violet-800", QUEUED: "bg-slate-100 text-slate-700" };
+const labels: Record<string, string> = { SCHEDULED: "Scheduled", PROCESSING: "Sending", SENT: "Sent", FAILED: "Retrying", DEAD_LETTER: "Needs attention", CANCELLED: "Cancelled", DELIVERED: "Delivered", READ: "Read", QUEUED: "Queued" };
+const tone: Record<string, string> = { SCHEDULED: "bg-sky-100 text-sky-800", PROCESSING: "bg-amber-100 text-amber-800", SENT: "bg-emerald-100 text-emerald-800", FAILED: "bg-amber-100 text-amber-800", DEAD_LETTER: "bg-rose-100 text-rose-800", CANCELLED: "bg-slate-100 text-slate-700", DELIVERED: "bg-emerald-100 text-emerald-800", READ: "bg-violet-100 text-violet-800", QUEUED: "bg-slate-100 text-slate-700" };
 
 export default async function WhatsAppOperationsPage() {
   const user = await requireUser();
@@ -15,7 +15,7 @@ export default async function WhatsAppOperationsPage() {
     prisma.whatsAppMessage.findMany({ where: { conversation: { clinicId: user.clinicId }, direction: "OUTBOUND" }, include: { conversation: { select: { phone: true } } }, orderBy: { createdAt: "desc" }, take: 100 }),
   ]);
   const pending = outbox.filter(item => ["SCHEDULED", "PROCESSING"].includes(item.status));
-  const failed = outbox.filter(item => item.status === "FAILED");
+  const failed = outbox.filter(item => ["FAILED", "DEAD_LETTER"].includes(item.status));
   const delivered = history.filter(item => ["DELIVERED", "READ"].includes(item.deliveryStatus));
   const cards = [["Queued", pending.length, Clock3, "text-sky-700"], ["Failed", failed.length, XCircle, "text-rose-700"], ["Delivered / read", delivered.length, CheckCircle2, "text-emerald-700"], ["Outbound history", history.length, MessageCircle, "text-violet-700"]] as const;
   return <div className="mx-auto max-w-7xl space-y-6"><header><p className="text-sm font-bold uppercase tracking-[.16em] text-emerald-700">WhatsApp operations</p><h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">Message delivery centre</h1><p className="mt-2 text-muted-foreground">Monitor scheduled messages and delivery outcomes. Queue entries are retained for a complete clinic audit trail.</p></header>

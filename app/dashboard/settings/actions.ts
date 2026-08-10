@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/audit";
-import { ROLES, hashPassword, requireOwner } from "@/lib/auth";
+import { ROLES, hashPassword, passwordPolicyError, requireOwner } from "@/lib/auth";
 
 export async function updateClinicAction(formData: FormData) {
   const owner = await requireOwner();
@@ -32,6 +32,15 @@ export async function updateClinicAction(formData: FormData) {
   revalidatePath("/dashboard/settings");
 }
 
+export async function updateBillingIdentityAction(formData: FormData) {
+  const owner = await requireOwner();
+  const invoicePrefix = String(formData.get("invoicePrefix") || "INV").trim().toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 12) || "INV";
+  const receiptPrefix = String(formData.get("receiptPrefix") || "RCT").trim().toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 12) || "RCT";
+  await prisma.clinic.update({ where: { id: owner.clinicId }, data: { gstin: String(formData.get("gstin") || "").trim().toUpperCase() || null, registrationNumber: String(formData.get("registrationNumber") || "").trim() || null, invoicePrefix, receiptPrefix, invoiceFooter: String(formData.get("invoiceFooter") || "").trim().slice(0, 500) || null, paymentDetails: String(formData.get("paymentDetails") || "").trim().slice(0, 1500) || null } });
+  await recordAudit({ clinicId: owner.clinicId, userId: owner.id, action: "BILLING_IDENTITY_UPDATED", entityType: "CLINIC", entityId: String(owner.clinicId), detail: "Updated billing identity and document footer" });
+  revalidatePath("/dashboard/settings");
+}
+
 export async function createStaffAction(formData: FormData) {
   const owner = await requireOwner();
   const fullName = String(formData.get("fullName") || "").trim();
@@ -39,7 +48,7 @@ export async function createStaffAction(formData: FormData) {
   const password = String(formData.get("password") || "");
   const role = String(formData.get("role") || "RECEPTIONIST");
 
-  if (!fullName || !email || password.length < 10 || !ROLES.includes(role as (typeof ROLES)[number])) {
+  if (!fullName || !email || passwordPolicyError(password) || !ROLES.includes(role as (typeof ROLES)[number])) {
     redirect("/dashboard/settings?error=staff");
   }
 

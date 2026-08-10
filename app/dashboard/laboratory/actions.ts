@@ -11,20 +11,61 @@ export async function createLabCaseAction(formData: FormData) {
   const user = await requireUser();
   const patientId = Number(formData.get("patientId"));
   const caseType = String(formData.get("caseType") || "").trim();
-  const labName = String(formData.get("labName") || "").trim();
-  if (!Number.isInteger(patientId) || !caseType || !labName) return;
+  const labId = Number(formData.get("labId"));
+  if (!Number.isInteger(patientId) || !caseType || !Number.isInteger(labId)) return;
   const patient = await prisma.patient.findFirst({ where: { id: patientId, clinicId: user.clinicId }, select: { id: true } });
-  if (!patient) return;
+  const laboratory = await prisma.laboratory.findFirst({ where: { id: labId, clinicId: user.clinicId, active: true }, select: { id: true, name: true, phone: true, whatsapp: true, technicianName: true } });
+  if (!patient || !laboratory) return;
   const due = String(formData.get("dueDate") || "");
   const created = await prisma.labCase.create({ data: {
-    clinicId: user.clinicId, patientId, caseType, labName, orderNumber: `LAB-${Date.now().toString().slice(-7)}`,
+    clinicId: user.clinicId, patientId, caseType, labId: laboratory.id, labName: laboratory.name, orderNumber: `LAB-${Date.now().toString().slice(-7)}`,
     dueDate: due ? new Date(due) : null, teeth: String(formData.get("teeth") || "").trim() || null,
     priority: String(formData.get("priority") || "NORMAL"), treatingDoctor: String(formData.get("doctor") || "").trim() || null,
-    technicianName: String(formData.get("technician") || "").trim() || null, labPhone: String(formData.get("phone") || "").trim() || null,
+    technicianName: String(formData.get("technician") || "").trim() || laboratory.technicianName || null, labPhone: laboratory.phone || null, labWhatsapp: laboratory.whatsapp || null,
     shade: String(formData.get("shade") || "").trim() || null, material: String(formData.get("material") || "").trim() || null,
     notes: String(formData.get("notes") || "").trim() || null,
   }});
   await prisma.labCaseEvent.create({ data: { clinicId: user.clinicId, labCaseId: created.id, type: "CREATED", actorName: user.fullName, notes: "Laboratory prescription created." } });
+  revalidatePath(path);
+}
+
+export async function saveLaboratoryAction(formData: FormData) {
+  const user = await requireUser();
+  const name = String(formData.get("name") || "").trim();
+  if (!name) return;
+  await prisma.laboratory.upsert({
+    where: { clinicId_name: { clinicId: user.clinicId, name } },
+    create: {
+      clinicId: user.clinicId, name,
+      contactName: String(formData.get("contactName") || "").trim() || null,
+      technicianName: String(formData.get("technicianName") || "").trim() || null,
+      phone: String(formData.get("phone") || "").trim() || null,
+      whatsapp: String(formData.get("whatsapp") || "").trim() || null,
+      email: String(formData.get("email") || "").trim() || null,
+      defaultTurnaroundDays: Number(formData.get("defaultTurnaroundDays")) || null,
+      services: String(formData.get("services") || "").trim() || null,
+      notes: String(formData.get("notes") || "").trim() || null,
+    },
+    update: {
+      contactName: String(formData.get("contactName") || "").trim() || null,
+      technicianName: String(formData.get("technicianName") || "").trim() || null,
+      phone: String(formData.get("phone") || "").trim() || null,
+      whatsapp: String(formData.get("whatsapp") || "").trim() || null,
+      email: String(formData.get("email") || "").trim() || null,
+      defaultTurnaroundDays: Number(formData.get("defaultTurnaroundDays")) || null,
+      services: String(formData.get("services") || "").trim() || null,
+      notes: String(formData.get("notes") || "").trim() || null,
+      active: true,
+    },
+  });
+  revalidatePath(path);
+}
+
+export async function archiveLaboratoryAction(formData: FormData) {
+  const user = await requireUser();
+  const id = Number(formData.get("id"));
+  if (!Number.isInteger(id)) return;
+  await prisma.laboratory.updateMany({ where: { id, clinicId: user.clinicId }, data: { active: false } });
   revalidatePath(path);
 }
 
@@ -49,7 +90,7 @@ export async function createReworkAction(formData: FormData) {
     const rework = await tx.labCase.create({
       data: {
         clinicId: original.clinicId, patientId: original.patientId, treatmentPlanId: original.treatmentPlanId,
-        labName: original.labName, caseType: original.caseType, dueDate: requestedDueDate ? new Date(requestedDueDate) : original.dueDate,
+        labName: original.labName, labId: original.labId, caseType: original.caseType, dueDate: requestedDueDate ? new Date(requestedDueDate) : original.dueDate,
         notes: original.notes, orderNumber: `${original.orderNumber || `LAB-${original.id}`}-R${updatedOriginal.reworkCount}`,
         teeth: original.teeth, priority: original.priority, treatingDoctor: original.treatingDoctor, assistant: original.assistant,
         technicianName: original.technicianName, labPhone: original.labPhone, labWhatsapp: original.labWhatsapp, shade: original.shade,

@@ -4,10 +4,12 @@ import AppointmentActions from "@/components/appointments/AppointmentActions";
 import StatusBadge from "@/components/appointments/StatusBadge";
 import type { AppointmentStatus } from "@/types/appointment";
 import { requireUser } from "@/lib/auth";
+import { requireFeature } from "@/lib/features";
 
 type Props = { params: Promise<{ id: string }> };
 
 export default async function AppointmentDetailsPage({ params }: Props) {
+  await requireFeature("appointments");
   const user = await requireUser();
   const { id } = await params;
   const appointment = await prisma.appointment.findFirst({

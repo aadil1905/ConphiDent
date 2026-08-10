@@ -13,10 +13,18 @@ export async function primaryClinic() {
 export async function getConversation(phone: string) {
   const clinic = await primaryClinic();
   if (!clinic) throw new Error("No clinic has been configured yet.");
+  const [patient, lead] = await Promise.all([
+    prisma.patient.findUnique({ where: { clinicId_phone: { clinicId: clinic.id, phone } }, select: { id: true } }),
+    prisma.lead.findUnique({ where: { clinicId_phone: { clinicId: clinic.id, phone } }, select: { id: true } }),
+  ]);
   return prisma.whatsAppConversation.upsert({
     where: { clinicId_phone: { clinicId: clinic.id, phone } },
-    create: { clinicId: clinic.id, phone },
-    update: { lastMessageAt: new Date() },
+    create: { clinicId: clinic.id, phone, patientId: patient?.id, leadId: lead?.id },
+    update: {
+      lastMessageAt: new Date(),
+      ...(patient ? { patientId: patient.id } : {}),
+      ...(lead ? { leadId: lead.id } : {}),
+    },
   });
 }
 
@@ -29,7 +37,7 @@ async function findConversation(phone: string) {
 export async function recordInboundMessage(phone: string, content: string, messageType = "TEXT", providerMessageId?: string) {
   const conversation = await getConversation(phone);
   try {
-    await prisma.$transaction([
+    const [, lead] = await prisma.$transaction([
       prisma.whatsAppMessage.create({ data: { conversationId: conversation.id, providerMessageId, direction: "INBOUND", content, messageType } }),
       prisma.lead.upsert({
         where: { clinicId_phone: { clinicId: conversation.clinicId, phone } },
@@ -37,6 +45,10 @@ export async function recordInboundMessage(phone: string, content: string, messa
         update: { lastContactedAt: new Date() },
       }),
     ]);
+    await prisma.whatsAppConversation.update({
+      where: { id: conversation.id },
+      data: { leadId: lead.id },
+    });
     return conversation;
   } catch (error) {
     // Meta can retry the same webhook delivery. The provider message id is our durable idempotency key.
@@ -75,6 +87,20 @@ export async function getConversationLanguage(phone: string) {
 
 export async function getConversationState(phone: string) {
   return findConversation(phone);
+}
+
+/** Preserve a patient's WhatsApp contact preference without deleting the audit trail. */
+export async function setConversationContactStatus(phone: string, status: "OPEN" | "OPTED_OUT", label?: string) {
+  const conversation = await getConversation(phone);
+  return prisma.whatsAppConversation.update({
+    where: { id: conversation.id },
+    data: { status, label: label ?? (status === "OPTED_OUT" ? "WhatsApp contact opted out" : null) },
+  });
+}
+
+export async function isWhatsAppContactOptedOut(phone: string) {
+  const conversation = await findConversation(phone);
+  return conversation?.status === "OPTED_OUT";
 }
 
 export async function getBooking(phone: string) {

@@ -1,5 +1,6 @@
 ﻿import { prisma } from "@/lib/prisma";
 import { saveAppointment } from "./appointment";
+import { availableLocationSlots } from "./availability";
 import { clearPersistentBooking, getBooking, getConversationLanguage, markLeadBooked, primaryClinic, startPersistentBooking, updateBooking } from "./whatsapp-conversations";
 import { sendListMessage, sendReplyButtons, sendTextMessage } from "./whatsapp";
 
@@ -66,8 +67,13 @@ function dateChoice(input: string) {
   return "";
 }
 
-function parseSelectedTime(input: string, date: string) {
-  if (input.startsWith("TIME_")) return input.slice(5);
+async function parseSelectedTime(input: string, date: string) {
+  let parsed = input.startsWith("TIME_") ? input.slice(5) : "";
+
+  if (parsed) {
+    const location = await primaryBookingLocation();
+    return location && (await availableLocationSlots(location.clinicId, location.id, date)).includes(parsed) ? parsed : "";
+  }
 
   const cleaned = cleanInput(input).replace(/\./g, ":");
   const match = cleaned.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/);
@@ -81,8 +87,16 @@ function parseSelectedTime(input: string, date: string) {
   if (meridiem === "am" && hour === 12) hour = 0;
   if (hour > 23 || minute > 59) return "";
 
-  const parsed = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-  return buildSlotsForDate(date).includes(parsed) ? parsed : "";
+  parsed = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+  const location = await primaryBookingLocation();
+  return location && (await availableLocationSlots(location.clinicId, location.id, date)).includes(parsed) ? parsed : "";
+}
+
+/** WhatsApp is scoped by its mapped Meta connection; select only that clinic's active primary branch. */
+async function primaryBookingLocation() {
+  const clinic = await primaryClinic();
+  if (!clinic) return null;
+  return prisma.clinicLocation.findFirst({ where: { clinicId: clinic.id, active: true, isPrimary: true }, select: { id: true, clinicId: true } });
 }
 
 function confirmationChoice(input: string) {
@@ -316,22 +330,14 @@ function nextOpenDates(count = 10) {
   return dates;
 }
 
-async function bookedTimesForDate(date: string) {
-  const appointmentDate = localDate(date);
-  const appointments = await prisma.appointment.findMany({
-    where: {
-      appointmentDate,
-      status: { not: "Cancelled" },
-    },
-    select: { appointmentTime: true },
-  });
-  return new Set(appointments.map((appointment) => appointment.appointmentTime));
-}
-
 async function isSlotBooked(date: string, time: string, excludeAppointmentId?: number) {
+  const location = await primaryBookingLocation();
+  if (!location) return true;
   const appointmentDate = localDate(date);
   const existing = await prisma.appointment.findFirst({
     where: {
+      clinicId: location.clinicId,
+      locationId: location.id,
       appointmentDate,
       appointmentTime: time,
       status: { not: "Cancelled" },
@@ -356,17 +362,49 @@ function reminderReason(reason: string) {
 }
 
 async function existingAppointmentForPhone(phone: string) {
-  const digits = phone.replace(/\D/g, "");
-  const last10 = digits.slice(-10);
+  const clinic = await primaryClinic();
+  if (!clinic) return null;
   const today = localDate(todayISO());
 
   return prisma.appointment.findFirst({
     where: {
-      phone: { in: Array.from(new Set([digits, last10].filter(Boolean))) },
+      clinicId: clinic.id,
+      phone: { in: phoneCandidates(phone) },
       appointmentDate: { gte: today },
       status: { notIn: ["Cancelled", "Completed"] },
     },
     orderBy: [{ appointmentDate: "asc" }, { appointmentTime: "asc" }],
+  });
+}
+
+function phoneCandidates(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  const local = digits.slice(-10);
+  return Array.from(new Set([digits, local, local ? `91${local}` : ""].filter(Boolean)));
+}
+
+async function existingPatientForPhone(phone: string) {
+  const clinic = await primaryClinic();
+  if (!clinic) return null;
+  return prisma.patient.findFirst({
+    where: { clinicId: clinic.id, phone: { in: phoneCandidates(phone) } },
+    orderBy: { updatedAt: "desc" },
+    select: { id: true, fullName: true, phone: true },
+  });
+}
+
+// WhatsApp interactive replies are user-controlled strings.  An appointment
+// id alone is never sufficient authority to view or reschedule a booking.
+async function appointmentForWhatsAppContact(phone: string, appointmentId: number) {
+  const clinic = await primaryClinic();
+  if (!clinic) return null;
+  return prisma.appointment.findFirst({
+    where: {
+      id: appointmentId,
+      clinicId: clinic.id,
+      phone: { in: phoneCandidates(phone) },
+      status: { notIn: ["Cancelled", "Completed"] },
+    },
   });
 }
 
@@ -423,22 +461,21 @@ async function askRescheduleChoice(userId: string, appointment: { id: number; ap
 
 async function askTime(userId: string, date: string, language: BookingLanguage) {
   const copy = bookingCopy[language];
-  const slots = buildSlotsForDate(date);
+  const location = await primaryBookingLocation();
+  const slots = location ? await availableLocationSlots(location.clinicId, location.id, date) : [];
   if (!slots.length) {
     await sendTextMessage(userId, copy.closed);
     return askDate(userId, language);
   }
 
-  const booked = await bookedTimesForDate(date);
-  const available = slots.filter((slot) => !booked.has(slot));
-  if (!available.length) {
+  if (!slots.length) {
     await sendTextMessage(userId, copy.full);
     return askDate(userId, language);
   }
 
   await sendListMessage(userId, copy.time, copy.timeButton, [{
     title: copy.availableTimes,
-    rows: available.slice(0, 10).map((time) => ({ id: `TIME_${time}`, title: formatDisplayTime(time) })),
+    rows: slots.slice(0, 10).map((time) => ({ id: `TIME_${time}`, title: formatDisplayTime(time) })),
   }]);
 }
 
@@ -461,16 +498,41 @@ function rescheduleChoice(input: string) {
 
 export async function startBooking(userId: string) {
   const language = await userLanguage(userId);
-  await Promise.all([
-    startPersistentBooking(userId),
-    sendTextMessage(userId, bookingCopy[language].start),
+  const copy = bookingCopy[language];
+  const [patient, existingAppointment] = await Promise.all([
+    existingPatientForPhone(userId),
+    existingAppointmentForPhone(userId),
   ]);
+
+  await startPersistentBooking(userId);
+  const phone = patient?.phone || existingAppointment?.phone || phoneCandidates(userId)[0] || userId;
+
+  if (existingAppointment) {
+    await updateBooking(userId, {
+      patientName: patient?.fullName || existingAppointment.patientName,
+      phone,
+      reason: `RESCHEDULE:${existingAppointment.id}`,
+      step: "reschedule_confirm",
+    });
+    await askRescheduleChoice(userId, existingAppointment, language);
+    return;
+  }
+
+  if (patient) {
+    await updateBooking(userId, { patientName: patient.fullName, phone, step: "date" });
+    await sendTextMessage(userId, `Welcome back, ${patient.fullName}.`);
+    await askDate(userId, language);
+    return;
+  }
+
+  await updateBooking(userId, { phone, step: "name" });
+  await sendTextMessage(userId, copy.start);
 }
 
 export async function startReschedule(userId: string, appointmentId: number) {
   const language = await userLanguage(userId);
   const copy = bookingCopy[language];
-  const appointment = await prisma.appointment.findUnique({ where: { id: appointmentId } });
+  const appointment = await appointmentForWhatsAppContact(userId, appointmentId);
 
   if (!appointment || ["Cancelled", "Completed"].includes(appointment.status)) {
     await sendTextMessage(userId, copy.error);
@@ -498,7 +560,7 @@ export async function resumeBooking(userId: string) {
   else if (booking.step === "phone") await sendTextMessage(userId, copy.phone);
   else if (booking.step === "reschedule_confirm") {
     const appointmentId = appointmentIdFromReason(booking.reason);
-    const appointment = appointmentId ? await prisma.appointment.findUnique({ where: { id: appointmentId } }) : null;
+    const appointment = appointmentId ? await appointmentForWhatsAppContact(booking.phone || userId, appointmentId) : null;
     if (appointment) await askRescheduleChoice(userId, appointment, language);
     else await sendTextMessage(userId, copy.error);
   } else if (booking.step === "date") {
@@ -567,7 +629,9 @@ export async function continueBooking(userId: string, message: string) {
 
   if (booking.step === "name") {
     if (!validName(input)) return void await sendTextMessage(userId, copy.validName);
-    return void await saveAndSend(userId, { patientName: input, step: "phone" }, sendTextMessage(userId, copy.phone));
+    // The WhatsApp sender is the verified booking contact. Never ask for, or
+    // silently replace, a phone number during this workflow.
+    return void await saveAndSend(userId, { patientName: input, phone: booking.phone || phoneCandidates(userId)[0] || userId, step: "date" }, askDate(userId, language));
   }
 
   if (booking.step === "phone") {
@@ -588,7 +652,7 @@ export async function continueBooking(userId: string, message: string) {
     }
     if (choice !== "YES") {
       const appointmentId = appointmentIdFromReason(booking.reason);
-      const appointment = appointmentId ? await prisma.appointment.findUnique({ where: { id: appointmentId } }) : null;
+      const appointment = appointmentId ? await appointmentForWhatsAppContact(booking.phone || userId, appointmentId) : null;
       if (appointment) return askRescheduleChoice(userId, appointment, language);
       await clearBooking(userId);
       return void await sendTextMessage(userId, copy.error);
@@ -624,7 +688,7 @@ export async function continueBooking(userId: string, message: string) {
   }
 
   if (booking.step === "time") {
-    const selectedTime = parseSelectedTime(input, booking.appointmentDate);
+    const selectedTime = await parseSelectedTime(input, booking.appointmentDate);
     const rescheduleAppointmentId = appointmentIdFromReason(booking.reason);
     if (!selectedTime) return askTime(userId, booking.appointmentDate, language);
     if (await isSlotBooked(booking.appointmentDate, selectedTime, rescheduleAppointmentId ?? undefined)) {
@@ -673,8 +737,10 @@ export async function continueBooking(userId: string, message: string) {
       }
 
       if (rescheduleAppointmentId) {
-        await prisma.appointment.update({
-          where: { id: rescheduleAppointmentId },
+        const location = await primaryBookingLocation();
+        if (!location) throw new Error("No active primary branch configured for booking.");
+        const updated = await prisma.appointment.updateMany({
+          where: { id: rescheduleAppointmentId, clinicId: location.clinicId, locationId: location.id, phone: { in: phoneCandidates(booking.phone) } },
           data: {
             patientName: booking.patientName,
             phone: booking.phone,
@@ -684,13 +750,17 @@ export async function continueBooking(userId: string, message: string) {
             status: "Confirmed",
           },
         });
+        if (!updated.count) throw new Error("Appointment is not available for this WhatsApp contact.");
         await sendTextMessage(userId, `${copy.rescheduled}\n\n${formatDate(booking.appointmentDate)} at ${formatDisplayTime(booking.appointmentTime)}`);
         await clearBooking(userId);
         return;
       }
 
+      const location = await primaryBookingLocation();
+      if (!location) throw new Error("No active primary branch configured for booking.");
       const appointment = await saveAppointment({
-        clinicId: (await primaryClinic())!.id,
+        clinicId: location.clinicId,
+        locationId: location.id,
         name: booking.patientName,
         phone: booking.phone,
         date: booking.appointmentDate,

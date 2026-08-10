@@ -37,6 +37,16 @@ if (!prismaConfig.includes('schema: "prisma/schema.prisma"')) {
   throw new Error("Prisma must use prisma/schema.prisma as its single active schema.");
 }
 
+// PostgreSQL can only use an ON CONFLICT target after the matching unique
+// index/constraint exists. Keep this production migration safe to replay.
+const laboratoryMigrationPath = join(root, "prisma/migrations/20260809140000_add_laboratory_directory/migration.sql");
+const laboratoryMigration = readFileSync(laboratoryMigrationPath, "utf8");
+const laboratoryUniqueIndex = laboratoryMigration.indexOf('CREATE UNIQUE INDEX "Laboratory_clinicId_name_key"');
+const laboratoryUpsert = laboratoryMigration.indexOf('ON CONFLICT ("clinicId", "name") DO NOTHING');
+if (laboratoryUniqueIndex < 0 || laboratoryUpsert < 0 || laboratoryUniqueIndex > laboratoryUpsert) {
+  throw new Error("Laboratory directory migration must create its clinic/name unique index before the ON CONFLICT backfill.");
+}
+
 const presentLegacyFiles = deprecatedRootFiles.filter((path) => existsSync(join(root, path)));
 if (presentLegacyFiles.length > 0) {
   console.warn(

@@ -77,7 +77,7 @@ export default function AppointmentForm({
       phone: defaultValues?.phone ?? "",
 
      appointmentDate:
-  defaultValues?.appointmentDate ?? "",
+  defaultValues?.appointmentDate ?? new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }),
 
       appointmentTime: defaultValues?.appointmentTime ?? "09:00",
 

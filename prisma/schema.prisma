@@ -22,10 +22,12 @@ model Appointment {
   reminderSentAt  DateTime?
   treatment       String
   patientId       Int?
+  locationId      Int?
   providerId      Int?
   chairId         Int?
   archivedAt      DateTime?
   clinic          Clinic    @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  location        ClinicLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
   patient         Patient?  @relation(fields: [patientId], references: [id], onDelete: SetNull)
   provider        ClinicProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
   chair           ClinicChair? @relation(fields: [chairId], references: [id], onDelete: SetNull)
@@ -37,6 +39,7 @@ model Appointment {
   @@index([patientId])
   @@index([clinicId, providerId, appointmentDate])
   @@index([clinicId, chairId, appointmentDate])
+  @@index([clinicId, locationId, appointmentDate, appointmentTime])
 }
 
 model Patient {
@@ -58,7 +61,11 @@ model Patient {
   prescriptions      Prescription[]
   dentalChartEntries DentalChartEntry[]
   labCases           LabCase[]
+  leads              Lead[]                 @relation("PatientLeads")
+  conversations      WhatsAppConversation[] @relation("PatientConversations")
+  followUpTasks      FollowUpTask[]         @relation("PatientFollowUps")
   intakeRequests     PatientIntakeRequest[]
+  portalAccess       PatientPortalAccess?
   clinic             Clinic                 @relation(fields: [clinicId], references: [id], onDelete: Restrict)
 
   @@unique([clinicId, phone])
@@ -221,6 +228,12 @@ model Clinic {
   phone           String?
   email           String?
   address         String?
+  gstin           String?
+  registrationNumber String?
+  invoicePrefix   String    @default("INV")
+  receiptPrefix   String    @default("RCT")
+  invoiceFooter   String?
+  paymentDetails  String?
   timezone        String                  @default("Asia/Kolkata")
   createdAt       DateTime                @default(now())
   updatedAt       DateTime                @updatedAt
@@ -239,6 +252,7 @@ model Clinic {
   followUpTasks   FollowUpTask[]
   inventoryItems  InventoryItem[]
   labCases        LabCase[]
+  laboratories    Laboratory[]
   labEvents       LabCaseEvent[]
   labPayments     LabPayment[]
   vendors         Vendor[]
@@ -248,8 +262,13 @@ model Clinic {
   providers       ClinicProvider[]
   chairs          ClinicChair[]
   patients        Patient[]
+  locations       ClinicLocation[]
+  mediaAssets     ClinicMediaAsset[]
+  subscription    TenantSubscription?
+  featureEntitlements TenantFeatureEntitlement[]
   appointmentSelfServiceRequests AppointmentSelfServiceRequest[]
   auditLogs       AuditLog[]
+  patientPortalAccesses PatientPortalAccess[]
 
   @@index([status, createdAt])
 }
@@ -276,6 +295,7 @@ model ClinicProvider {
   active      Boolean       @default(true)
   appointments Appointment[]
   clinic      Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  locations   ClinicLocationProvider[]
 
   @@unique([clinicId, name])
 }
@@ -300,6 +320,14 @@ model User {
   role         String     @default("RECEPTIONIST")
   active       Boolean    @default(true)
   platformAdmin Boolean   @default(false)
+  /// Null preserves legacy platform administrators as Super Admins until a role is explicitly assigned.
+  platformRole String?
+  emailVerifiedAt DateTime?
+  phone          String?
+  phoneVerifiedAt DateTime?
+  lastLoginAt    DateTime?
+  failedLoginCount Int   @default(0)
+  lockedUntil    DateTime?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   clinic       Clinic     @relation(fields: [clinicId], references: [id], onDelete: Cascade)
@@ -308,8 +336,45 @@ model User {
   auditLogs    AuditLog[]
   ownedLeads   Lead[]     @relation("LeadOwner")
   assignedConversations WhatsAppConversation[] @relation("ConversationAssignee")
+  assignedFollowUps FollowUpTask[] @relation("FollowUpAssignee")
+  authChallenges AuthChallenge[]
 
   @@index([clinicId, role])
+  @@index([phone])
+}
+
+/// Hashed, short-lived verification codes for email, phone, and future MFA flows.
+/// Codes are never stored or logged in plaintext.
+model AuthChallenge {
+  id          String   @id @default(cuid())
+  userId      Int?
+  purpose     String
+  channel     String
+  recipient   String
+  codeHash    String
+  expiresAt   DateTime
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(5)
+  consumedAt  DateTime?
+  createdAt   DateTime @default(now())
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([recipient, purpose, createdAt])
+  @@index([userId, purpose, expiresAt])
+}
+
+/// Durable, provider-independent throttles for authentication and OTP abuse.
+model SecurityRateLimit {
+  id          String   @id @default(cuid())
+  scope       String
+  subjectHash String
+  windowStart DateTime
+  count       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([scope, subjectHash])
+  @@index([windowStart])
 }
 
 model Session {
@@ -347,6 +412,7 @@ model ClinicService {
   clinic          Clinic          @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   treatmentPlans  TreatmentPlan[]
   treatmentPlanItems TreatmentPlanItem[]
+  locations       ClinicLocationService[]
 
   @@index([clinicId, active, sortOrder])
 }
@@ -362,6 +428,135 @@ model ClinicHours {
   clinic      Clinic  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
 
   @@unique([clinicId, dayOfWeek])
+}
+
+/// A clinic may retain its legacy organization-level address while operating one
+/// or more bookable branches. Existing clinics are backfilled with one primary location.
+model ClinicLocation {
+  id          Int      @id @default(autoincrement())
+  clinicId    Int
+  name        String
+  address     String?
+  city        String?
+  state       String?
+  postalCode  String?
+  phone       String?
+  email       String?
+  timezone    String?
+  mapUrl      String?
+  isPrimary   Boolean  @default(false)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  clinic      Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  hours       ClinicLocationHours[]
+  providers   ClinicLocationProvider[]
+  services    ClinicLocationService[]
+  appointments Appointment[]
+
+  @@unique([clinicId, name])
+  @@index([clinicId, active, isPrimary])
+}
+
+/// Multiple rows per day allow branches to represent breaks and split shifts.
+model ClinicLocationHours {
+  id          Int      @id @default(autoincrement())
+  locationId  Int
+  dayOfWeek   Int
+  openTime    String   @default("09:00")
+  closeTime   String   @default("18:00")
+  slotMinutes Int      @default(30)
+  isClosed    Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  location    ClinicLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([locationId, dayOfWeek, sortOrder])
+  @@index([locationId, dayOfWeek])
+}
+
+model ClinicLocationProvider {
+  locationId Int
+  providerId Int
+  location   ClinicLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  provider   ClinicProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@id([locationId, providerId])
+  @@index([providerId])
+}
+
+model ClinicLocationService {
+  locationId Int
+  serviceId  Int
+  location   ClinicLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  service    ClinicService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@id([locationId, serviceId])
+  @@index([serviceId])
+}
+
+/// Metadata only: actual media bytes live in approved object storage, never Prisma.
+model ClinicMediaAsset {
+  id          String   @id @default(cuid())
+  clinicId    Int
+  kind        String
+  storageKey  String   @unique
+  publicUrl   String
+  contentType String
+  sizeBytes   Int
+  originalName String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  clinic      Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId, kind, createdAt])
+}
+
+model SubscriptionPlan {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  code        String   @unique
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  subscriptions TenantSubscription[]
+}
+
+model TenantSubscription {
+  id              Int      @id @default(autoincrement())
+  clinicId        Int      @unique
+  planId          Int?
+  status          String   @default("TRIAL")
+  billingCycle    String   @default("MONTHLY")
+  price           Int?
+  currency        String   @default("INR")
+  startsAt        DateTime @default(now())
+  trialEndsAt     DateTime?
+  renewsAt        DateTime?
+  cancelledAt     DateTime?
+  internalNotes   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  clinic          Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  plan            SubscriptionPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+
+  @@index([status, renewsAt])
+  @@index([planId, status])
+}
+
+/// Tenant-level overrides are authoritative. A missing row falls back to the registry default.
+model TenantFeatureEntitlement {
+  id          Int      @id @default(autoincrement())
+  clinicId    Int
+  featureKey  String
+  enabled     Boolean  @default(true)
+  source      String   @default("PLATFORM_OVERRIDE")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  clinic      Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@unique([clinicId, featureKey])
+  @@index([featureKey, enabled])
 }
 
 model ClinicWhatsAppSettings {
@@ -467,19 +662,23 @@ model Lead {
   lastContactedAt     DateTime?
   nextFollowUpAt      DateTime?
   ownerId             Int?
+  patientId           Int?
   bookedAppointmentId Int?           @unique
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
   clinic              Clinic         @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   owner               User?          @relation("LeadOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  patient             Patient?       @relation("PatientLeads", fields: [patientId], references: [id], onDelete: SetNull)
   bookedAppointment   Appointment?   @relation(fields: [bookedAppointmentId], references: [id], onDelete: SetNull)
   activities          LeadActivity[]
   followUpTasks       FollowUpTask[]
+  conversations      WhatsAppConversation[] @relation("LeadConversations")
 
   @@unique([clinicId, phone])
   @@index([clinicId, stage, createdAt])
   @@index([clinicId, nextFollowUpAt])
   @@index([clinicId, ownerId, nextFollowUpAt])
+  @@index([clinicId, patientId])
 }
 
 model LeadActivity {
@@ -530,19 +729,27 @@ model WhatsAppConversation {
   phone         String
   language      String?
   status        String            @default("OPEN")
+  automationMode String            @default("BOT_ACTIVE")
   label         String?
   assignedUserId Int?
+  patientId     Int?
+  leadId        Int?
   lastMessageAt DateTime          @default(now())
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
   clinic        Clinic            @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   assignedUser  User?             @relation("ConversationAssignee", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  patient       Patient?          @relation("PatientConversations", fields: [patientId], references: [id], onDelete: SetNull)
+  lead          Lead?             @relation("LeadConversations", fields: [leadId], references: [id], onDelete: SetNull)
   messages      WhatsAppMessage[]
   booking       WhatsAppBooking?
 
   @@unique([clinicId, phone])
   @@index([clinicId, lastMessageAt])
   @@index([clinicId, status, assignedUserId])
+  @@index([clinicId, automationMode, lastMessageAt])
+  @@index([clinicId, patientId, lastMessageAt])
+  @@index([clinicId, leadId, lastMessageAt])
 }
 
 model WhatsAppMessage {
@@ -607,6 +814,14 @@ model FollowUpTask {
   id           Int       @id @default(autoincrement())
   clinicId     Int
   leadId       Int?
+  patientId    Int?
+  assignedUserId Int?
+  sourceType   String?
+  sourceId     String?
+  priority     String    @default("NORMAL")
+  outcome      String?
+  attemptCount Int       @default(0)
+  lastAttemptAt DateTime?
   patientName  String
   phone        String
   taskType     String
@@ -624,9 +839,14 @@ model FollowUpTask {
   updatedAt    DateTime  @updatedAt
   clinic       Clinic    @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   lead         Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  patient      Patient?  @relation("PatientFollowUps", fields: [patientId], references: [id], onDelete: SetNull)
+  assignedUser User?     @relation("FollowUpAssignee", fields: [assignedUserId], references: [id], onDelete: SetNull)
 
   @@index([clinicId, status, scheduledFor])
   @@index([leadId])
+  @@index([clinicId, patientId, status, scheduledFor])
+  @@index([clinicId, assignedUserId, status, scheduledFor])
+  @@index([clinicId, sourceType, sourceId])
 }
 
 model InventoryItem {
@@ -678,6 +898,7 @@ model Vendor {
   updatedAt    DateTime @updatedAt
   clinic       Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   inventoryItems InventoryItem[]
+  purchaseOrders PurchaseOrder[]
 
   @@unique([clinicId, name])
   @@index([clinicId, active])
@@ -704,14 +925,19 @@ model PurchaseOrder {
   id          Int                 @id @default(autoincrement())
   clinicId    Int
   supplier    String
+  vendorId    Int?
   status      String              @default("DRAFT")
+  expectedDelivery DateTime?
+  receivedAt  DateTime?
   notes       String?
   createdBy   String?
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
   items       PurchaseOrderItem[]
+  vendor       Vendor?            @relation(fields: [vendorId], references: [id], onDelete: SetNull)
 
   @@index([clinicId, status, createdAt])
+  @@index([clinicId, vendorId, status])
 }
 
 model PurchaseOrderItem {
@@ -719,6 +945,7 @@ model PurchaseOrderItem {
   purchaseOrderId Int
   inventoryItemId Int
   quantity        Int
+  receivedQuantity Int             @default(0)
   purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
 
@@ -731,6 +958,7 @@ model LabCase {
   patientId       Int
   treatmentPlanId Int?
   labName         String
+  labId           Int?
   caseType        String
   status          String         @default("SENT_TO_LAB")
   dueDate         DateTime?
@@ -757,6 +985,7 @@ model LabCase {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   clinic          Clinic         @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  laboratory      Laboratory?    @relation(fields: [labId], references: [id], onDelete: SetNull)
   patient         Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
   treatmentPlan   TreatmentPlan? @relation(fields: [treatmentPlanId], references: [id], onDelete: SetNull)
   parentCase      LabCase?       @relation("LabCaseVersions", fields: [parentCaseId], references: [id], onDelete: SetNull)
@@ -767,6 +996,31 @@ model LabCase {
   @@index([clinicId, status, dueDate])
   @@index([patientId, createdAt])
   @@index([clinicId, parentCaseId])
+  @@index([clinicId, labId, status, dueDate])
+}
+
+model Laboratory {
+  id                   Int       @id @default(autoincrement())
+  clinicId             Int
+  name                 String
+  contactName          String?
+  technicianName       String?
+  phone                String?
+  whatsapp             String?
+  email                String?
+  address              String?
+  gstNumber            String?
+  services             String?
+  defaultTurnaroundDays Int?
+  notes                String?
+  active               Boolean   @default(true)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  clinic               Clinic    @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  labCases             LabCase[]
+
+  @@unique([clinicId, name])
+  @@index([clinicId, active, name])
 }
 
 model LabCaseEvent {
@@ -813,6 +1067,24 @@ model ClinicLaunchChecklist {
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
   clinic                    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+}
+
+/// Inactive portal identity foundation. No patient authentication is enabled until OTP delivery is configured.
+model PatientPortalAccess {
+  id              String   @id @default(cuid())
+  clinicId        Int
+  patientId       Int      @unique
+  status          String   @default("PREPARED")
+  deliveryChannel String?
+  preparedAt      DateTime @default(now())
+  activatedAt     DateTime?
+  lastLoginAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  clinic          Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patient         Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId, status])
 }
 
 model PatientIntakeRequest {
@@ -870,4 +1142,53 @@ model AppointmentSelfServiceRequest {
   @@index([clinicId, status, expiresAt])
   @@index([appointmentId, createdAt])
   @@index([expiresAt])
+}
+
+/// Control Centre workflow records are separate from clinical data and contain no patient content.
+model PlatformOnboarding {
+  id              Int      @id @default(autoincrement())
+  clinicId        Int      @unique
+  stage           String   @default("TENANT_CREATED")
+  ownerId         Int?
+  targetGoLiveAt  DateTime?
+  blockers        String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([stage, targetGoLiveAt])
+  @@index([ownerId, stage])
+}
+
+model PlatformSupportTicket {
+  id          Int      @id @default(autoincrement())
+  clinicId    Int?
+  requester   String?
+  category    String   @default("GENERAL")
+  priority    String   @default("NORMAL")
+  status      String   @default("OPEN")
+  subject     String
+  description String
+  assignedTo  Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  resolvedAt  DateTime?
+
+  @@index([status, priority, updatedAt])
+  @@index([clinicId, status])
+  @@index([assignedTo, status])
+}
+
+model PlatformNotification {
+  id          Int      @id @default(autoincrement())
+  clinicId    Int?
+  severity    String   @default("INFO")
+  title       String
+  detail      String?
+  href        String?
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([readAt, severity, createdAt])
+  @@index([clinicId, createdAt])
 }

@@ -79,6 +79,10 @@ export default async function DashboardPage() {
     pendingAppointments,
     recentConversations,
     overdueFollowUps,
+    newLeadCount,
+    openConversationCount,
+    delayedLabCount,
+    inventoryItems,
   ] = await Promise.all([
     safeDashboardQuery("today appointments", [], () => prisma.appointment.findMany({
       where: {
@@ -186,12 +190,17 @@ export default async function DashboardPage() {
     safeDashboardQuery("overdue follow-ups", 0, () => prisma.followUpTask.count({
       where: { clinicId: user.clinicId, status: "PENDING", scheduledFor: { lte: new Date() } },
     })),
+    safeDashboardQuery("new leads", 0, () => prisma.lead.count({ where: { clinicId: user.clinicId, stage: "NEW" } })),
+    safeDashboardQuery("open conversations", 0, () => prisma.whatsAppConversation.count({ where: { clinicId: user.clinicId, status: "OPEN" } })),
+    safeDashboardQuery("delayed lab cases", 0, () => prisma.labCase.count({ where: { clinicId: user.clinicId, dueDate: { lt: today }, status: { notIn: ["COMPLETED", "CANCELLED", "DELIVERED"] } } })),
+    safeDashboardQuery("inventory items", [], () => prisma.inventoryItem.findMany({ where: { clinicId: user.clinicId, active: true }, select: { quantity: true, reorderLevel: true } })),
 
   ]);
 
   const production = invoiceTotals._sum.totalAmount ?? 0;
 
   const collections = payments._sum.amount ?? 0;
+  const lowStockCount = inventoryItems.filter((item) => item.quantity <= item.reorderLevel).length;
 
   const stats = [
     {
@@ -237,16 +246,16 @@ export default async function DashboardPage() {
   ];
 
   return (
-    <div className="dashboard-enter mx-auto max-w-[1700px] space-y-5 pb-8">
+    <div className="dashboard-enter mx-auto max-w-[1700px] space-y-6 pb-8">
 
       {/* Greeting Header */}
-      <section className="flex flex-col justify-between gap-4 rounded-[2rem] border border-white/80 bg-white/55 px-6 py-6 shadow-[0_18px_45px_rgba(72,105,152,.09)] backdrop-blur-sm lg:flex-row lg:items-center lg:px-8">
+      <section className="workspace-card flex flex-col justify-between gap-6 px-5 py-5 sm:px-6 lg:flex-row lg:items-center">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">
             Clinic command centre
           </p>
 
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+          <h1 className="mt-2 text-3xl font-bold leading-tight tracking-tight text-slate-950 sm:text-4xl">
             Today at a glance
           </h1>
 
@@ -281,7 +290,7 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      <section className="grid gap-3 rounded-2xl border border-amber-100 bg-amber-50/70 p-4 sm:grid-cols-[1fr_auto] sm:items-center">
+      <section className="grid gap-3 rounded-xl border border-amber-100 bg-amber-50/70 p-4 sm:grid-cols-[1fr_auto] sm:items-center">
         <div>
           <p className="text-sm font-bold text-slate-900">Front-desk focus</p>
           <p className="mt-1 text-sm text-slate-600">Confirm pending bookings, recover overdue follow-ups, and keep every patient record up to date.</p>
@@ -291,8 +300,21 @@ export default async function DashboardPage() {
         </Link>
       </section>
 
+      <section className="workspace-card p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-semibold uppercase tracking-[.14em] text-primary">Attention board</p><h2 className="mt-1 text-xl font-bold text-slate-950">What needs action today</h2></div><Link href="/dashboard/huddle" className="workspace-link">Open daily huddle <ChevronRight className="size-4"/></Link></div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          {[
+            { label: "Recovery tasks", value: overdueFollowUps, href: "/dashboard/follow-ups", tone: "bg-amber-50 text-amber-800" },
+            { label: "New enquiries", value: newLeadCount, href: "/dashboard/leads", tone: "bg-violet-50 text-violet-800" },
+            { label: "Open conversations", value: openConversationCount, href: "/dashboard/conversations", tone: "bg-sky-50 text-sky-800" },
+            { label: "Delayed lab cases", value: delayedLabCount, href: "/dashboard/laboratory", tone: "bg-rose-50 text-rose-800" },
+            { label: "Low-stock items", value: lowStockCount, href: "/dashboard/operations", tone: "bg-orange-50 text-orange-800" },
+          ].map((item) => <Link key={item.label} href={item.href} className="workspace-card workspace-card--interactive flex items-center justify-between gap-3 rounded-xl p-4"><span className="text-sm font-semibold text-slate-700">{item.label}</span><span className={`grid size-9 place-items-center rounded-full text-sm font-bold ${item.tone}`}>{item.value}</span></Link>)}
+        </div>
+      </section>
+
       {/* Stats */}
-      <section className="grid auto-rows-fr gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <section className="dashboard-kpi-grid">
         {stats.map(
           ({
             label,
@@ -305,7 +327,7 @@ export default async function DashboardPage() {
             <Link
               key={label}
               href={href}
-              className="demo-card group flex min-h-[150px] flex-col justify-between p-5"
+              className="workspace-card workspace-card--interactive group dashboard-kpi-card"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -313,7 +335,7 @@ export default async function DashboardPage() {
                     {label}
                   </p>
 
-                  <p className="mt-2 truncate text-3xl font-bold tracking-tight text-slate-950">
+                  <p className="mt-2 truncate text-3xl font-bold leading-none tracking-tight text-slate-950">
                     {value}
                   </p>
                 </div>
@@ -336,12 +358,12 @@ export default async function DashboardPage() {
       </section>
 
       {/* Main Dashboard Content */}
-      <section className="grid gap-5 xl:grid-cols-1 2xl:grid-cols-[minmax(340px,0.78fr)_minmax(600px,1.35fr)_minmax(360px,0.9fr)]">
+      <section className="dashboard-main-grid">
 
         {/* Today's Appointments */}
-        <article className="demo-card min-w-0 overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-            <div>
+        <article className="workspace-card min-w-0 self-start overflow-hidden">
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
+            <div className="min-w-0">
               <h2 className="font-bold text-slate-950">
                 Today&apos;s appointments
               </h2>
@@ -357,7 +379,7 @@ export default async function DashboardPage() {
 
             <Link
               href="/dashboard/calendar"
-              className="text-xs font-bold text-indigo-600 hover:underline"
+              className="shrink-0 text-xs font-bold text-indigo-600 hover:underline"
             >
               View calendar
             </Link>
@@ -430,7 +452,7 @@ export default async function DashboardPage() {
         <div className="min-w-0 space-y-5">
 
           {/* Patient Base */}
-          <article className="demo-card p-5">
+          <article className="workspace-card p-5">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="font-bold text-slate-950">
@@ -474,7 +496,7 @@ export default async function DashboardPage() {
           </article>
 
           {/* WhatsApp */}
-          <article className="demo-card p-5">
+          <article className="workspace-card p-5">
             <div className="flex items-center justify-between">
               <h2 className="font-bold text-slate-950">
                 Recent WhatsApp
@@ -527,7 +549,7 @@ export default async function DashboardPage() {
       </section>
 
       {/* Recommended Actions */}
-      <section className="rounded-3xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-sky-50 to-violet-50 p-5 shadow-sm">
+      <section className="workspace-card border-indigo-100 bg-gradient-to-r from-indigo-50 via-sky-50 to-violet-50 p-5">
         <div className="flex items-center gap-2">
           <Sparkles className="size-5 text-violet-600" />
 

@@ -46,7 +46,7 @@ export async function saveDentalChartEntryAction(formData: FormData) {
 }
 
 export async function saveDentalChartEntriesAction(formData: FormData) {
-  await requireUser();
+  const user = await requireUser();
   const patientId = Number(formData.get("patientId"));
   const toothNumbers = Array.from(new Set(String(formData.get("toothNumbers") || "").split(",").filter(Boolean)));
   const condition = String(formData.get("condition") || "HEALTHY");
@@ -62,8 +62,16 @@ export async function saveDentalChartEntriesAction(formData: FormData) {
     return;
   }
 
+  // Form data is client-controlled: establish the clinic boundary before any
+  // chart, clinical-record, or appointment query can touch this patient.
+  const patient = await prisma.patient.findFirst({
+    where: { id: patientId, clinicId: user.clinicId },
+    select: { id: true },
+  });
+  if (!patient) return;
+
   const appointmentForVisit = await prisma.appointment.findFirst({
-    where: { patientId, status: "Completed", appointmentDate: { gte: localDayRange(visitDateInput).start, lte: localDayRange(visitDateInput).end } },
+    where: { clinicId: user.clinicId, patientId, status: "Completed", appointmentDate: { gte: localDayRange(visitDateInput).start, lte: localDayRange(visitDateInput).end } },
     select: { appointmentDate: true },
   });
   if (!appointmentForVisit && (!allowNewWorkspace || visitDateInput !== todayKey())) return;
@@ -82,7 +90,8 @@ export async function saveDentalChartEntriesAction(formData: FormData) {
   ]);
   const chartByTooth = new Map(existingChartEntries.map((entry) => [entry.toothNumber, entry]));
   const recordByTooth = new Map(existingRecords.map((record) => [record.chiefComplaint.match(/^Tooth (\d+) -/)?.[1], record]));
-  await prisma.$transaction(toothNumbers.flatMap((toothNumber) => {
+  await prisma.$transaction([
+    ...toothNumbers.flatMap((toothNumber) => {
     const chartData = { condition, notes, visitDate };
     const recordData = { patientId, visitDate, chiefComplaint: `Tooth ${toothNumber} - ${conditionLabels[condition]}`, diagnosis: conditionLabels[condition], clinicalNotes: notes || `Updated tooth ${toothNumber} in clinical workspace.` };
     const existingChart = chartByTooth.get(toothNumber);
@@ -91,12 +100,21 @@ export async function saveDentalChartEntriesAction(formData: FormData) {
       existingChart ? prisma.dentalChartEntry.update({ where: { id: existingChart.id }, data: chartData }) : prisma.dentalChartEntry.create({ data: { patientId, toothNumber, ...chartData } }),
       existingRecord ? prisma.clinicalRecord.update({ where: { id: existingRecord.id }, data: recordData }) : prisma.clinicalRecord.create({ data: recordData }),
     ];
-  }));
+    }),
+    prisma.auditLog.create({ data: {
+      clinicId: user.clinicId,
+      userId: user.id,
+      action: "DENTAL_CHART_UPDATED",
+      entityType: "PATIENT",
+      entityId: String(patientId),
+      detail: `Updated ${toothNumbers.length} tooth chart entr${toothNumbers.length === 1 ? "y" : "ies"} to ${condition} for visit ${visitDateInput}`,
+    } }),
+  ]);
   revalidatePath(`/dashboard/clinical-workspace/${patientId}`);
 }
 
 export async function clearVisitDentalWorkspaceAction(formData: FormData) {
-  await requireUser();
+  const user = await requireUser();
   const patientId = Number(formData.get("patientId"));
   const visitDateInput = String(formData.get("visitDate") || "").trim();
 
@@ -104,8 +122,14 @@ export async function clearVisitDentalWorkspaceAction(formData: FormData) {
     return;
   }
 
+  const patient = await prisma.patient.findFirst({
+    where: { id: patientId, clinicId: user.clinicId },
+    select: { id: true },
+  });
+  if (!patient) return;
+
   const completedAppointments = await prisma.appointment.findMany({
-    where: { patientId, status: "Completed" },
+    where: { clinicId: user.clinicId, patientId, status: "Completed" },
     select: { appointmentDate: true },
   });
   const hasCompletedVisit = completedAppointments.some(
@@ -115,20 +139,22 @@ export async function clearVisitDentalWorkspaceAction(formData: FormData) {
 
   const { start: visitStart, end: visitEnd } = localDayRange(visitDateInput);
 
-  await prisma.dentalChartEntry.deleteMany({
-    where: {
-      patientId,
-      visitDate: { gte: visitStart, lte: visitEnd },
-    },
-  });
-
-  await prisma.clinicalRecord.deleteMany({
-    where: {
-      patientId,
-      chiefComplaint: { startsWith: "Tooth " },
-      visitDate: { gte: visitStart, lte: visitEnd },
-    },
-  });
+  await prisma.$transaction([
+    prisma.dentalChartEntry.deleteMany({
+      where: { patientId, visitDate: { gte: visitStart, lte: visitEnd } },
+    }),
+    prisma.clinicalRecord.deleteMany({
+      where: { patientId, chiefComplaint: { startsWith: "Tooth " }, visitDate: { gte: visitStart, lte: visitEnd } },
+    }),
+    prisma.auditLog.create({ data: {
+      clinicId: user.clinicId,
+      userId: user.id,
+      action: "DENTAL_WORKSPACE_CLEARED",
+      entityType: "PATIENT",
+      entityId: String(patientId),
+      detail: `Cleared dental workspace entries for visit ${visitDateInput}`,
+    } }),
+  ]);
 
   revalidatePath(`/dashboard/clinical-workspace/${patientId}`);
   revalidatePath(`/dashboard/patients/${patientId}`);

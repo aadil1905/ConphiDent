@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { requireApiFeature } from "@/lib/tenant";
 import { sendTextMessage } from "@/lib/whatsapp";
 import { scheduleWhatsAppMessage } from "@/lib/scheduled-whatsapp";
 
 export async function POST(request: Request) {
-  const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { user, response } = await requireApiFeature("whatsapp", "manageSchedule");
+  if (!user) return response;
   const body = await request.json().catch(() => null) as { phone?: string; message?: string; scheduledAt?: string } | null;
   const phone = String(body?.phone || "").replace(/\D/g, "");
   const message = String(body?.message || "").trim();

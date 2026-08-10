@@ -36,6 +36,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
           });
           const status = paidSoFar + data.amount === invoice.totalAmount ? "Paid" : "Partially Paid";
           await tx.invoice.update({ where: { id: invoiceId }, data: { status } });
+          await tx.auditLog.create({ data: { clinicId: user.clinicId, userId: user.id, action: "PAYMENT_RECORDED", entityType: "PAYMENT", entityId: String(created.id), detail: `Recorded payment of ${data.amount} on invoice #${invoiceId}` } });
           return created;
         }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
         break;

@@ -20,14 +20,18 @@ export async function POST(request: Request) {
       );
     }
 
-    const prescription = await prisma.prescription.create({
-      data: {
-        patientId: patient.id,
-        prescribedOn: localDate(data.prescribedOn),
-        diagnosis: data.diagnosis || null,
-        instructions: data.instructions || null,
-        medicines: data.medicines,
-      },
+    const prescription = await prisma.$transaction(async (tx) => {
+      const created = await tx.prescription.create({
+        data: {
+          patientId: patient.id,
+          prescribedOn: localDate(data.prescribedOn),
+          diagnosis: data.diagnosis || null,
+          instructions: data.instructions || null,
+          medicines: data.medicines,
+        },
+      });
+      await tx.auditLog.create({ data: { clinicId: user.clinicId, userId: user.id, action: "PRESCRIPTION_CREATED", entityType: "PRESCRIPTION", entityId: String(created.id), detail: `Prescription issued for patient #${patient.id}` } });
+      return created;
     });
     return NextResponse.json(prescription, { status: 201 });
   } catch (error) {

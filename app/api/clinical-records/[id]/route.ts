@@ -45,9 +45,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       }
     }
 
-    const record = await prisma.clinicalRecord.update({
-      where: { id },
-      data: {
+    const record = await prisma.$transaction(async (tx) => {
+      const updated = await tx.clinicalRecord.update({
+        where: { id },
+        data: {
         visitDate: visitDate ? localDate(visitDate) : undefined,
         patientId: data.patientId,
         chiefComplaint: data.chiefComplaint,
@@ -68,7 +69,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         estimateAmount: data.estimateAmount === undefined ? undefined : data.estimateAmount === "" ? null : data.estimateAmount,
         consentGiven: data.consentGiven,
         consentNotes: optionalText(data.consentNotes),
-      },
+        },
+      });
+      await tx.auditLog.create({ data: { clinicId: user.clinicId, userId: user.id, action: "CLINICAL_RECORD_UPDATED", entityType: "CLINICAL_RECORD", entityId: String(id), detail: `Clinical record updated for patient #${updated.patientId}` } });
+      return updated;
     });
     return NextResponse.json(record);
   } catch (error) {
@@ -83,8 +87,12 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   const id = await getId(params);
   if (!id) return NextResponse.json({ error: "Invalid record id." }, { status: 400 });
   try {
-    const result = await prisma.clinicalRecord.deleteMany({ where: { id, patient: { clinicId: user.clinicId } } });
-    if (!result.count) return NextResponse.json({ error: "Record not found." }, { status: 404 });
+    const record = await prisma.clinicalRecord.findFirst({ where: { id, patient: { clinicId: user.clinicId } }, select: { id: true, patientId: true } });
+    if (!record) return NextResponse.json({ error: "Record not found." }, { status: 404 });
+    await prisma.$transaction([
+      prisma.clinicalRecord.delete({ where: { id: record.id } }),
+      prisma.auditLog.create({ data: { clinicId: user.clinicId, userId: user.id, action: "CLINICAL_RECORD_DELETED", entityType: "CLINICAL_RECORD", entityId: String(record.id), detail: `Clinical record deleted for patient #${record.patientId}` } }),
+    ]);
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Record not found." }, { status: 404 });

@@ -1,93 +1,77 @@
-import { MessagesSquare, Phone, Sparkles } from "lucide-react";
+import { CalendarPlus, CircleAlert, MessagesSquare, Search, Send, Settings2, UserPlus, Users } from "lucide-react";
 import Link from "next/link";
-import { requireUser } from "@/lib/auth";
+import { requireFeature } from "@/lib/features";
 import { prisma } from "@/lib/prisma";
-import DeleteSubmitButton from "@/components/dashboard/DeleteSubmitButton";
-import { deleteConversationAction } from "@/app/dashboard/delete-actions";
-import { updateConversationAction } from "./actions";
+import { sendConversationMessageAction, updateConversationAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function ConversationsPage() {
-  const user = await requireUser();
-  const [conversations, staff] = await Promise.all([prisma.whatsAppConversation.findMany({
-    where: { clinicId: user.clinicId },
+type SearchParams = { conversation?: string; q?: string; state?: string };
+
+function messageTime(value: Date) {
+  return value.toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+}
+
+export default async function ConversationsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const user = await requireFeature("whatsapp");
+  const filters = await searchParams;
+  const query = (filters.q || "").trim();
+  const state = ["OPEN", "RESOLVED", "OPTED_OUT"].includes(filters.state || "") ? filters.state : "";
+  const where = {
+    clinicId: user.clinicId,
+    ...(state ? { status: state } : {}),
+    ...(query ? { OR: [
+      { phone: { contains: query } },
+      { patient: { fullName: { contains: query, mode: "insensitive" as const } } },
+      { lead: { fullName: { contains: query, mode: "insensitive" as const } } },
+      { messages: { some: { content: { contains: query, mode: "insensitive" as const } } } },
+    ] } : {}),
+  };
+  const [conversations, staff] = await Promise.all([
+    prisma.whatsAppConversation.findMany({
+      where,
+      include: {
+        patient: { select: { id: true, fullName: true } },
+        lead: { select: { id: true, fullName: true, stage: true } },
+        assignedUser: { select: { id: true, fullName: true } },
+        messages: { orderBy: { createdAt: "desc" }, take: 1 },
+      },
+      orderBy: { lastMessageAt: "desc" },
+      take: 80,
+    }),
+    prisma.user.findMany({ where: { clinicId: user.clinicId, active: true }, select: { id: true, fullName: true }, orderBy: { fullName: "asc" } }),
+  ]);
+  const selectedId = Number(filters.conversation);
+  const selectedSummary = conversations.find((conversation) => conversation.id === selectedId) ?? conversations[0];
+  const selected = selectedSummary ? await prisma.whatsAppConversation.findFirst({
+    where: { id: selectedSummary.id, clinicId: user.clinicId },
     include: {
-      booking: true, assignedUser: { select: { id: true, fullName: true } },
-      messages: { orderBy: { createdAt: "desc" }, take: 1 },
+      patient: { select: { id: true, fullName: true, phone: true } },
+      lead: { select: { id: true, fullName: true, stage: true, nextFollowUpAt: true } },
+      assignedUser: { select: { id: true, fullName: true } },
+      messages: { orderBy: { createdAt: "asc" }, take: 100 },
     },
-    orderBy: { lastMessageAt: "desc" },
-    take: 30,
-  }), prisma.user.findMany({ where: { clinicId: user.clinicId, active: true }, select: { id: true, fullName: true }, orderBy: { fullName: "asc" } })]);
+  }) : null;
 
-  return (
-    <div className="mx-auto max-w-7xl space-y-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary">Inbox</p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">Patient conversations</h1>
-          <p className="mt-2 text-muted-foreground">
-            WhatsApp enquiries and unfinished bookings. Use the work queue for callbacks, no-shows, and overdue patient outreach.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/dashboard/follow-ups" className="inline-flex items-center rounded-xl border bg-white px-4 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-50">Open work queue</Link>
-          <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
-            <span className="font-bold text-foreground">{conversations.length}</span> saved conversations
-          </div>
-        </div>
-      </header>
+  return <div className="dashboard-list-page mx-auto max-w-[1440px] space-y-5">
+    <header className="flex flex-col gap-3 rounded-2xl border bg-card px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-primary">Shared inbox</p><h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Patient conversations</h1><p className="mt-1 text-sm text-muted-foreground">Clinic-owned WhatsApp threads, messages, and patient context in one place.</p></div>
+      <Link href="/dashboard/whatsapp-operations" className="inline-flex h-9 shrink-0 items-center rounded-lg border bg-white px-3 text-sm font-semibold text-primary hover:bg-primary/5">Message diagnostics</Link>
+    </header>
 
-      {conversations.length === 0 ? (
-        <section className="rounded-2xl border border-dashed border-border bg-card px-6 py-16 text-center shadow-sm">
-          <MessagesSquare className="mx-auto size-10 text-primary" />
-          <h2 className="mt-4 text-lg font-bold">No WhatsApp conversations yet</h2>
-          <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-            When a patient messages your connected WhatsApp number, the enquiry and its booking progress will appear here.
-          </p>
-        </section>
-      ) : (
-        <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-          <div className="divide-y divide-border">
-            {conversations.map((conversation) => {
-              const latest = conversation.messages[0];
-              return (
-                <article key={conversation.id} className="p-5">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="grid size-10 place-items-center rounded-xl bg-cyan-50 text-cyan-700">
-                          <Phone className="size-5" />
-                        </div>
-                        <p className="font-bold">{conversation.phone}</p>
-                        {conversation.language && <span className="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700">{conversation.language}</span>}
-                        {conversation.booking && <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">Booking: {conversation.booking.step}</span>}
-                      </div>
-                      <p className="mt-3 truncate text-sm text-muted-foreground">
-                        <span className="font-medium text-foreground">{latest?.direction === "OUTBOUND" ? "Clinic:" : "Patient:"}</span> {latest?.content || "No saved message"}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                      <span className="inline-flex items-center gap-2">
-                        <Sparkles className="size-4 text-primary" />
-                        Last activity {conversation.lastMessageAt.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                      </span>
-                      <Link href={`/dashboard/patient-intake?name=${encodeURIComponent(conversation.booking?.patientName || "")}&phone=${encodeURIComponent(conversation.phone)}`} className="rounded-lg border bg-white px-3 py-2 text-xs font-bold text-primary transition hover:bg-primary/5">Start intake</Link>
-                      <Link href="/dashboard/appointments/new" className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground transition hover:bg-primary/90">Book appointment</Link>
-                      <Link href="/dashboard/follow-ups" className="rounded-lg border bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50">Add follow-up</Link>
-                      <form action={updateConversationAction} className="flex gap-1"><input type="hidden" name="id" value={conversation.id} /><select name="assignedUserId" defaultValue={conversation.assignedUserId ?? ""} className="rounded-lg border bg-white px-2 py-1 text-xs"><option value="">Unassigned</option>{staff.map((member) => <option key={member.id} value={member.id}>{member.fullName}</option>)}</select><input name="label" defaultValue={conversation.label ?? ""} placeholder="Label" className="w-20 rounded-lg border px-2 text-xs"/><input type="hidden" name="status" value={conversation.status === "OPEN" ? "RESOLVED" : "OPEN"}/><button className="rounded-lg border px-2 text-xs font-bold">{conversation.status === "OPEN" ? "Resolve" : "Reopen"}</button></form>
-                      <form action={deleteConversationAction}>
-                        <input type="hidden" name="id" value={conversation.id} />
-                        <DeleteSubmitButton confirmMessage={`Delete WhatsApp conversation ${conversation.phone}?`} />
-                      </form>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </section>
-      )}
-    </div>
-  );
+    {!conversations.length && !query && !state ? <section className="rounded-2xl border bg-card px-6 py-16 text-center shadow-sm"><div className="mx-auto max-w-xl"><div className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary"><MessagesSquare className="size-7" /></div><h2 className="mt-5 text-xl font-bold">Your inbox is ready for its first patient message</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Connect this clinic’s WhatsApp number, complete Meta’s webhook verification, then send an inbound message. Real patient threads will appear here automatically—no demo conversations are shown.</p><div className="mt-6 flex flex-wrap justify-center gap-3"><Link href="/dashboard/settings/whatsapp" className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"><Settings2 className="size-4" />Connect WhatsApp</Link><Link href="/dashboard/whatsapp-operations" className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold text-primary">Open diagnostics</Link></div></div></section> : <section className="grid min-h-[600px] overflow-hidden rounded-2xl border bg-card shadow-sm xl:grid-cols-[320px_minmax(0,1fr)_270px]">
+      <aside className="border-b xl:border-r xl:border-b-0">
+        <form className="border-b p-3"><label className="relative block"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"/><input name="q" defaultValue={query} placeholder="Search patient, phone, message" className="h-10 w-full rounded-lg border bg-white pl-9 pr-3 text-sm"/><input type="hidden" name="state" value={state}/></label></form>
+        <div className="flex gap-1 overflow-x-auto border-b p-2 text-xs font-semibold"><Link href="/dashboard/conversations" className={`rounded-lg px-3 py-2 ${!state ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>All</Link>{["OPEN", "RESOLVED", "OPTED_OUT"].map((value) => <Link key={value} href={`/dashboard/conversations?state=${value}`} className={`rounded-lg px-3 py-2 ${state === value ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>{value.replaceAll("_", " ")}</Link>)}</div>
+        <div className="max-h-[500px] overflow-y-auto divide-y">{conversations.map((conversation) => { const latest = conversation.messages[0]; const active = selected?.id === conversation.id; const name = conversation.patient?.fullName || conversation.lead?.fullName || conversation.phone; return <Link key={conversation.id} href={`/dashboard/conversations?conversation=${conversation.id}${query ? `&q=${encodeURIComponent(query)}` : ""}${state ? `&state=${state}` : ""}`} className={`block p-3 transition ${active ? "bg-primary/10" : "hover:bg-muted/60"}`}><div className="flex items-start gap-3"><div className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-bold text-primary">{name.charAt(0).toUpperCase()}</div><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><p className="truncate text-sm font-semibold">{name}</p><time className="shrink-0 text-[11px] text-muted-foreground">{messageTime(conversation.lastMessageAt)}</time></div><p className="mt-1 truncate text-xs text-muted-foreground">{latest?.content || "No saved message"}</p><div className="mt-2 flex flex-wrap gap-1"><span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold">{conversation.status}</span>{conversation.assignedUser && <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700">{conversation.assignedUser.fullName}</span>}</div></div></div></Link>; })}{!conversations.length && <div className="p-8 text-center text-sm text-muted-foreground">No conversations match this view.</div>}</div>
+      </aside>
+
+      <main className="flex min-w-0 flex-col">{!selected ? <div className="grid flex-1 place-items-center p-8 text-center"><div><MessagesSquare className="mx-auto size-10 text-primary"/><h2 className="mt-3 font-bold">No conversation selected</h2><p className="mt-1 text-sm text-muted-foreground">Inbound WhatsApp messages appear here automatically.</p></div></div> : <><div className="flex flex-wrap items-center justify-between gap-3 border-b p-4"><div><p className="font-bold">{selected.patient?.fullName || selected.lead?.fullName || selected.phone}</p><p className="text-xs text-muted-foreground">{selected.phone} · {selected.status.replaceAll("_", " ")}</p></div><form action={updateConversationAction} className="flex flex-wrap gap-2"><input type="hidden" name="id" value={selected.id}/><select name="assignedUserId" defaultValue={selected.assignedUserId ?? ""} className="h-9 rounded-lg border bg-white px-2 text-xs"><option value="">Unassigned</option>{staff.map((member) => <option key={member.id} value={member.id}>{member.fullName}</option>)}</select><input type="hidden" name="label" value={selected.label ?? ""}/><input type="hidden" name="status" value={selected.status === "OPEN" ? "RESOLVED" : "OPEN"}/><button className="h-9 rounded-lg border px-3 text-xs font-semibold">{selected.status === "OPEN" ? "Resolve" : "Reopen"}</button></form></div>
+        <div className="flex-1 space-y-3 overflow-y-auto bg-muted/20 p-4">{selected.messages.map((message) => <div key={message.id} className={`flex ${message.direction === "OUTBOUND" ? "justify-end" : "justify-start"}`}><div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${message.direction === "OUTBOUND" ? "bg-primary text-primary-foreground" : "bg-white shadow-sm"}`}><p className="whitespace-pre-wrap">{message.content}</p><p className={`mt-1 text-[11px] ${message.direction === "OUTBOUND" ? "text-primary-foreground/75" : "text-muted-foreground"}`}>{messageTime(message.createdAt)} · {message.direction === "OUTBOUND" ? message.deliveryStatus : "Received"}</p>{message.failureReason && <p className="mt-1 text-[11px] text-rose-300">{message.failureReason}</p>}</div></div>)}{!selected.messages.length && <p className="py-16 text-center text-sm text-muted-foreground">No stored messages in this thread yet.</p>}</div>
+        <form action={sendConversationMessageAction} className="flex gap-2 border-t p-3"><input type="hidden" name="conversationId" value={selected.id}/><textarea required name="content" maxLength={4096} placeholder="Write a WhatsApp reply…" className="min-h-10 flex-1 resize-none rounded-lg border bg-white px-3 py-2 text-sm"/><button className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground"><Send className="size-4"/>Send</button></form>
+      </>}</main>
+
+      <aside className="border-t p-4 xl:border-t-0 xl:border-l">{!selected ? null : <div className="space-y-5"><div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Patient context</p>{selected.patient ? <><p className="mt-2 font-semibold">{selected.patient.fullName}</p><p className="text-sm text-muted-foreground">{selected.patient.phone}</p><Link href={`/dashboard/patients/${selected.patient.id}`} className="mt-3 inline-flex text-sm font-semibold text-primary hover:underline">Open Patient 360</Link></> : <div className="mt-3 rounded-xl border border-dashed p-3 text-sm text-muted-foreground">Unknown patient. Link or create a patient from this contact.</div>}</div><div className="space-y-2"><Link href={`/dashboard/appointments/new${selected.patient ? `?patientId=${selected.patient.id}` : ""}`} className="flex items-center gap-2 rounded-lg border p-3 text-sm font-semibold hover:bg-muted"><CalendarPlus className="size-4 text-primary"/>Book appointment</Link><Link href="/dashboard/follow-ups" className="flex items-center gap-2 rounded-lg border p-3 text-sm font-semibold hover:bg-muted"><CircleAlert className="size-4 text-primary"/>Create follow-up</Link>{selected.lead ? <Link href="/dashboard/leads" className="flex items-center gap-2 rounded-lg border p-3 text-sm font-semibold hover:bg-muted"><Users className="size-4 text-primary"/>Lead: {selected.lead.stage}</Link> : <Link href="/dashboard/leads" className="flex items-center gap-2 rounded-lg border p-3 text-sm font-semibold hover:bg-muted"><UserPlus className="size-4 text-primary"/>Create lead</Link>}</div></div>}</aside>
+    </section>}
+  </div>;
 }

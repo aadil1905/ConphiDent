@@ -46,8 +46,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const record = await prisma.clinicalRecord.create({
-      data: { ...clinicalRecordData(data), patientId: patient.id },
+    const record = await prisma.$transaction(async (tx) => {
+      const created = await tx.clinicalRecord.create({ data: { ...clinicalRecordData(data), patientId: patient.id } });
+      await tx.auditLog.create({ data: { clinicId: user.clinicId, userId: user.id, action: "CLINICAL_RECORD_CREATED", entityType: "CLINICAL_RECORD", entityId: String(created.id), detail: `Clinical record created for patient #${patient.id}` } });
+      return created;
     });
     return NextResponse.json(record, { status: 201 });
   } catch (error) {

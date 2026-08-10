@@ -6,5 +6,13 @@ export async function GET(request: NextRequest) {
   if (!expected || request.headers.get("authorization") !== `Bearer ${expected}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  return NextResponse.json({ success: true, ...(await processScheduledWhatsAppMessages()) });
+  const startedAt = Date.now();
+  try {
+    const result = await processScheduledWhatsAppMessages();
+    console.info(JSON.stringify({ event: "cron.completed", job: "whatsapp-outbox", ...result, durationMs: Date.now() - startedAt }));
+    return NextResponse.json({ success: true, ...result });
+  } catch (error) {
+    console.error(JSON.stringify({ event: "cron.failed", job: "whatsapp-outbox", durationMs: Date.now() - startedAt, error: error instanceof Error ? error.message : "Unknown error" }));
+    return NextResponse.json({ success: false, error: "WhatsApp outbox processing failed." }, { status: 503 });
+  }
 }

@@ -1,104 +1,45 @@
-import { Building2, MessageCircle, Users } from "lucide-react";
+import Link from "next/link";
+import { Building2, CalendarDays, CircleAlert, MessageCircle, ShieldCheck, Users } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requirePlatformAdmin, PLATFORM_NAME } from "@/lib/platform";
-import { createClinicAction, createClinicOwnerAction, setClinicStatusAction } from "./actions";
+import { PASSWORD_MIN_LENGTH } from "@/lib/auth";
+import { ClinicOnboardingWizard } from "@/components/platform/ClinicOnboardingWizard";
+import { getClinicReadiness } from "@/lib/platform-readiness";
+import { createClinicAction, createClinicOwnerAction, deleteClinicPermanentlyAction, saveSubscriptionPlanAction, setClinicStatusAction, toggleSubscriptionPlanAction } from "./actions";
 
-type PlatformSearchParams = {
-  error?: string;
-  created?: string;
-  ownerCreated?: string;
-};
+type Params = { error?: string; created?: string; ownerCreated?: string; deleted?: string; q?: string; status?: string; plan?: string; whatsapp?: string; page?: string; range?: string };
+const PAGE_SIZE = 12;
+const message = (error: string) => error === "owner-email" ? "That email already has an account. Nothing was changed." : error === "delete-protected" ? "Deletion was refused. Only a suspended, unprotected clinic can be deleted after its exact workspace key is confirmed." : error.startsWith("owner-") ? "Could not create the clinic owner. Check the selected clinic and all fields." : "Could not create the workspace. Check the details; the clinic URL and owner email must be unique.";
+function since(range: string) { const days = range === "today" ? 1 : range === "7d" ? 7 : range === "90d" ? 90 : 30; const date = new Date(); date.setHours(0, 0, 0, 0); date.setDate(date.getDate() - days + 1); return date; }
+function qs(values: Record<string, string | undefined>) { return new URLSearchParams(Object.entries(values).filter(([, value]) => value && value !== "all") as [string, string][]).toString(); }
 
-function errorMessage(error: string) {
-  if (error === "owner-email") return "That email already has an account. Nothing was changed.";
-  if (error.startsWith("owner-")) return "Could not create the clinic owner. Check the selected clinic and all fields.";
-  return "Could not create the workspace. Check the details; the clinic URL and owner email must be unique.";
-}
-
-export default async function PlatformPage({ searchParams }: { searchParams: Promise<PlatformSearchParams> }) {
-  await requirePlatformAdmin();
-  const [clinics, params] = await Promise.all([
-    prisma.clinic.findMany({
-      include: {
-        _count: { select: { users: true, patients: true } },
-        whatsappConnection: { select: { id: true, disconnectedAt: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    searchParams,
+export default async function PlatformPage({ searchParams }: { searchParams: Promise<Params> }) {
+  const admin = await requirePlatformAdmin(); const p = await searchParams; const range = ["today", "7d", "30d", "90d"].includes(p.range || "") ? p.range! : "30d"; const q = p.q?.trim().slice(0, 80) || ""; const page = Math.max(1, Number(p.page) || 1);
+  const where = { AND: [
+    ...(q ? [{ OR: [{ name: { contains: q, mode: "insensitive" as const } }, { brandName: { contains: q, mode: "insensitive" as const } }, { slug: { contains: q, mode: "insensitive" as const } }] }] : []),
+    ...(p.status && p.status !== "all" ? [{ status: p.status }] : []),
+    ...(p.plan && p.plan !== "all" ? [{ subscription: { plan: { code: p.plan } } }] : []),
+    ...(p.whatsapp === "connected" ? [{ whatsappConnection: { is: { disconnectedAt: null } } }] : p.whatsapp === "disconnected" ? [{ OR: [{ whatsappConnection: { is: null } }, { whatsappConnection: { is: { disconnectedAt: { not: null } } } }] }] : []),
+  ] };
+  const [all, active, suspended, trials, waConnected, users, patients, appointments, inbound, outbound, delivered, failed, open, count, clinics, plans, readinessInput, events] = await Promise.all([
+    prisma.clinic.count(), prisma.clinic.count({ where: { status: "ACTIVE" } }), prisma.clinic.count({ where: { status: "SUSPENDED" } }), prisma.tenantSubscription.count({ where: { status: "TRIAL" } }), prisma.clinicWhatsAppConnection.count({ where: { disconnectedAt: null } }), prisma.user.count({ where: { active: true } }), prisma.patient.count(), prisma.appointment.count({ where: { createdAt: { gte: since(range) }, archivedAt: null } }), prisma.whatsAppMessage.count({ where: { direction: "INBOUND", createdAt: { gte: since(range) } } }), prisma.whatsAppMessage.count({ where: { direction: "OUTBOUND", createdAt: { gte: since(range) } } }), prisma.whatsAppMessage.count({ where: { direction: "OUTBOUND", deliveryStatus: "DELIVERED", createdAt: { gte: since(range) } } }), prisma.scheduledWhatsAppMessage.count({ where: { status: { in: ["FAILED", "DEAD_LETTER"] } } }), prisma.whatsAppConversation.count({ where: { status: "OPEN" } }), prisma.clinic.count({ where }), prisma.clinic.findMany({ where, include: { _count: { select: { users: true, patients: true, appointments: true } }, whatsappConnection: { select: { disconnectedAt: true } }, subscription: { include: { plan: true } }, users: { select: { active: true } }, services: { select: { active: true } }, hours: { select: { isClosed: true } } }, orderBy: { createdAt: "desc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE }), prisma.subscriptionPlan.findMany({ orderBy: [{ active: "desc" }, { name: "asc" }] }), prisma.clinic.findMany({ select: { id: true, name: true, brandName: true, phone: true, address: true, users: { select: { active: true } }, services: { select: { active: true } }, hours: { select: { isClosed: true } }, whatsappConnection: { select: { disconnectedAt: true } } } }), prisma.auditLog.findMany({ take: 8, orderBy: { createdAt: "desc" }, include: { clinic: { select: { name: true, brandName: true } }, user: { select: { fullName: true } } } }),
   ]);
-  const active = clinics.filter((clinic) => clinic.status === "ACTIVE").length;
-
-  return (
-    <div className="mx-auto max-w-7xl space-y-6">
-      <header>
-        <p className="text-sm font-bold uppercase tracking-[0.16em] text-sky-700">{PLATFORM_NAME} administration</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight">Clinic portfolio</h1>
-        <p className="mt-2 text-muted-foreground">Provision and manage isolated clinic workspaces. Credentials and patient data are never shown here.</p>
-      </header>
-
-      {params.created && <p className="rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">Clinic workspace “{params.created}” was created.</p>}
-      {params.ownerCreated && <p className="rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">A separate owner login was created for “{params.ownerCreated}”.</p>}
-      {params.error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{errorMessage(params.error)}</p>}
-
-      <section className="grid gap-4 sm:grid-cols-3">
-        <Metric icon={<Building2 className="size-5 text-sky-700" />} label="Clinics" value={clinics.length} />
-        <Metric icon={<Users className="size-5 text-sky-700" />} label="Active workspaces" value={active} />
-        <Metric icon={<MessageCircle className="size-5 text-sky-700" />} label="WhatsApp connected" value={clinics.filter((clinic) => clinic.whatsappConnection && !clinic.whatsappConnection.disconnectedAt).length} />
-      </section>
-
-      <section className="rounded-2xl border bg-card p-6 shadow-sm">
-        <h2 className="text-xl font-bold">Create clinic workspace</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Creates the clinic, owner login, default services/hours, WhatsApp settings, and launch checklist.</p>
-        <form action={createClinicAction} className="mt-5 grid gap-4 md:grid-cols-2">
-          <Field label="Clinic name" name="name" />
-          <Field label="Workspace URL key" name="slug" pattern="[a-zA-Z0-9 -]+" placeholder="smile-dental-pune" />
-          <Field label="Owner name" name="ownerName" />
-          <Field label="Owner email" name="ownerEmail" type="email" />
-          <Field label="Temporary owner password" name="password" type="password" minLength={10} className="md:col-span-2" />
-          <button className="h-11 w-fit rounded-xl bg-sky-700 px-5 font-semibold text-white hover:bg-sky-800">Create clinic workspace</button>
-        </form>
-      </section>
-
-      <section className="rounded-2xl border bg-card p-6 shadow-sm">
-        <h2 className="text-xl font-bold">Add owner to an existing clinic</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Use this for a clinic already in the portfolio. It adds a new owner and never changes an existing account.</p>
-        <form action={createClinicOwnerAction} className="mt-5 grid gap-4 md:grid-cols-2">
-          <label className="text-sm font-semibold">Clinic<select required name="clinicId" className="mt-1.5 h-11 w-full rounded-xl border bg-background px-3 font-normal"><option value="">Select clinic</option>{clinics.map((clinic) => <option key={clinic.id} value={clinic.id}>{clinic.brandName || clinic.name}</option>)}</select></label>
-          <Field label="Owner name" name="fullName" />
-          <Field label="Owner email" name="email" type="email" />
-          <Field label="Temporary owner password" name="password" type="password" minLength={10} />
-          <button className="h-11 w-fit rounded-xl bg-sky-700 px-5 font-semibold text-white hover:bg-sky-800">Add clinic owner</button>
-        </form>
-      </section>
-
-      <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
-        <div className="border-b px-6 py-5"><h2 className="text-xl font-bold">All clinics</h2></div>
-        <div className="divide-y">
-          {clinics.map((clinic) => (
-            <article key={clinic.id} className="flex flex-col gap-4 px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <p className="font-bold">{clinic.brandName || clinic.name}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{clinic.slug || "No subdomain configured"} · {clinic._count.users} staff · {clinic._count.patients} patients</p>
-                <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">WhatsApp: {clinic.whatsappConnection && !clinic.whatsappConnection.disconnectedAt ? "Connected" : "Not connected"}</p>
-              </div>
-              <form action={setClinicStatusAction}>
-                <input type="hidden" name="clinicId" value={clinic.id} />
-                <input type="hidden" name="status" value={clinic.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE"} />
-                <button className="rounded-xl border px-4 py-2 text-sm font-semibold hover:bg-muted">{clinic.status === "ACTIVE" ? "Suspend" : "Activate"}</button>
-              </form>
-            </article>
-          ))}
-        </div>
-      </section>
-    </div>
-  );
+  const attention = readinessInput.map((clinic) => ({ ...clinic, readiness: getClinicReadiness(clinic) })).filter((clinic) => clinic.readiness.percent < 100).sort((a, b) => a.readiness.percent - b.readiness.percent).slice(0, 5); const delivery = outbound ? `${Math.round((delivered / outbound) * 100)}%` : "—"; const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE)); const base = { q: q || undefined, status: p.status, plan: p.plan, whatsapp: p.whatsapp, range };
+  return <main className="mx-auto max-w-7xl space-y-6 pb-12">
+    <header className="flex flex-col gap-4 rounded-3xl border bg-gradient-to-br from-sky-50 via-background to-indigo-50 p-6 shadow-sm md:flex-row md:items-end md:justify-between"><div><p className="text-sm font-bold uppercase tracking-[.16em] text-sky-700">{PLATFORM_NAME} enterprise control centre</p><h1 className="mt-2 text-3xl font-bold">Portfolio command centre</h1><p className="mt-2 max-w-2xl text-muted-foreground">Provision tenants, monitor operational readiness, and govern access across every ConphiDent workspace.</p></div><div className="flex flex-wrap gap-2"><a href="#onboarding" className="rounded-xl bg-sky-700 px-4 py-2 text-sm font-bold text-white">Provision clinic</a><a href="#directory" className="rounded-xl border bg-background px-4 py-2 text-sm font-bold">Tenant directory</a><Link href="/platform/onboarding" className="rounded-xl border bg-background px-4 py-2 text-sm font-bold">Pipeline</Link><Link href="/platform/support" className="rounded-xl border bg-background px-4 py-2 text-sm font-bold">Support</Link><Link href="/platform/notifications" className="rounded-xl border bg-background px-4 py-2 text-sm font-bold">Alerts</Link><Link href="/platform/whatsapp" className="rounded-xl border bg-background px-4 py-2 text-sm font-bold">WhatsApp</Link><Link href="/platform/automations" className="rounded-xl border bg-background px-4 py-2 text-sm font-bold">Automations</Link><Link href="/platform/sales" className="rounded-xl border bg-background px-4 py-2 text-sm font-bold">Sales</Link><Link href="/platform/health" className="rounded-xl border bg-background px-4 py-2 text-sm font-bold">Health</Link><Link href="/platform/audit" className="rounded-xl border bg-background px-4 py-2 text-sm font-bold">Audit</Link></div></header>
+    {p.created && <Notice tone="success">Clinic workspace “{p.created}” was created.</Notice>}{p.ownerCreated && <Notice tone="success">A separate owner login was created for “{p.ownerCreated}”.</Notice>}{p.deleted && <Notice tone="success">The suspended clinic “{p.deleted}” was permanently deleted and recorded in the audit trail.</Notice>}{p.error && <Notice tone="error">{message(p.error)}</Notice>}
+    <section className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-bold">Executive overview</h2><p className="text-sm text-muted-foreground">Live tenant activity for the selected period.</p></div><form className="flex items-center gap-2" action="/setup"><input type="hidden" name="q" value={q}/><label className="text-sm font-semibold">Period <select name="range" defaultValue={range} className="ml-2 rounded-lg border bg-background px-2 py-1.5"><option value="today">Today</option><option value="7d">Last 7 days</option><option value="30d">Last 30 days</option><option value="90d">Last 90 days</option></select></label><button className="rounded-lg border px-3 py-1.5 text-sm font-semibold">Apply</button></form></section>
+    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Metric icon={<Building2 className="size-5 text-sky-700"/>} label="Total tenants" value={all} detail={`${active} active · ${suspended} suspended`}/><Metric icon={<Users className="size-5 text-indigo-700"/>} label="Active users" value={users} detail={`${patients.toLocaleString()} patients across portfolio`}/><Metric icon={<CalendarDays className="size-5 text-violet-700"/>} label="Appointments created" value={appointments} detail={`during ${range === "today" ? "today" : range.replace("d", " days")}`}/><Metric icon={<MessageCircle className="size-5 text-emerald-700"/>} label="WhatsApp delivery" value={delivery} detail={outbound ? `${outbound} outbound · ${inbound} inbound` : "No outbound messages in period"}/></section>
+    <section className="grid gap-4 lg:grid-cols-3"><Panel icon={<ShieldCheck className="size-5 text-sky-700"/>} title="Portfolio health"><Health label="WhatsApp connected" value={`${waConnected}/${all}`}/><Health label="Trial subscriptions" value={trials}/><Health label="Open conversations" value={open}/><Health label="Failed message jobs" value={failed} danger={failed > 0}/></Panel><Panel icon={<CircleAlert className="size-5 text-amber-600"/>} title="Readiness attention">{attention.length ? <div className="space-y-3">{attention.map((clinic) => <Link key={clinic.id} href={`/platform/clinics/${clinic.id}`} className="block rounded-xl border p-3 hover:bg-muted"><div className="flex justify-between gap-3"><span className="font-semibold">{clinic.brandName || clinic.name}</span><span className="font-bold text-amber-700">{clinic.readiness.percent}%</span></div><p className="mt-1 text-xs text-muted-foreground">{clinic.readiness.checks.filter((check) => !check.complete).map((check) => check.label).join(" · ")}</p></Link>)}</div> : <p className="text-sm text-muted-foreground">Every clinic has completed the current readiness checks.</p>}</Panel><Panel icon={<ShieldCheck className="size-5 text-slate-700"/>} title="Recent control activity">{events.length ? <div className="space-y-3">{events.map((event) => <div key={event.id} className="border-b pb-3 last:border-0"><p className="text-sm font-semibold">{event.action.replaceAll("_", " ")}</p><p className="text-xs text-muted-foreground">{event.clinic.brandName || event.clinic.name} · {event.user?.fullName || "System"}</p></div>)}</div> : <p className="text-sm text-muted-foreground">No audit events recorded yet.</p>}</Panel></section>
+    <section id="onboarding"><ClinicOnboardingWizard action={createClinicAction} plans={plans.map((plan) => ({ id: plan.id, name: plan.name }))}/></section>
+    <section className="rounded-2xl border bg-card p-6 shadow-sm"><h2 className="text-xl font-bold">Subscription plans</h2><p className="mt-1 text-sm text-muted-foreground">Plans can be archived without deleting tenant subscriptions.</p><form action={saveSubscriptionPlanAction} className="mt-5 grid gap-3 md:grid-cols-4"><Field label="Plan name" name="name"/><Field label="Plan code" name="code"/><Field label="Description" name="description" required={false}/><button className="h-11 self-end rounded-xl bg-slate-900 px-5 font-semibold text-white">Add plan</button></form><div className="mt-5 divide-y">{plans.map((plan) => <div key={plan.id} className="flex items-center justify-between gap-3 py-3"><div><p className="font-semibold">{plan.name}</p><p className="text-sm text-muted-foreground">{plan.code}{plan.description ? ` · ${plan.description}` : ""}</p></div><form action={toggleSubscriptionPlanAction}><input type="hidden" name="planId" value={plan.id}/><input type="hidden" name="active" value={String(!plan.active)}/><button className="rounded-lg border px-3 py-2 text-sm font-semibold">{plan.active ? "Archive" : "Reactivate"}</button></form></div>)}</div></section>
+    <section className="rounded-2xl border bg-card p-6 shadow-sm"><h2 className="text-xl font-bold">Add owner to an existing clinic</h2><p className="mt-1 text-sm text-muted-foreground">This adds a new owner and never changes an existing account.</p><form action={createClinicOwnerAction} className="mt-5 grid gap-4 md:grid-cols-2"><label className="text-sm font-semibold">Clinic<select required name="clinicId" className="mt-1.5 h-11 w-full rounded-xl border bg-background px-3 font-normal"><option value="">Select clinic</option>{clinics.map((clinic) => <option key={clinic.id} value={clinic.id}>{clinic.brandName || clinic.name}</option>)}</select></label><Field label="Owner name" name="fullName"/><Field label="Owner email" name="email" type="email"/><Field label="Temporary owner password" name="password" type="password" minLength={PASSWORD_MIN_LENGTH}/><button className="h-11 w-fit rounded-xl bg-sky-700 px-5 font-semibold text-white">Add clinic owner</button></form></section>
+    <section id="directory" className="overflow-hidden rounded-2xl border bg-card shadow-sm"><div className="border-b px-6 py-5"><h2 className="text-xl font-bold">Tenant directory</h2><p className="mt-1 text-sm text-muted-foreground">Search, filter, and open the complete 360° record for each clinic.</p><form className="mt-4 grid gap-2 md:grid-cols-5" action="/setup"><input name="q" defaultValue={q} placeholder="Clinic, brand, or workspace key" className="h-10 rounded-lg border bg-background px-3 md:col-span-2"/><select name="status" defaultValue={p.status || "all"} className="rounded-lg border bg-background px-3"><option value="all">All statuses</option><option value="ACTIVE">Active</option><option value="SUSPENDED">Suspended</option></select><select name="plan" defaultValue={p.plan || "all"} className="rounded-lg border bg-background px-3"><option value="all">All plans</option>{plans.map((plan) => <option key={plan.id} value={plan.code}>{plan.name}</option>)}</select><select name="whatsapp" defaultValue={p.whatsapp || "all"} className="rounded-lg border bg-background px-3"><option value="all">All WhatsApp states</option><option value="connected">Connected</option><option value="disconnected">Not connected</option></select><input type="hidden" name="range" value={range}/><button className="rounded-lg bg-slate-900 px-4 py-2 font-semibold text-white md:col-start-5">Filter</button></form></div><div className="divide-y">{clinics.map((clinic) => { const ready = getClinicReadiness(clinic); const protectedClinic = clinic.id === admin.clinicId || clinic.slug === "deepika-dental-white" || (clinic.slug ? (process.env.PROTECTED_CLINIC_SLUGS || "").split(",").map((value) => value.trim().toLowerCase()).includes(clinic.slug.toLowerCase()) : false); return <article key={clinic.id} className="flex flex-col gap-4 px-6 py-5 lg:flex-row lg:items-center lg:justify-between"><div><div className="flex flex-wrap items-center gap-2"><p className="font-bold">{clinic.brandName || clinic.name}</p><Badge>{clinic.status}</Badge><Badge tone={clinic.whatsappConnection && !clinic.whatsappConnection.disconnectedAt ? "success" : "neutral"}>WhatsApp {clinic.whatsappConnection && !clinic.whatsappConnection.disconnectedAt ? "connected" : "not connected"}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{clinic.slug || "No workspace key"} · {clinic.subscription?.plan?.name || clinic.subscription?.status || "No subscription"} · {clinic._count.users} staff · {clinic._count.patients} patients</p><p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Readiness {ready.percent}%</p></div><div className="flex flex-wrap items-center gap-2"><Link href={`/platform/clinics/${clinic.id}`} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Open 360°</Link><form action={setClinicStatusAction}><input type="hidden" name="clinicId" value={clinic.id}/><input type="hidden" name="status" value={clinic.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE"}/><button className="rounded-xl border px-4 py-2 text-sm font-semibold">{clinic.status === "ACTIVE" ? "Suspend" : "Activate"}</button></form>{clinic.status === "SUSPENDED" && !protectedClinic && clinic.slug && <form action={deleteClinicPermanentlyAction} className="flex flex-wrap items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-2"><input type="hidden" name="clinicId" value={clinic.id}/><label className="text-xs font-semibold text-red-800">Type <code>{clinic.slug}</code><input required name="confirmation" className="ml-2 h-8 w-40 rounded border bg-white px-2 text-xs text-slate-900"/></label><button className="h-8 rounded-lg bg-red-700 px-3 text-xs font-bold text-white">Delete permanently</button></form>}</div></article>; })}{!clinics.length && <p className="p-6 text-sm text-muted-foreground">No tenants match these filters.</p>}</div>{totalPages > 1 && <div className="flex items-center justify-between border-t px-6 py-4 text-sm"><span>Page {page} of {totalPages} ({count} tenants)</span><div className="flex gap-2">{page > 1 && <Link className="rounded-lg border px-3 py-1.5" href={`/setup?${qs({ ...base, page: String(page - 1) })}#directory`}>Previous</Link>}{page < totalPages && <Link className="rounded-lg border px-3 py-1.5" href={`/setup?${qs({ ...base, page: String(page + 1) })}#directory`}>Next</Link>}</div></div>}</section>
+  </main>;
 }
-
-function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
-  return <article className="rounded-2xl border bg-card p-5">{icon}<p className="mt-3 text-sm text-muted-foreground">{label}</p><p className="text-3xl font-bold">{value}</p></article>;
-}
-
-function Field({ label, className = "", ...props }: { label: string; className?: string } & React.InputHTMLAttributes<HTMLInputElement>) {
-  return <label className={`text-sm font-semibold ${className}`}>{label}<input required {...props} className="mt-1.5 h-11 w-full rounded-xl border bg-background px-3 font-normal" /></label>;
-}
+function Metric({ icon, label, value, detail }: { icon: React.ReactNode; label: string; value: number | string; detail: string }) { return <article className="rounded-2xl border bg-card p-5 shadow-sm">{icon}<p className="mt-3 text-sm text-muted-foreground">{label}</p><p className="text-3xl font-bold">{value}</p><p className="mt-1 text-xs text-muted-foreground">{detail}</p></article>; }
+function Panel({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) { return <article className="rounded-2xl border bg-card p-5 shadow-sm"><div className="flex items-center gap-2">{icon}<h2 className="font-bold">{title}</h2></div><div className="mt-4">{children}</div></article>; }
+function Health({ label, value, danger = false }: { label: string; value: number | string; danger?: boolean }) { return <div className="flex items-center justify-between border-b py-2.5 last:border-0"><span className="text-sm text-muted-foreground">{label}</span><span className={`font-bold ${danger ? "text-red-700" : ""}`}>{value}</span></div>; }
+function Badge({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "success" }) { return <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${tone === "success" ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-700"}`}>{children}</span>; }
+function Notice({ children, tone }: { children: React.ReactNode; tone: "success" | "error" }) { return <p className={`rounded-xl p-3 text-sm font-semibold ${tone === "success" ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-700"}`}>{children}</p>; }
+function Field({ label, className = "", ...props }: { label: string; className?: string } & React.InputHTMLAttributes<HTMLInputElement>) { return <label className={`text-sm font-semibold ${className}`}>{label}<input required {...props} className="mt-1.5 h-11 w-full rounded-xl border bg-background px-3 font-normal"/></label>; }

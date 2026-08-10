@@ -48,10 +48,21 @@ export async function recordInventoryUsageAction(formData: FormData) {
   const item = Number.isInteger(id) ? await prisma.inventoryItem.findFirst({ where: { id, clinicId: user.clinicId } }) : null;
   if (!item || quantity > item.quantity) return;
   if (patientId && !await prisma.patient.findFirst({ where: { id: patientId, clinicId: user.clinicId }, select: { id: true } })) return;
-  await prisma.$transaction([
-    prisma.inventoryItem.update({ where: { id }, data: { quantity: item.quantity - quantity } }),
-    prisma.inventoryMovement.create({ data: { inventoryItemId: id, clinicId: user.clinicId, quantityChange: -quantity, type: "TREATMENT_USAGE", patientId, treatmentPlanId, notes, recordedBy: user.fullName } }),
-  ]);
+  if (treatmentPlanId && !patientId) return;
+  if (treatmentPlanId && !await prisma.treatmentPlan.findFirst({
+    where: { id: treatmentPlanId, patient: { clinicId: user.clinicId }, ...(patientId ? { patientId } : {}) },
+    select: { id: true },
+  })) return;
+  await prisma.$transaction(async (tx) => {
+    // Guard the decrement in the write itself so two staff members cannot
+    // consume the same stock units concurrently.
+    const consumed = await tx.inventoryItem.updateMany({
+      where: { id, clinicId: user.clinicId, quantity: { gte: quantity } },
+      data: { quantity: { decrement: quantity } },
+    });
+    if (!consumed.count) return;
+    await tx.inventoryMovement.create({ data: { inventoryItemId: id, clinicId: user.clinicId, quantityChange: -quantity, type: "TREATMENT_USAGE", patientId, treatmentPlanId, notes, recordedBy: user.fullName } });
+  });
   revalidatePath(operationsPath);
 }
 
@@ -61,9 +72,42 @@ export async function createPurchaseOrderAction(formData: FormData) {
   const quantity = Math.max(1, Math.trunc(Number(formData.get("quantity")) || 0));
   const supplier = String(formData.get("supplier") || "").trim();
   const notes = String(formData.get("notes") || "").trim() || null;
+  const expectedDeliveryValue = String(formData.get("expectedDelivery") || "");
   const item = Number.isInteger(inventoryItemId) ? await prisma.inventoryItem.findFirst({ where: { id: inventoryItemId, clinicId: user.clinicId }, select: { id: true } }) : null;
   if (!item || !supplier) return;
-  await prisma.purchaseOrder.create({ data: { clinicId: user.clinicId, supplier, notes, createdBy: user.fullName, items: { create: { inventoryItemId, quantity } } } });
+  const vendor = await prisma.vendor.upsert({ where: { clinicId_name: { clinicId: user.clinicId, name: supplier } }, create: { clinicId: user.clinicId, name: supplier }, update: { active: true } });
+  await prisma.purchaseOrder.create({ data: { clinicId: user.clinicId, supplier: vendor.name, vendorId: vendor.id, notes, expectedDelivery: expectedDeliveryValue ? new Date(expectedDeliveryValue) : null, createdBy: user.fullName, items: { create: { inventoryItemId, quantity } } } });
+  revalidatePath(operationsPath);
+}
+
+export async function receivePurchaseOrderItemAction(formData: FormData) {
+  const user = await requireUser();
+  const purchaseOrderItemId = Number(formData.get("purchaseOrderItemId"));
+  const received = Math.max(1, Math.trunc(Number(formData.get("receivedQuantity")) || 0));
+  if (!Number.isInteger(purchaseOrderItemId)) return;
+  await prisma.$transaction(async (tx) => {
+    const item = await tx.purchaseOrderItem.findFirst({
+      where: { id: purchaseOrderItemId, purchaseOrder: { clinicId: user.clinicId } },
+      select: { id: true, quantity: true, receivedQuantity: true, inventoryItemId: true, purchaseOrderId: true },
+    });
+    if (!item) return;
+    const quantity = Math.min(received, item.quantity - item.receivedQuantity);
+    if (quantity <= 0) return;
+    const claimed = await tx.purchaseOrderItem.updateMany({
+      where: { id: item.id, receivedQuantity: { lte: item.quantity - quantity } },
+      data: { receivedQuantity: { increment: quantity } },
+    });
+    if (!claimed.count) return;
+    const inventoryUpdated = await tx.inventoryItem.updateMany({
+      where: { id: item.inventoryItemId, clinicId: user.clinicId },
+      data: { quantity: { increment: quantity } },
+    });
+    if (!inventoryUpdated.count) throw new Error("Purchase order inventory item is outside the current clinic.");
+    await tx.inventoryMovement.create({ data: { inventoryItemId: item.inventoryItemId, clinicId: user.clinicId, quantityChange: quantity, type: "PURCHASE_RECEIPT", notes: `PO #${item.purchaseOrderId}`, recordedBy: user.fullName } });
+    const purchaseOrderItems = await tx.purchaseOrderItem.findMany({ where: { purchaseOrderId: item.purchaseOrderId }, select: { quantity: true, receivedQuantity: true } });
+    const allReceived = purchaseOrderItems.every((purchaseOrderItem) => purchaseOrderItem.receivedQuantity >= purchaseOrderItem.quantity);
+    await tx.purchaseOrder.updateMany({ where: { id: item.purchaseOrderId, clinicId: user.clinicId }, data: { status: allReceived ? "RECEIVED" : "PARTIALLY_RECEIVED", receivedAt: allReceived ? new Date() : undefined } });
+  });
   revalidatePath(operationsPath);
 }
 
@@ -76,6 +120,12 @@ export async function addLabCaseAction(formData: FormData) {
   const dueDateValue = String(formData.get("dueDate") || "");
   const notes = String(formData.get("notes") || "").trim() || null;
   if (!Number.isInteger(patientId) || !labName || !caseType) return;
+  const patient = await prisma.patient.findFirst({ where: { id: patientId, clinicId: user.clinicId }, select: { id: true } });
+  if (!patient) return;
+  if (treatmentPlanId && !await prisma.treatmentPlan.findFirst({
+    where: { id: treatmentPlanId, patientId, patient: { clinicId: user.clinicId } },
+    select: { id: true },
+  })) return;
   await prisma.labCase.create({ data: { clinicId: user.clinicId, patientId, treatmentPlanId, labName, caseType, dueDate: dueDateValue ? new Date(dueDateValue) : null, notes } });
   revalidatePath(operationsPath);
 }

@@ -9,6 +9,7 @@ import AppointmentPagination from "@/components/appointments/AppointmentPaginati
 import DeleteAllAppointmentsDialog from "@/components/appointments/DeleteAllAppointmentsDialog";
 import StatusBadge from "@/components/appointments/StatusBadge";
 import { requirePermission } from "@/lib/permissions";
+import { requireFeature } from "@/lib/features";
 
 const PAGE_SIZE = 10;
 const sortOptions = {
@@ -26,6 +27,7 @@ type SearchParams = Promise<{
 }>;
 
 export default async function AppointmentsPage({ searchParams }: { searchParams: SearchParams }) {
+  await requireFeature("appointments");
   const user = await requirePermission("manageSchedule");
   const { search = "", status = "", sort = "dateAsc", page: pageParam = "1" } = await searchParams;
   const page = Math.max(1, Number.parseInt(pageParam, 10) || 1);
