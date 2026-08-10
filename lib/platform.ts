@@ -25,9 +25,10 @@ export async function requirePlatformAdmin() {
 
 export const tenantFromRequestHost = cache(async () => {
   const host = (await headers()).get("host")?.split(":")[0].toLowerCase() ?? "";
+  const setupDomain = process.env.SETUP_DOMAIN?.split(":")[0].toLowerCase();
   const platformDomain = process.env.PLATFORM_DOMAIN?.toLowerCase();
-  if (!platformDomain || host === platformDomain || host === `www.${platformDomain}` || !host.endsWith(`.${platformDomain}`)) return null;
+  if (!platformDomain || host === setupDomain || host === platformDomain || host === `www.${platformDomain}` || !host.endsWith(`.${platformDomain}`)) return null;
   const slug = host.slice(0, -(platformDomain.length + 1));
-  if (!slug || slug.includes(".")) return null;
+  if (!slug || slug === "setup" || slug.includes(".")) return null;
   return prisma.clinic.findUnique({ where: { slug }, select: { id: true, name: true, brandName: true, logoUrl: true, accentColor: true, status: true } });
 });
