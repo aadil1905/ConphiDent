@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { INTAKE_LINK_DAYS } from "@/lib/patient-intake-link";
 import {
  ArrowLeft,
  CheckCircle2,
@@ -118,7 +117,16 @@ const statusStyles: Record<string, string> = {
  EXPIRED: "bg-danger-bg text-danger",
 };
 
-export default function PatientIntakeWizard({ defaultName = "", defaultPhone = "" }: { defaultName?: string; defaultPhone?: string }) {
+export default function PatientIntakeWizard({
+  defaultName = "",
+  defaultPhone = "",
+  linkDays,
+}: {
+  defaultName?: string;
+  defaultPhone?: string;
+  /** Handed down: the constant lives in a server-only module. */
+  linkDays: number;
+}) {
  const router = useRouter();
  const formRef = useRef<HTMLFormElement>(null);
  const [step, setStep] = useState(1);
@@ -232,7 +240,7 @@ const inputClass = "mt-2 min-h-11 w-full rounded-control border border-input bg-
  <label className="text-sm font-semibold">Address<input name="address" className={inputClass} /></label>
  </div>
  <div className="mt-6 rounded-card border border-border bg-secondary p-4 text-sm leading-6 text-primary">
- They get a private link that works for {INTAKE_LINK_DAYS} days — allergies, medical history, the consent wording and their signature.
+ They get a private link that works for {linkDays} days — allergies, medical history, the consent wording and their signature.
  </div>
  <label className="mt-4 flex items-start gap-3 rounded-card border border-success-border bg-success-bg p-4 text-sm leading-6 text-success"><input required type="checkbox" name="consentConfirmed" value="1" className="mt-1 size-4" /><span>I confirmed the patient agreed to receive this private intake link on the WhatsApp number above.</span></label>
  <div className="mt-6 flex justify-end">

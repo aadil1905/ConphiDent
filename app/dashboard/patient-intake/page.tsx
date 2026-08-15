@@ -72,7 +72,7 @@ export default async function StaffIntakePage({
         </section>
       }
     >
-      <PatientIntakeWizard defaultName={name} defaultPhone={phone} />
+      <PatientIntakeWizard defaultName={name} defaultPhone={phone} linkDays={INTAKE_LINK_DAYS} />
     </WorkPage>
   );
 }
