@@ -20,6 +20,9 @@ export const QUEUE_FILTERS = [
   { value: "patients", label: "Patients" },
   { value: "mine", label: "Mine" },
   { value: "everyone", label: "Everyone" },
+  // Without this, a written-off enquiry is invisible for ever and there is no
+  // way back — the old Leads screen could always reopen one.
+  { value: "lost", label: "Written off" },
 ] as const;
 
 export type QueueFilter = (typeof QUEUE_FILTERS)[number]["value"];
@@ -81,6 +84,8 @@ export type QueueItem = {
   due: Date | null;
   stage: string;
   owner: string | null;
+  /** A written-off enquiry: the only thing to do with it is bring it back. */
+  lost: boolean;
 };
 
 export type QueueCounts = Record<QueueFilter, number>;
@@ -126,6 +131,10 @@ function taskStatusLabel(status: string) {
   return humanLabel(status);
 }
 
+function lostLabel(reason: string | null) {
+  return reason?.trim() ? `Written off — ${reason.trim().toLowerCase()}` : "Written off";
+}
+
 function leadWhy(notes: string | null, serviceInterest: string | null) {
   if (notes?.trim()) return notes.trim();
   if (serviceInterest?.trim()) return `Asked about ${serviceInterest.trim().toLowerCase()}.`;
@@ -146,6 +155,7 @@ async function fetchLeadItems(where: Prisma.LeadWhereInput, take: number): Promi
       serviceInterest: true,
       notes: true,
       stage: true,
+      lossReason: true,
       nextFollowUpAt: true,
       patientId: true,
       owner: { select: { fullName: true } },
@@ -161,8 +171,9 @@ async function fetchLeadItems(where: Prisma.LeadWhereInput, take: number): Promi
     origin: lead.source || "Not recorded",
     why: leadWhy(lead.notes, lead.serviceInterest),
     due: lead.nextFollowUpAt,
-    stage: leadStageLabel(lead.stage),
+    stage: lead.stage === "LOST" ? lostLabel(lead.lossReason) : leadStageLabel(lead.stage),
     owner: lead.owner?.fullName ?? null,
+    lost: lead.stage === "LOST",
   }));
 }
 
@@ -198,6 +209,7 @@ async function fetchTaskItems(
     due: task.scheduledFor,
     stage: taskStatusLabel(task.status),
     owner: task.assignedUser?.fullName ?? null,
+    lost: false,
   }));
 }
 
@@ -252,6 +264,7 @@ export async function loadGrowthQueue({ clinicId, userId, q, filter, now, page, 
     taskToday,
     taskOverdue,
     taskMine,
+    leadLost,
   ] = await Promise.all([
     prisma.lead.count({ where: openLeads }),
     prisma.lead.count({ where: { ...openLeads, nextFollowUpAt: { lt: endOfToday } } }),
@@ -262,6 +275,7 @@ export async function loadGrowthQueue({ clinicId, userId, q, filter, now, page, 
     prisma.followUpTask.count({ where: { ...openTasks, scheduledFor: { lt: endOfToday } } }),
     prisma.followUpTask.count({ where: { ...openTasks, scheduledFor: { lt: now } } }),
     prisma.followUpTask.count({ where: { ...openTasks, assignedUserId: userId } }),
+    prisma.lead.count({ where: { clinicId, stage: "LOST", ...leadSearch(q) } }),
   ]);
 
   const counts: QueueCounts = {
@@ -272,14 +286,18 @@ export async function loadGrowthQueue({ clinicId, userId, q, filter, now, page, 
     patients: taskAboutPatients,
     mine: leadMine + taskMine,
     everyone: leadOpen + taskOpen,
+    lost: leadLost,
   };
 
-  const leadWhere: Prisma.LeadWhereInput = {
-    ...openLeads,
-    ...(filter === "today" ? { nextFollowUpAt: { lt: endOfToday } } : {}),
-    ...(filter === "overdue" ? { nextFollowUpAt: { lt: now } } : {}),
-    ...(filter === "mine" ? { ownerId: userId } : {}),
-  };
+  const leadWhere: Prisma.LeadWhereInput =
+    filter === "lost"
+      ? { clinicId, stage: "LOST", ...leadSearch(q) }
+      : {
+          ...openLeads,
+          ...(filter === "today" ? { nextFollowUpAt: { lt: endOfToday } } : {}),
+          ...(filter === "overdue" ? { nextFollowUpAt: { lt: now } } : {}),
+          ...(filter === "mine" ? { ownerId: userId } : {}),
+        };
   const taskWhere: Prisma.FollowUpTaskWhereInput = {
     ...openTasks,
     ...(filter === "today" ? { scheduledFor: { lt: endOfToday } } : {}),
@@ -300,7 +318,8 @@ export async function loadGrowthQueue({ clinicId, userId, q, filter, now, page, 
   const [leadItems, taskItems] = await Promise.all([
     // "Patients" is the one filter no enquiry can satisfy, so skip the query.
     filter === "patients" ? Promise.resolve<QueueItem[]>([]) : fetchLeadItems(leadWhere, window),
-    fetchTaskItems(taskWhere, window),
+    // Written-off enquiries are leads only — no follow-up task is ever lost.
+    filter === "lost" ? Promise.resolve<QueueItem[]>([]) : fetchTaskItems(taskWhere, window),
   ]);
 
   const merged = [...leadItems, ...taskItems].sort((a, b) => {

@@ -94,6 +94,7 @@ export default async function GrowthPage({
       patientHref: item.patientId ? `/dashboard/patients/${item.patientId}` : null,
       bookHref: bookingHref(item.patientId, item.name, item.phone),
       primaryLabel: item.isPatient ? "Book them in" : "Message and book",
+      lost: item.lost,
     };
   });
 
@@ -196,12 +197,16 @@ export default async function GrowthPage({
             ? "Nothing overdue. Nice."
             : query.q
               ? `Nobody matches “${query.q}”`
-              : "This list is clear"
+              : filter === "lost"
+                ? "Nobody has been written off"
+                : "This list is clear"
         }
         emptyBody={
           query.q
             ? "Try a phone number, or log them as a new enquiry."
-            : "Anyone who calls, messages or misses a visit lands here on their own."
+            : filter === "lost"
+              ? "Anyone you press Done on with a reason turns up here, and can be brought back."
+              : "Anyone who calls, messages or misses a visit lands here on their own."
         }
         footer={
           queue.pages > 1 ? (

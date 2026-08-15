@@ -115,12 +115,27 @@ export async function closeQueueItemAction(key: string, outcomeValue: string): P
     });
     if (!lead) return null;
 
-    // A conversion has to create a real patient, so "they booked" stops at
-    // BOOKED and the Schedule owns them from here.
+    // Somebody who has booked is a patient of the clinic, so this is where the
+    // enquiry becomes a real patient record and the two are tied together. The
+    // stage stops at BOOKED — they have not been treated yet, and the funnel on
+    // this very page would be lying if it said otherwise.
+    if (outcome.value === "booked") {
+      const patientId = await linkLeadToPatient(user.clinicId, target.id);
+      revalidateQueue();
+      return {
+        key,
+        name: lead.fullName,
+        booking: bookingHref(patientId, lead.fullName, lead.phone),
+        lead: {
+          stage: lead.stage,
+          lossReason: lead.lossReason,
+          nextFollowUpAt: lead.nextFollowUpAt?.toISOString() ?? null,
+        },
+      };
+    }
+
     const data =
-      outcome.value === "booked"
-        ? { stage: "BOOKED", lossReason: null, nextFollowUpAt: null, lastContactedAt: now }
-        : outcome.value === "thinking"
+      outcome.value === "thinking"
           ? { stage: "CONTACTED", lossReason: null, nextFollowUpAt: inAWeek, lastContactedAt: now }
           : { stage: "LOST", lossReason: outcome.lossReason, nextFollowUpAt: null, lastContactedAt: now };
 
@@ -137,7 +152,6 @@ export async function closeQueueItemAction(key: string, outcomeValue: string): P
     return {
       key,
       name: lead.fullName,
-      booking: outcome.value === "booked" ? bookingHref(lead.patientId, lead.fullName, lead.phone) : null,
       lead: {
         stage: lead.stage,
         lossReason: lead.lossReason,
@@ -217,6 +231,87 @@ export async function undoQueueItemAction(undo: QueueUndo) {
   }
 
   revalidateQueue();
+}
+
+/**
+ * An enquiry becomes a patient. Reuses whoever is already on the list with that
+ * number rather than creating a second file for the same person, and ties the
+ * enquiry, the patient and any WhatsApp thread together.
+ */
+async function linkLeadToPatient(clinicId: number, leadId: number) {
+  return prisma.$transaction(async (tx) => {
+    const lead = await tx.lead.findFirst({
+      where: { id: leadId, clinicId },
+      select: { id: true, fullName: true, phone: true, email: true, patientId: true },
+    });
+    if (!lead) return null;
+
+    const existing = lead.patientId
+      ? await tx.patient.findFirst({ where: { id: lead.patientId, clinicId }, select: { id: true } })
+      : await tx.patient.findUnique({
+          where: { clinicId_phone: { clinicId, phone: lead.phone } },
+          select: { id: true },
+        });
+    const patient =
+      existing ??
+      (await tx.patient.create({
+        data: { clinicId, fullName: lead.fullName, phone: lead.phone, email: lead.email },
+        select: { id: true },
+      }));
+
+    await tx.lead.update({
+      where: { id: lead.id },
+      data: { patientId: patient.id, stage: "BOOKED", nextFollowUpAt: null, lastContactedAt: new Date() },
+    });
+    await tx.whatsAppConversation.updateMany({
+      where: { clinicId, phone: lead.phone },
+      data: { patientId: patient.id, leadId: lead.id },
+    });
+    await tx.leadActivity.create({
+      data: { leadId: lead.id, type: "LEAD_CONVERTED", content: `Booked in as patient #${patient.id}` },
+    });
+    return patient.id;
+  });
+}
+
+/** Brings a written-off enquiry back into the queue with a callback for today. */
+export async function reopenQueueItemAction(key: string): Promise<QueueUndo | null> {
+  const user = await requirePermission("managePatients");
+  const target = parseKey(key);
+  if (!target || target.source !== "lead") return null;
+
+  const lead = await prisma.lead.findFirst({
+    where: { id: target.id, clinicId: user.clinicId, stage: "LOST" },
+    select: { fullName: true, stage: true, lossReason: true, nextFollowUpAt: true },
+  });
+  if (!lead) return null;
+
+  const result = await prisma.lead.updateMany({
+    where: { id: target.id, clinicId: user.clinicId, stage: "LOST" },
+    data: {
+      stage: "CONTACTED",
+      lossReason: null,
+      recoveredAt: new Date(),
+      nextFollowUpAt: new Date(),
+      lastContactedAt: new Date(),
+    },
+  });
+  if (result.count) {
+    await prisma.leadActivity.create({
+      data: { leadId: target.id, type: "LEAD_RECOVERED", content: "Reopened from the queue" },
+    });
+  }
+
+  revalidateQueue();
+  return {
+    key,
+    name: lead.fullName,
+    lead: {
+      stage: lead.stage,
+      lossReason: lead.lossReason,
+      nextFollowUpAt: lead.nextFollowUpAt?.toISOString() ?? null,
+    },
+  };
 }
 
 function readDate(value: string | null | undefined) {

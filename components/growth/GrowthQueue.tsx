@@ -11,6 +11,7 @@ import {
   assignQueueItemsAction,
   closeQueueItemAction,
   messageQueueItemsAction,
+  reopenQueueItemAction,
   snoozeQueueItemAction,
   undoQueueItemAction,
 } from "@/app/dashboard/growth/actions";
@@ -32,6 +33,8 @@ export type QueueRow = {
   patientHref: string | null;
   bookHref: string;
   primaryLabel: string;
+  /** A written-off enquiry: the only thing to do with it is bring it back. */
+  lost: boolean;
 };
 
 export type CloseOutcome = { value: string; label: string };
@@ -128,6 +131,18 @@ export default function GrowthQueue({
         return;
       }
       offerUndo(`${firstName(undo.name)} moved to tomorrow morning.`, undo);
+    });
+  }
+
+  function reopen(row: QueueRow) {
+    startTransition(async () => {
+      const undo = await reopenQueueItemAction(row.key);
+      router.refresh();
+      if (!undo) {
+        toast.error("That one is already back in the queue.");
+        return;
+      }
+      offerUndo(`${firstName(undo.name)} is back in the queue, to ring today.`, undo);
     });
   }
 
@@ -330,20 +345,33 @@ export default function GrowthQueue({
                   </div>
 
                   <div className="col-span-2 grid gap-1.5 md:col-span-1">
-                    <Link
-                      href={row.bookHref}
-                      className="inline-flex min-h-11 items-center justify-center rounded-control bg-primary px-3 text-[13px] font-semibold whitespace-nowrap text-white hover:bg-primary-hover"
-                    >
-                      {row.primaryLabel}
-                    </Link>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <button type="button" onClick={() => snooze(row)} disabled={pending} className={ghostButton}>
-                        Later
+                    {row.lost ? (
+                      <button
+                        type="button"
+                        onClick={() => reopen(row)}
+                        disabled={pending}
+                        className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-control bg-primary px-3 text-[13px] font-semibold whitespace-nowrap text-white hover:bg-primary-hover disabled:opacity-60"
+                      >
+                        Bring them back
                       </button>
-                      <button type="button" onClick={() => setClosing(row)} disabled={pending} className={ghostButton}>
-                        Done
-                      </button>
-                    </div>
+                    ) : (
+                      <>
+                        <Link
+                          href={row.bookHref}
+                          className="inline-flex min-h-11 items-center justify-center rounded-control bg-primary px-3 text-[13px] font-semibold whitespace-nowrap text-white hover:bg-primary-hover"
+                        >
+                          {row.primaryLabel}
+                        </Link>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <button type="button" onClick={() => snooze(row)} disabled={pending} className={ghostButton}>
+                            Later
+                          </button>
+                          <button type="button" onClick={() => setClosing(row)} disabled={pending} className={ghostButton}>
+                            Done
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </li>
               );
