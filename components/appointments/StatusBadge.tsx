@@ -1,23 +1,21 @@
 import type { AppointmentStatus } from "@/types/appointment";
+import { STATUS_LABELS } from "@/lib/visit-status";
 
-type Props = {
-  status: AppointmentStatus;
+/** State is never colour alone — the word is always there too. */
+const TONE: Record<AppointmentStatus, string> = {
+  Pending: "bg-warning-bg text-warning",
+  Confirmed: "bg-muted text-heading",
+  Completed: "bg-success-bg text-success",
+  Cancelled: "bg-danger-bg text-danger",
+  "No-show": "bg-danger-bg text-danger",
 };
 
-const statusStyles: Record<AppointmentStatus, string> = {
-  Pending: "bg-yellow-100 text-yellow-800",
-  Confirmed: "bg-green-100 text-green-800",
-  Completed: "bg-blue-100 text-blue-800",
-  Cancelled: "bg-red-100 text-red-800",
-  "No-show": "bg-rose-100 text-rose-800",
-};
-
-export default function StatusBadge({ status }: Props) {
+export default function StatusBadge({ status }: { status: AppointmentStatus }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${statusStyles[status]}`}
+      className={`inline-flex items-center rounded-pill px-2.5 py-1 text-xs font-semibold ${TONE[status]}`}
     >
-      {status}
+      {STATUS_LABELS[status] ?? status}
     </span>
   );
 }

@@ -1,5 +1,5 @@
-import FeatureLoading from "@/components/dashboard/FeatureLoading";
+import PageSkeleton from "@/components/dashboard/PageSkeleton";
 
-export default function LoadingPatientIntake() {
-  return <FeatureLoading title="Loading patient intake" />;
+export default function Loading() {
+  return <PageSkeleton shape="detail" />;
 }

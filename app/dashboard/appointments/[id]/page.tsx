@@ -1,33 +1,184 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import AppointmentActions from "@/components/appointments/AppointmentActions";
-import StatusBadge from "@/components/appointments/StatusBadge";
-import type { AppointmentStatus } from "@/types/appointment";
-import { requireUser } from "@/lib/auth";
+import StatusSelect from "@/components/schedule/StatusSelect";
+import PageHeader from "@/components/lists/PageHeader";
+import { requirePermission } from "@/lib/permissions";
 import { requireFeature } from "@/lib/features";
 
 type Props = { params: Promise<{ id: string }> };
 
 export default async function AppointmentDetailsPage({ params }: Props) {
   await requireFeature("appointments");
-  const user = await requireUser();
+  const user = await requirePermission("manageSchedule");
   const { id } = await params;
   const appointment = await prisma.appointment.findFirst({
     where: { id: Number(id), clinicId: user.clinicId, archivedAt: null },
-    include: { patient: { include: { intakeRequests: { orderBy: { createdAt: "desc" }, take: 1 } } } },
+    include: {
+      patient: { include: { intakeRequests: { orderBy: { createdAt: "desc" }, take: 1 } } },
+      labCases: {
+        where: { cancelledAt: null },
+        orderBy: { updatedAt: "desc" },
+        select: { id: true, orderNumber: true, caseType: true, status: true, dueDate: true, labName: true },
+      },
+    },
   });
 
-  if (!appointment) return <div className="py-20 text-center"><h1 className="text-2xl font-bold">Appointment not found</h1><Link href="/dashboard/appointments" className="mt-4 inline-block text-primary hover:underline">Back to appointments</Link></div>;
+  if (!appointment) {
+    return (
+      <section className="flex flex-col items-center gap-2 rounded-card border border-border bg-card px-4.5 py-14 text-center shadow-[var(--shadow)]">
+        <h1 className="text-lg font-semibold text-heading">That visit is not here any more</h1>
+        <p className="text-[13px] text-text-muted">It may have been archived, or the link is old.</p>
+        <Link href="/dashboard/appointments" className="mt-2 inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted">
+          Back to the schedule
+        </Link>
+      </section>
+    );
+  }
 
-  return <div className="mx-auto w-full max-w-[1600px] space-y-6">
-    <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div><p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary">Appointments</p><h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">Appointment details</h1><p className="mt-1 text-muted-foreground">View and manage appointment information.</p></div>
-      <Link href="/dashboard/appointments" className="inline-flex h-10 items-center self-start rounded-xl border border-border bg-card px-4 text-sm font-semibold shadow-sm transition hover:bg-muted">← Back</Link>
-    </header>
-    <div className="grid gap-5 lg:grid-cols-2">
-      <section className="rounded-2xl border border-border bg-card p-6 shadow-sm"><h2 className="text-lg font-bold tracking-tight">Patient information</h2><dl className="mt-6 grid gap-5 sm:grid-cols-2"><div><dt className="text-sm font-medium text-muted-foreground">Patient name</dt><dd className="mt-1 text-lg font-semibold">{appointment.patientName}</dd></div><div><dt className="text-sm font-medium text-muted-foreground">Phone</dt><dd className="mt-1 font-semibold">{appointment.phone}</dd></div></dl>{appointment.patientId ? <div className="mt-5 flex flex-wrap gap-2"><Link href={`/dashboard/patients/${appointment.patientId}`} className="inline-flex h-9 items-center rounded-lg border border-border bg-white px-3 text-sm font-semibold shadow-sm transition hover:bg-muted">Open patient profile</Link>{appointment.source.toLowerCase() === "whatsapp" && !["COMPLETED", "REVIEWED"].includes(appointment.patient?.intakeRequests[0]?.status || "") ? <Link href={`/dashboard/patient-intake?name=${encodeURIComponent(appointment.patientName)}&phone=${encodeURIComponent(appointment.phone)}`} className="inline-flex h-9 items-center rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700">Continue Patient Intake</Link> : <Link href={`/dashboard/clinical-records/new?patientId=${appointment.patientId}`} className="inline-flex h-9 items-center rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90">Continue medical history</Link>}</div> : null}</section>
-      <section className="rounded-2xl border border-border bg-card p-6 shadow-sm"><h2 className="text-lg font-bold tracking-tight">Appointment</h2><dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-5"><div><dt className="text-sm font-medium text-muted-foreground">Date</dt><dd className="mt-1 font-semibold">{appointment.appointmentDate.toLocaleDateString()}</dd></div><div><dt className="text-sm font-medium text-muted-foreground">Time</dt><dd className="mt-1 font-semibold">{appointment.appointmentTime}</dd></div><div><dt className="text-sm font-medium text-muted-foreground">Reason for visit</dt><dd className="mt-1 font-semibold">{appointment.treatment}</dd></div><div><dt className="text-sm font-medium text-muted-foreground">Status</dt><dd className="mt-2"><StatusBadge status={appointment.status as AppointmentStatus} /></dd></div></dl></section>
+  const firstName = appointment.patientName.split(" ")[0];
+  const day = appointment.appointmentDate.toLocaleDateString("en-IN", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const needsIntake =
+    appointment.source.toLowerCase() === "whatsapp" &&
+    !["COMPLETED", "REVIEWED"].includes(appointment.patient?.intakeRequests[0]?.status || "");
+
+  return (
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        title={`${firstName}'s visit`}
+        sub={`${day} · ${appointment.appointmentTime} · ${appointment.treatment}`}
+        actions={
+          <>
+            <StatusSelect
+              appointmentId={appointment.id}
+              status={appointment.status}
+              patientName={appointment.patientName}
+            />
+            <Link
+              href="/dashboard/appointments"
+              className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted"
+            >
+              Back to the schedule
+            </Link>
+          </>
+        }
+      />
+
+      <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
+        <h2 className="text-base font-semibold text-heading">Who is coming</h2>
+        <dl className="mt-3.5 grid gap-4 sm:grid-cols-2">
+          <div>
+            <dt className="text-xs font-semibold text-text-muted">Patient</dt>
+            <dd className="mt-0.5 text-[15px] font-semibold text-heading">{appointment.patientName}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold text-text-muted">Phone</dt>
+            <dd className="mt-0.5 text-[15px] font-semibold tabular-nums text-heading">
+              <a href={`tel:${appointment.phone}`} className="hover:underline">{appointment.phone}</a>
+            </dd>
+          </div>
+        </dl>
+        {appointment.patientId ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link
+              href={`/dashboard/patients/${appointment.patientId}`}
+              className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted"
+            >
+              Open patient 360
+            </Link>
+            {needsIntake ? (
+              <Link
+                href={`/dashboard/patient-intake?name=${encodeURIComponent(appointment.patientName)}&phone=${encodeURIComponent(appointment.phone)}`}
+                className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+              >
+                Finish their intake
+              </Link>
+            ) : (
+              <Link
+                href={`/dashboard/clinical-records/new?patientId=${appointment.patientId}`}
+                className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+              >
+                Continue medical history
+              </Link>
+            )}
+          </div>
+        ) : null}
+      </section>
+
+      <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
+        <h2 className="text-base font-semibold text-heading">The visit</h2>
+        <dl className="mt-3.5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <dt className="text-xs font-semibold text-text-muted">Day</dt>
+            <dd className="mt-0.5 text-[15px] font-semibold text-heading">{day}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold text-text-muted">Time</dt>
+            <dd className="mt-0.5 text-[15px] font-semibold tabular-nums text-heading">{appointment.appointmentTime}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold text-text-muted">Reason</dt>
+            <dd className="mt-0.5 text-[15px] font-semibold text-heading">{appointment.treatment}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold text-text-muted">Booked from</dt>
+            <dd className="mt-0.5 text-[15px] font-semibold text-heading capitalize">{appointment.source || "clinic"}</dd>
+          </div>
+        </dl>
+        {appointment.notes ? (
+          <p className="mt-4 rounded-chip bg-muted px-3 py-2 text-[13px] text-foreground">{appointment.notes}</p>
+        ) : null}
+      </section>
+
+      {appointment.labCases.length ? (
+        <section className="rounded-card border border-warning-border bg-warning-bg px-4.5 py-4 shadow-[var(--shadow)]">
+          <h2 className="text-base font-semibold text-heading">The lab work this visit depends on</h2>
+          <p className="mt-1 text-[13px] text-foreground">
+            Check the case is back before you confirm or move this visit.
+          </p>
+          <div className="mt-3.5 grid gap-2.5 sm:grid-cols-2">
+            {appointment.labCases.map((item) => (
+              <Link
+                key={item.id}
+                href={`/dashboard/laboratory/${item.id}`}
+                className="rounded-control border border-warning-border bg-card p-3.5 text-sm transition-colors hover:border-primary"
+              >
+                <p className="font-semibold text-heading">
+                  {item.orderNumber || `LAB-${item.id}`} · {item.caseType}
+                </p>
+                <p className="mt-0.5 text-[13px] text-text-muted">
+                  {item.labName} · {item.status.replaceAll("_", " ").toLowerCase()} · due{" "}
+                  {item.dueDate?.toLocaleDateString("en-IN") || "not set"}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
+        <h2 className="text-base font-semibold text-heading">Things you can do</h2>
+        <div className="mt-3.5">
+          <AppointmentActions
+            appointment={{
+              id: appointment.id,
+              patientName: appointment.patientName,
+              phone: appointment.phone,
+              appointmentDate: appointment.appointmentDate.toISOString(),
+              appointmentTime: appointment.appointmentTime,
+              treatment: appointment.treatment,
+              status: appointment.status as never,
+              notes: appointment.notes,
+            }}
+            reminderSentAt={appointment.reminderSentAt?.toISOString() ?? null}
+          />
+        </div>
+      </section>
     </div>
-    <section className="rounded-2xl border border-border bg-card p-6 shadow-sm"><h2 className="text-lg font-bold tracking-tight">Actions</h2><div className="mt-5"><AppointmentActions appointment={{ id: appointment.id, patientName: appointment.patientName, phone: appointment.phone, appointmentDate: appointment.appointmentDate.toISOString(), appointmentTime: appointment.appointmentTime, treatment: appointment.treatment, status: appointment.status as AppointmentStatus, notes: appointment.notes }} reminderSentAt={appointment.reminderSentAt?.toISOString() ?? null} /></div></section>
-  </div>;
+  );
 }

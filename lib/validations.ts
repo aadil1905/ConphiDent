@@ -1,19 +1,29 @@
 import { z } from "zod";
+import { parseAppointmentTime, parseClinicDate } from "@/lib/scheduling-core";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid date");
+const appointmentDate = isoDate.refine((value) => {
+  try { parseClinicDate(value); return true; } catch { return false; }
+}, "Enter a real calendar date");
+const appointmentTime = z.string().refine((value) => {
+  try { parseAppointmentTime(value); return true; } catch { return false; }
+}, "Enter time in 24-hour HH:mm format");
 
 export const appointmentSchema = z.object({
   patientName: z
     .string()
-    .min(2, "Patient name must be at least 2 characters"),
+    .trim()
+    .min(2, "Patient name must be at least 2 characters")
+    .max(160, "Patient name is too long"),
 
   phone: z
     .string()
-    .min(10, "Phone number must be at least 10 digits"),
+    .trim()
+    .refine((value) => /^\+?[0-9 ()-]{8,24}$/.test(value) && value.replace(/\D/g, "").length >= 8, "Enter a valid phone number"),
 
-  appointmentDate: z.string().min(1, "Appointment date is required"),
+  appointmentDate,
 
-  appointmentTime: z.string().min(1, "Appointment time is required"),
+  appointmentTime,
 
   treatment: z.string().trim().min(2, "Reason for visit is required").max(120),
 
@@ -25,7 +35,8 @@ export const appointmentSchema = z.object({
     "No-show",
   ]),
 
-  notes: z.string().optional(),
+  notes: z.string().max(5000, "Notes are too long").optional(),
+  locationId: z.number().int().positive().nullable().optional(),
   providerId: z.number().int().positive().nullable().optional(),
   chairId: z.number().int().positive().nullable().optional(),
 });
@@ -84,16 +95,46 @@ export const prescriptionSchema = z.object({
   prescribedOn: isoDate,
   diagnosis: z.string().trim().max(1000).optional(),
   instructions: z.string().trim().max(3000).optional(),
-  medicines: z.string().trim().min(2, "Add at least one medicine").max(5000),
+  medicines: z.string().trim().max(5000).optional().default(""),
+  issuePlace: z.string().trim().max(200).optional(),
+  allergyAcknowledged: z.coerce.boolean().optional().default(false),
+  medicationItems: z.array(z.object({
+    genericName: z.string().trim().min(2).max(160),
+    brandName: z.string().trim().max(160).optional(),
+    formulation: z.string().trim().max(160).optional(),
+    strength: z.string().trim().min(1).max(80),
+    dosageForm: z.string().trim().min(1).max(80),
+    dose: z.string().trim().min(1).max(80),
+    doseUnit: z.string().trim().min(1).max(40),
+    route: z.string().trim().min(1).max(80),
+    frequency: z.string().trim().min(1).max(100),
+    timing: z.string().trim().max(100).optional(),
+    mealRelation: z.string().trim().max(100).optional(),
+    startDate: z.string().trim().max(10).optional(),
+    duration: z.string().trim().min(1).max(100),
+    endDate: z.string().trim().max(10).optional(),
+    quantity: z.string().trim().max(80).optional(),
+    asNeeded: z.boolean().optional().default(false),
+    maxDose: z.string().trim().max(100).optional(),
+    indication: z.string().trim().max(300).optional(),
+    instructions: z.string().trim().max(500).optional(),
+    substitutionAllowed: z.boolean().optional().default(true),
+  })).min(1, "Add at least one medicine").max(20),
 });
 
 export const invoiceSchema = z.object({
-  invoiceNumber: z.string().trim().min(1, "Enter an invoice number").max(40),
+  // The API allocates the final number transactionally. Retain this optional
+  // field only for compatibility with older clients that submitted a preview.
+  invoiceNumber: z.string().trim().max(40).optional(),
+  documentType: z.enum(["ESTIMATE", "QUOTATION", "TAX_INVOICE", "NON_TAX_INVOICE"]).default("TAX_INVOICE"),
   patientId: z.coerce.number().int().positive(),
   treatmentPlanId: z.union([z.literal(""), z.coerce.number().int().positive()]).optional(),
   issueDate: isoDate,
   dueDate: z.union([z.literal(""), isoDate]).optional(),
   totalAmount: z.coerce.number().int().positive("Invoice amount must be greater than zero"),
+  discountAmount: z.coerce.number().int().nonnegative().optional().default(0),
+  terms: z.string().trim().max(2000).optional(),
+  lineItems: z.array(z.object({ description: z.string().trim().min(2).max(300), quantity: z.coerce.number().int().positive().max(10000), unitPrice: z.coerce.number().int().nonnegative(), discount: z.coerce.number().int().nonnegative().optional().default(0), taxPercent: z.coerce.number().int().min(0).max(100).optional().default(0) })).min(1).max(50),
   notes: z.string().max(2000).optional(),
   amountPaidToday: z.union([z.literal(""), z.coerce.number().int().positive()]).optional(),
   paymentMethod: z.enum(["Cash", "UPI", "Card", "Bank transfer", "Other"]).optional(),

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
+// global-error replaces the root layout, so it has to pull in the tokens itself.
+import "./globals.css";
 
 export default function GlobalError({
   error,
@@ -15,17 +17,18 @@ export default function GlobalError({
 
   return (
     <html lang="en">
-      <body className="grid min-h-screen place-items-center bg-slate-50 p-6 font-sans text-slate-900">
-        <main className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-sky-700">DentalAI</p>
-          <h1 className="mt-3 text-2xl font-bold tracking-tight">This screen needs another try</h1>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
-            The page could not load. Your saved clinic data has not been changed.
+      <body className="grid min-h-screen place-items-center bg-background p-6 font-sans text-foreground">
+        <main className="w-full max-w-lg rounded-card border border-border bg-card p-8 text-center shadow-[var(--shadow)]">
+          <h1 className="text-[22px] leading-tight font-bold text-heading">
+            That screen didn&rsquo;t load
+          </h1>
+          <p className="mt-3 text-[13px] leading-6 text-text-muted">
+            Something went wrong on our side. Nothing you had saved has changed — try again.
           </p>
           <button
             type="button"
             onClick={unstable_retry}
-            className="mt-6 inline-flex h-10 items-center rounded-xl bg-sky-700 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800"
+            className="mt-6 inline-flex min-h-11 cursor-pointer items-center rounded-control bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
           >
             Try again
           </button>

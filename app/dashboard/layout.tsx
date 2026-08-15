@@ -1,60 +1,152 @@
-import Sidebar from "@/components/Sidebar";
-import Navbar from "@/components/Navbar";
 import { requireUser } from "@/lib/auth";
 import { clinicDisplayName } from "@/lib/clinic-config";
-import LogoutButton from "./logout-button";
 import DashboardInteractionFeedback from "@/components/dashboard/DashboardInteractionFeedback";
+import AppShell from "@/components/shell/AppShell";
+import { visibleHrefs, type NavCounts } from "@/components/shell/nav-items";
+import type { ShellAlert } from "@/components/shell/TopBar";
 import { prisma } from "@/lib/prisma";
 import { getFeatureEntitlements } from "@/lib/features";
+import { can, PERMISSIONS, type Permission } from "@/lib/permissions";
 
-export default async function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   const now = new Date();
-  const [overdueFollowUps, failedMessages, delayedLabCases, inventoryItems, features] = await Promise.all([
-    prisma.followUpTask.count({ where: { clinicId: user.clinicId, status: { in: ["PENDING", "FAILED"] }, scheduledFor: { lte: now } } }),
-    prisma.scheduledWhatsAppMessage.count({ where: { clinicId: user.clinicId, status: { in: ["FAILED", "DEAD_LETTER"] } } }),
-    prisma.labCase.count({ where: { clinicId: user.clinicId, dueDate: { lt: now }, status: { notIn: ["COMPLETED", "DELIVERED", "CANCELLED"] } } }),
-    prisma.inventoryItem.findMany({ where: { clinicId: user.clinicId, active: true }, select: { quantity: true, reorderLevel: true } }),
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+
+  const [
+    todayVisits,
+    overdueFollowUps,
+    failedMessages,
+    openConversations,
+    delayedLabCases,
+    lowStockItems,
+    features,
+    unmatchedImaging,
+    unreviewedImaging,
+  ] = await Promise.all([
+    prisma.appointment.count({
+      where: {
+        clinicId: user.clinicId,
+        archivedAt: null,
+        appointmentDate: { gte: startOfDay, lt: endOfDay },
+        status: { notIn: ["Cancelled", "Completed"] },
+      },
+    }),
+    prisma.followUpTask.count({
+      where: {
+        clinicId: user.clinicId,
+        status: { in: ["PENDING", "FAILED"] },
+        scheduledFor: { lte: now },
+      },
+    }),
+    prisma.scheduledWhatsAppMessage.count({
+      where: { clinicId: user.clinicId, status: { in: ["FAILED", "DEAD_LETTER"] } },
+    }),
+    prisma.whatsAppConversation.count({ where: { clinicId: user.clinicId, status: "OPEN" } }),
+    prisma.labCase.count({
+      where: {
+        clinicId: user.clinicId,
+        dueDate: { lt: now },
+        status: { notIn: ["COMPLETED", "DELIVERED", "CANCELLED"] },
+      },
+    }),
+    prisma.inventoryItem.findMany({
+      where: { clinicId: user.clinicId, active: true },
+      select: { quantity: true, reorderLevel: true },
+    }),
     getFeatureEntitlements(user.clinicId),
+    can(user.role, "uploadImaging")
+      ? prisma.imagingStudy.count({
+          where: {
+            clinicId: user.clinicId,
+            matchStatus: "UNMATCHED",
+            archivedAt: null,
+            enteredInErrorAt: null,
+          },
+        })
+      : 0,
+    can(user.role, "signImaging")
+      ? prisma.imagingStudy.count({
+          where: {
+            clinicId: user.clinicId,
+            matchStatus: "CONFIRMED",
+            status: { not: "REVIEWED" },
+            archivedAt: null,
+            enteredInErrorAt: null,
+          },
+        })
+      : 0,
   ]);
-  const lowStock = inventoryItems.filter((item) => item.quantity <= item.reorderLevel).length;
-  const notifications = [
-    overdueFollowUps ? { label: `${overdueFollowUps} recovery task${overdueFollowUps === 1 ? "" : "s"} need attention`, detail: "Overdue follow-ups require an owner or outcome.", href: "/dashboard/follow-ups" } : null,
-    failedMessages ? { label: `${failedMessages} WhatsApp message${failedMessages === 1 ? "" : "s"} failed`, detail: "Review delivery diagnostics before retrying.", href: "/dashboard/whatsapp-operations" } : null,
-    delayedLabCases ? { label: `${delayedLabCases} lab case${delayedLabCases === 1 ? "" : "s"} delayed`, detail: "Confirm laboratory status and next patient action.", href: "/dashboard/laboratory" } : null,
-    lowStock ? { label: `${lowStock} low-stock item${lowStock === 1 ? "" : "s"}`, detail: "Create or receive a purchase order before supplies run out.", href: "/dashboard/operations" } : null,
-  ].filter((notification): notification is NonNullable<typeof notification> => Boolean(notification));
+
+  const lowStock = lowStockItems.filter((item) => item.quantity <= item.reorderLevel).length;
+  const permissions = (Object.keys(PERMISSIONS) as Permission[]).filter((permission) =>
+    can(user.role, permission),
+  );
+
+  const counts: NavCounts = {
+    today: todayVisits,
+    messages: openConversations,
+    growth: overdueFollowUps,
+    laboratory: delayedLabCases,
+    imaging: unmatchedImaging + unreviewedImaging,
+  };
+
+  const plural = (count: number, one: string, many: string) => (count === 1 ? one : many);
+
+  const alerts: ShellAlert[] = ([
+    overdueFollowUps > 0 && {
+      label: `${overdueFollowUps} ${plural(overdueFollowUps, "patient", "patients")} to call back`,
+      detail: "These follow-ups are past their date and still need an outcome.",
+      href: "/dashboard/growth?tab=callbacks",
+      tone: "danger" as const,
+    },
+    delayedLabCases > 0 && {
+      label: `${delayedLabCases} lab ${plural(delayedLabCases, "case is", "cases are")} late`,
+      detail: "Ring the lab before the patient turns up for the fit.",
+      href: "/dashboard/laboratory",
+      tone: "danger" as const,
+    },
+    failedMessages > 0 && {
+      label: `${failedMessages} WhatsApp ${plural(failedMessages, "message", "messages")} did not go out`,
+      detail: "See what went wrong, then send it again.",
+      href: "/dashboard/whatsapp-operations",
+      tone: "warning" as const,
+    },
+    unmatchedImaging > 0 && {
+      label: `${unmatchedImaging} X-${plural(unmatchedImaging, "ray needs", "rays need")} a name`,
+      detail: "Captured but not yet matched to a patient.",
+      href: "/dashboard/imaging?status=unmatched",
+      tone: "warning" as const,
+    },
+    unreviewedImaging > 0 && {
+      label: `${unreviewedImaging} ${plural(unreviewedImaging, "scan is", "scans are")} waiting on sign-off`,
+      detail: "Open the imaging review queue.",
+      href: "/dashboard/imaging?status=unreviewed",
+      tone: "info" as const,
+    },
+    lowStock > 0 && {
+      label: `${lowStock} ${plural(lowStock, "item is", "items are")} running low`,
+      detail: "Reorder before you run out mid-procedure.",
+      href: "/dashboard/operations",
+      tone: "warning" as const,
+    },
+  ] as Array<ShellAlert | false>).filter((alert): alert is ShellAlert => alert !== false);
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-background">
+    <>
       <DashboardInteractionFeedback />
-      <Sidebar role={user.role} clinicName={clinicDisplayName(user.clinic)} logoUrl={user.clinic.logoUrl} features={features} />
-
-      <main className="min-w-0">
-        <div className="relative">
-          <Navbar
-            user={{
-              fullName: user.fullName,
-              role: user.role,
-              clinicName: clinicDisplayName(user.clinic),
-              clinicAddress: user.clinic.address || "Your secure clinic workspace",
-            }}
-            notifications={notifications}
-          />
-
-          <div className="absolute right-6 top-1/2 -translate-y-1/2 lg:right-10">
-            <LogoutButton />
-          </div>
-        </div>
-
-        <div className="dashboard-shell mx-auto w-full max-w-[1750px] overflow-x-hidden p-5 pt-20 sm:p-6 sm:pt-20 lg:p-8 lg:pt-20">
-          {children}
-        </div>
-      </main>
-    </div>
+      <AppShell
+        navHrefs={visibleHrefs(features, permissions)}
+        counts={counts}
+        alerts={alerts}
+        clinicName={clinicDisplayName(user.clinic)}
+        branch={user.clinic.address || "Your clinic"}
+        logoUrl={user.clinic.logoUrl}
+        user={{ fullName: user.fullName, role: user.role }}
+      >
+        {children}
+      </AppShell>
+    </>
   );
 }

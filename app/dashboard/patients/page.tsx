@@ -1,160 +1,288 @@
+import Link from "next/link";
+import { Suspense } from "react";
+import { CalendarPlus, MessageSquare, UserRoundSearch } from "lucide-react";
+import { Prisma } from "@prisma/client";
+import { requirePermission } from "@/lib/permissions";
+import { hasFeature } from "@/lib/features";
+import { prisma } from "@/lib/prisma";
+import { exactStamp, humanTime, rupees } from "@/lib/format";
+import { listHref, pageWindow, parseListQuery, type RawSearchParams } from "@/lib/list-params";
+import DataList, { ListCell, ListRow } from "@/components/lists/DataList";
+import ListSearch from "@/components/lists/ListSearch";
+import FilterChips from "@/components/lists/FilterChips";
+import EmptyState from "@/components/lists/EmptyState";
+import PageHeader from "@/components/lists/PageHeader";
+import AddPatientSheet from "@/components/patients/AddPatientSheet";
+
 export const dynamic = "force-dynamic";
 
-import Link from "next/link";
-import { Plus, Search, Users } from "lucide-react";
-import { prisma } from "@/lib/prisma";
-import { Card, CardContent } from "@/components/ui/card";
-import PatientTableActions from "@/components/patients/PatientTableActions";
-import { requirePermission } from "@/lib/permissions";
+const BASE = "/dashboard/patients";
+const RECALL_DAYS = 180;
 
-const PAGE_SIZE = 10;
+const COLUMNS = [
+  { key: "patient", label: "Patient", sortKey: "name" },
+  { key: "phone", label: "Phone", sortKey: "phone", secondary: true },
+  { key: "visits", label: "Visits", sortKey: "visits", align: "right" as const, secondary: true },
+  // Not sortable: "last seen" is the newest of a patient's visits, which Prisma
+  // cannot order by. A wrong sort is worse than none.
+  { key: "last", label: "Last seen", secondary: true },
+  { key: "balance", label: "Balance", align: "right" as const },
+  { key: "actions", label: "Quick actions", align: "right" as const },
+];
+
+function orderFor(sort: string, dir: "asc" | "desc"): Prisma.PatientOrderByWithRelationInput {
+  if (sort === "phone") return { phone: dir };
+  if (sort === "visits") return { appointments: { _count: dir } };
+  return { fullName: dir };
+}
 
 export default async function PatientsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; page?: string }>;
+  searchParams: Promise<RawSearchParams>;
 }) {
   const user = await requirePermission("managePatients");
-  const { search = "", page: rawPage = "1" } = await searchParams;
-  const page = Math.max(1, Number(rawPage) || 1);
-  const query = search.trim();
-  const where = query
+  const params = await searchParams;
+  const query = parseListQuery(params, {
+    defaultSort: "name",
+    defaultDir: "asc",
+    filterKeys: ["show"],
+  });
+
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const recallCutoff = new Date(now.getTime() - RECALL_DAYS * 24 * 60 * 60 * 1000);
+  const show = query.filters.show ?? "";
+
+  const search: Prisma.PatientWhereInput = query.q
     ? {
-        clinicId: user.clinicId,
         OR: [
-          { fullName: { contains: query, mode: "insensitive" as const } },
-          { phone: { contains: query } },
-          { email: { contains: query, mode: "insensitive" as const } },
+          { fullName: { contains: query.q, mode: "insensitive" } },
+          { phone: { contains: query.q.replace(/\D/g, "") || query.q } },
+          { email: { contains: query.q, mode: "insensitive" } },
         ],
       }
-    : { clinicId: user.clinicId };
+    : {};
 
-  const [total, patients] = await prisma.$transaction([
-    prisma.patient.count({ where }),
+  const scoped: Prisma.PatientWhereInput = {
+    clinicId: user.clinicId,
+    archivedAt: null,
+    ...search,
+    ...(show === "new" ? { createdAt: { gte: startOfMonth } } : {}),
+    ...(show === "today"
+      ? { appointments: { some: { appointmentDate: { gte: startOfDay }, archivedAt: null } } }
+      : {}),
+    ...(show === "due"
+      ? { invoices: { some: { voidedAt: null, status: { not: "Paid" } } } }
+      : {}),
+    ...(show === "recall"
+      ? {
+          appointments: { none: { appointmentDate: { gte: recallCutoff }, archivedAt: null } },
+        }
+      : {}),
+  };
+
+  const total = await prisma.patient.count({ where: scoped });
+  const { skip, take } = pageWindow(query, total);
+
+  const [patients, everyone, whatsappOn] = await Promise.all([
     prisma.patient.findMany({
-      where,
-      include: { _count: { select: { appointments: true } } },
-      orderBy: { createdAt: "desc" },
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      where: scoped,
+      orderBy: orderFor(query.sort, query.dir),
+      skip,
+      take,
+      select: {
+        id: true,
+        fullName: true,
+        phone: true,
+        dateOfBirth: true,
+        gender: true,
+        medicalNotes: true,
+        createdAt: true,
+        _count: { select: { appointments: true } },
+        appointments: {
+          where: { archivedAt: null },
+          orderBy: { appointmentDate: "desc" },
+          take: 1,
+          select: { appointmentDate: true, appointmentTime: true, status: true },
+        },
+        invoices: {
+          where: { voidedAt: null },
+          select: {
+            totalAmount: true,
+            payments: { where: { status: "POSTED", reversedAt: null }, select: { amount: true } },
+          },
+        },
+      },
     }),
+    prisma.patient.count({ where: { clinicId: user.clinicId, archivedAt: null } }),
+    hasFeature(user.clinicId, "whatsapp"),
   ]);
-  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  function href(next: number) {
-    const params = new URLSearchParams();
-    if (query) params.set("search", query);
-    if (next > 1) params.set("page", String(next));
-    return `/dashboard/patients?${params}`;
-  }
+  const rows = patients.map((patient) => {
+    const balance = patient.invoices.reduce((sum, invoice) => {
+      const paid = invoice.payments.reduce((total, payment) => total + payment.amount, 0);
+      return sum + Math.max(0, invoice.totalAmount - paid);
+    }, 0);
+    const lastVisit = patient.appointments[0]?.appointmentDate ?? null;
+    const age = patient.dateOfBirth
+      ? now.getFullYear() - patient.dateOfBirth.getFullYear()
+      : null;
+
+    return {
+      id: patient.id,
+      name: patient.fullName,
+      meta: [
+        age !== null && `${age} y`,
+        patient.gender,
+        `added ${patient.createdAt.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`,
+      ]
+        .filter(Boolean)
+        .join(" · "),
+      flag: patient.medicalNotes?.trim() || null,
+      phone: patient.phone,
+      visits: patient._count.appointments,
+      lastVisit,
+      balance,
+    };
+  });
 
   return (
-    <div className="dashboard-list-page mx-auto max-w-7xl space-y-6">
-      <header className="dashboard-page-header flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Patient workspace</p>
-          <h1 className="mt-2 text-3xl font-bold">Patients</h1>
-          <p className="mt-1 text-muted-foreground">
-            One place for care, communications, treatment plans, and revenue history.
-          </p>
-        </div>
-        <Link href="/dashboard/patients/new" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground shadow-sm transition hover:bg-primary/90">
-          <Plus className="size-4" /> Add patient
-        </Link>
-      </header>
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        title="Patients"
+        sub={`${everyone.toLocaleString("en-IN")} on your list`}
+        actions={
+          <Link
+            href={listHref(BASE, query, { add: "1" })}
+            className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+          >
+            Add patient
+          </Link>
+        }
+      />
 
-      <section className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border bg-white p-4 shadow-sm"><p className="text-sm font-medium text-muted-foreground">Patient records</p><p className="mt-1 text-2xl font-bold">{total}</p></div>
-        <div className="rounded-2xl border bg-white p-4 shadow-sm"><p className="text-sm font-medium text-muted-foreground">Current view</p><p className="mt-1 text-2xl font-bold">{patients.length}</p></div>
-        <div className="rounded-2xl border bg-primary/[0.04] p-4 shadow-sm"><p className="flex items-center gap-2 text-sm font-medium text-primary"><Users className="size-4" /> Patient 360</p><p className="mt-1 text-sm text-muted-foreground">Open a record to act without changing modules.</p></div>
+      <section className="flex flex-col gap-3 rounded-card border border-border bg-card p-4 shadow-[var(--shadow)]">
+        <div className="flex flex-wrap items-center gap-3">
+          <Suspense fallback={<div className="h-11 flex-[1_1_240px] rounded-control bg-muted" />}>
+            <ListSearch
+              placeholder="Name, phone or email — filters as you type"
+              label="Search patients"
+            />
+          </Suspense>
+          <FilterChips
+            basePath={BASE}
+            query={query}
+            name="show"
+            legend="Narrow the list"
+            options={[
+              { value: "due", label: "Money due" },
+              { value: "recall", label: "Recall due" },
+              { value: "new", label: "New this month" },
+              { value: "today", label: "Seen today" },
+            ]}
+          />
+        </div>
+        <p className="border-t border-border/70 pt-2.5 text-xs text-text-muted">
+          Filters live in the URL — copy the link to share this view.
+        </p>
       </section>
 
-      <form className="flex max-w-xl gap-2">
-        <label className="relative flex-1">
-          <Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
-          <input
-            name="search"
-            defaultValue={query}
-            placeholder="Search name, phone, or email..."
-            className="h-10 w-full rounded-md border bg-background pl-9 pr-3 text-sm"
-          />
-        </label>
-        <button className="rounded-md border px-4 text-sm font-medium transition hover:bg-muted">
-          Search
-        </button>
-      </form>
-
-      <Card>
-        <CardContent className="p-0">
-          {patients.length === 0 ? (
-            <div className="py-20 text-center">
-              <p className="font-semibold">No patients found</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Only completed appointments are saved here automatically.
-              </p>
-            </div>
+      <DataList
+        basePath={BASE}
+        query={query}
+        columns={COLUMNS}
+        total={total}
+        shown={rows.length}
+        noun="patients"
+        empty={
+          query.q ? (
+            <EmptyState
+              icon={UserRoundSearch}
+              title={`No patients match “${query.q}”`}
+              body="Try a phone number, or add them as a new patient — it takes four fields."
+              action={{ label: `Add “${query.q}”`, href: listHref(BASE, query, { add: "1" }) }}
+            />
           ) : (
-            <>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[860px] text-sm">
-                  <thead className="border-b bg-muted/40 text-left text-muted-foreground">
-                    <tr>
-                      <th className="p-4 font-medium">Patient</th>
-                      <th className="p-4 font-medium">Contact</th>
-                      <th className="p-4 font-medium">Completed visits</th>
-                      <th className="p-4 font-medium">Added</th>
-                      <th className="p-4 text-right font-medium">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {patients.map((patient) => (
-                      <tr key={patient.id} className="border-b last:border-0 hover:bg-muted/30">
-                        <td className="p-4 font-medium">{patient.fullName}</td>
-                        <td className="p-4">
-                          <div>{patient.phone}</div>
-                          {patient.email && (
-                            <div className="text-muted-foreground">{patient.email}</div>
-                          )}
-                        </td>
-                        <td className="p-4">{patient._count.appointments}</td>
-                        <td className="p-4 text-muted-foreground">
-                          {patient.createdAt.toLocaleDateString()}
-                        </td>
-                        <td className="p-4">
-                          <PatientTableActions patientId={patient.id} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <EmptyState
+              icon={UserRoundSearch}
+              title="Nobody on the list yet"
+              body="Add the first patient and their file starts here — four fields is enough to begin."
+              action={{ label: "Add a patient", href: listHref(BASE, query, { add: "1" }) }}
+            />
+          )
+        }
+      >
+        {rows.map((row) => (
+          <ListRow key={row.id} needsAttention={row.balance > 0}>
+            <ListCell>
+              <div className="flex flex-wrap items-baseline gap-2">
+                <Link
+                  href={`/dashboard/patients/${row.id}`}
+                  className="text-sm font-semibold text-primary hover:underline"
+                >
+                  {row.name}
+                </Link>
+                {row.flag && (
+                  <span className="inline-flex items-center rounded-pill bg-warning-bg px-2 py-0.5 text-[11px] font-semibold text-warning">
+                    {row.flag.length > 34 ? `${row.flag.slice(0, 34)}…` : row.flag}
+                  </span>
+                )}
               </div>
-
-              <div className="flex items-center justify-between border-t px-4 py-4 text-sm">
-                <span className="text-muted-foreground">
-                  {total} {total === 1 ? "patient" : "patients"} · Page{" "}
-                  {Math.min(page, pages)} of {pages}
+              <p className="truncate text-xs text-text-muted">{row.meta}</p>
+            </ListCell>
+            <ListCell secondary>
+              <span className="tabular-nums text-text-muted">{row.phone}</span>
+            </ListCell>
+            <ListCell align="right" secondary>
+              <span className="tabular-nums">{row.visits}</span>
+            </ListCell>
+            <ListCell secondary>
+              {row.lastVisit ? (
+                <span title={exactStamp(row.lastVisit)} className="text-text-muted">
+                  {humanTime(row.lastVisit, now)}
                 </span>
-                <div className="flex gap-2">
+              ) : (
+                <span className="text-text-muted">not yet</span>
+              )}
+            </ListCell>
+            <ListCell align="right">
+              {row.balance > 0 ? (
+                <span className="font-semibold tabular-nums text-danger">{rupees(row.balance)}</span>
+              ) : (
+                <span className="text-text-muted">—</span>
+              )}
+            </ListCell>
+            <ListCell align="right">
+              <div className="flex justify-end gap-1.5">
+                <Link
+                  href={`/dashboard/appointments/new?patient=${row.id}`}
+                  title={`Book a visit for ${row.name}`}
+                  aria-label={`Book a visit for ${row.name}`}
+                  className="grid h-10 w-10 place-items-center rounded-control border border-border-strong bg-card text-heading hover:bg-muted"
+                >
+                  <CalendarPlus className="h-4 w-4" strokeWidth={1.9} aria-hidden />
+                </Link>
+                {whatsappOn && (
                   <Link
-                    aria-disabled={page <= 1}
-                    className="rounded-md border px-3 py-1.5 aria-disabled:pointer-events-none aria-disabled:opacity-50"
-                    href={href(page - 1)}
+                    href={`/dashboard/conversations?phone=${encodeURIComponent(row.phone)}`}
+                    title={`Message ${row.name} on WhatsApp`}
+                    aria-label={`Message ${row.name} on WhatsApp`}
+                    className="grid h-10 w-10 place-items-center rounded-control border border-border-strong bg-card text-heading hover:bg-muted"
                   >
-                    Previous
+                    <MessageSquare className="h-4 w-4" strokeWidth={1.9} aria-hidden />
                   </Link>
-                  <Link
-                    aria-disabled={page >= pages}
-                    className="rounded-md border px-3 py-1.5 aria-disabled:pointer-events-none aria-disabled:opacity-50"
-                    href={href(page + 1)}
-                  >
-                    Next
-                  </Link>
-                </div>
+                )}
               </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+            </ListCell>
+          </ListRow>
+        ))}
+      </DataList>
+
+      <Suspense fallback={null}>
+        <AddPatientSheet whatsappOn={whatsappOn} />
+      </Suspense>
     </div>
   );
 }

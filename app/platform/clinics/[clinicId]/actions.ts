@@ -3,14 +3,73 @@
 import { revalidatePath } from "next/cache";
 import { recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
-import { requirePlatformAdmin, slugifyClinic } from "@/lib/platform";
+import { requirePlatformPermission, slugifyClinic } from "@/lib/platform";
 import { FEATURE_REGISTRY, type FeatureKey } from "@/lib/features";
 
 function value(formData: FormData, name: string, limit = 500) { return String(formData.get(name) || "").trim().slice(0, limit) || null; }
-function validTime(value: string | null) { return Boolean(value && /^([01]\d|2[0-3]):[0-5]\d$/.test(value)); }
+
+function scheduleInput(formData: FormData) {
+  const dayValue = String(formData.get("dayOfWeek") ?? "").trim();
+  const openTime = String(formData.get("openTime") ?? "").trim();
+  const closeTime = String(formData.get("closeTime") ?? "").trim();
+  const slotValue = String(formData.get("slotMinutes") ?? "").trim();
+  const dayOfWeek = Number(dayValue);
+  const slotMinutes = Number(slotValue);
+  const isClosed = formData.get("isClosed") === "true";
+  const validTime = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+  if (
+    !/^\d+$/.test(dayValue)
+    || !Number.isInteger(dayOfWeek)
+    || dayOfWeek < 0
+    || dayOfWeek > 6
+    || !validTime.test(openTime)
+    || !validTime.test(closeTime)
+    || !/^\d+$/.test(slotValue)
+    || !Number.isInteger(slotMinutes)
+    || slotMinutes < 15
+    || slotMinutes > 240
+    || (!isClosed && openTime >= closeTime)
+  ) return null;
+
+  return { dayOfWeek, openTime, closeTime, slotMinutes, isClosed };
+}
+
+export async function savePlatformProviderAction(formData: FormData) {
+  const admin = await requirePlatformPermission("tenant.update"); const clinicId = Number(formData.get("clinicId")); const providerId = Number(formData.get("providerId")); const name = value(formData, "name", 120);
+  if (!Number.isInteger(clinicId) || !name) return;
+  const duplicate = await prisma.clinicProvider.findFirst({ where: { clinicId, name, ...(Number.isInteger(providerId) ? { NOT: { id: providerId } } : {}) }, select: { id: true } }); if (duplicate) return;
+  if (Number.isInteger(providerId)) { const result = await prisma.clinicProvider.updateMany({ where: { id: providerId, clinicId }, data: { name } }); if (!result.count) return; await recordAudit({ clinicId, userId: admin.id, action: "CLINIC_PROVIDER_UPDATED", entityType: "ClinicProvider", entityId: String(providerId), detail: `Provider ${name} saved from Control Centre` }); }
+  else { const provider = await prisma.clinicProvider.create({ data: { clinicId, name } }); await recordAudit({ clinicId, userId: admin.id, action: "CLINIC_PROVIDER_CREATED", entityType: "ClinicProvider", entityId: String(provider.id), detail: `Provider ${name} saved from Control Centre` }); }
+  revalidatePath(`/platform/clinics/${clinicId}`);
+}
+
+export async function setPlatformProviderActiveAction(formData: FormData) {
+  const admin = await requirePlatformPermission("tenant.update"); const clinicId = Number(formData.get("clinicId")); const providerId = Number(formData.get("providerId")); const active = formData.get("active") === "true";
+  if (!Number.isInteger(clinicId) || !Number.isInteger(providerId)) return;
+  const result = await prisma.clinicProvider.updateMany({ where: { id: providerId, clinicId }, data: { active } }); if (!result.count) return;
+  await recordAudit({ clinicId, userId: admin.id, action: active ? "CLINIC_PROVIDER_ACTIVATED" : "CLINIC_PROVIDER_DEACTIVATED", entityType: "ClinicProvider", entityId: String(providerId), detail: `Provider ${active ? "activated" : "deactivated"} from Control Centre` }); revalidatePath(`/platform/clinics/${clinicId}`);
+}
+
+export async function savePlatformServiceAction(formData: FormData) {
+  const admin = await requirePlatformPermission("tenant.update"); const clinicId = Number(formData.get("clinicId")); const serviceId = Number(formData.get("serviceId")); const name = value(formData, "name", 120); const durationMinutes = Number(formData.get("durationMinutes")); const priceText = String(formData.get("price") || ""); const price = priceText ? Number(priceText) : null;
+  if (!Number.isInteger(clinicId) || !name || !Number.isInteger(durationMinutes) || durationMinutes < 5 || durationMinutes > 480 || (price !== null && (!Number.isInteger(price) || price < 0))) return;
+  const duplicate = await prisma.clinicService.findFirst({ where: { clinicId, name, ...(Number.isInteger(serviceId) ? { NOT: { id: serviceId } } : {}) }, select: { id: true } }); if (duplicate) return;
+  const data = { name, description: value(formData, "description", 1000), durationMinutes, price };
+  if (Number.isInteger(serviceId)) { const result = await prisma.clinicService.updateMany({ where: { id: serviceId, clinicId }, data }); if (!result.count) return; await recordAudit({ clinicId, userId: admin.id, action: "CLINIC_SERVICE_UPDATED", entityType: "ClinicService", entityId: String(serviceId), detail: `Service ${name} saved from Control Centre` }); }
+  else { const service = await prisma.clinicService.create({ data: { clinicId, ...data } }); await recordAudit({ clinicId, userId: admin.id, action: "CLINIC_SERVICE_CREATED", entityType: "ClinicService", entityId: String(service.id), detail: `Service ${name} saved from Control Centre` }); }
+  revalidatePath(`/platform/clinics/${clinicId}`);
+}
+
+export async function setPlatformServiceActiveAction(formData: FormData) {
+  const admin = await requirePlatformPermission("tenant.update"); const clinicId = Number(formData.get("clinicId")); const serviceId = Number(formData.get("serviceId")); const active = formData.get("active") === "true";
+  if (!Number.isInteger(clinicId) || !Number.isInteger(serviceId)) return;
+  const result = await prisma.clinicService.updateMany({ where: { id: serviceId, clinicId }, data: { active } }); if (!result.count) return;
+  await recordAudit({ clinicId, userId: admin.id, action: active ? "CLINIC_SERVICE_ACTIVATED" : "CLINIC_SERVICE_DEACTIVATED", entityType: "ClinicService", entityId: String(serviceId), detail: `Service ${active ? "activated" : "deactivated"} from Control Centre` }); revalidatePath(`/platform/clinics/${clinicId}`);
+}
 
 export async function updatePlatformClinicProfileAction(formData: FormData) {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatformPermission("tenant.update");
   const clinicId = Number(formData.get("clinicId"));
   const name = value(formData, "name", 120);
   const slugSource = value(formData, "slug", 80);
@@ -25,16 +84,54 @@ export async function updatePlatformClinicProfileAction(formData: FormData) {
 }
 
 export async function savePlatformHoursAction(formData: FormData) {
-  const admin = await requirePlatformAdmin();
-  const clinicId = Number(formData.get("clinicId")); const dayOfWeek = Number(formData.get("dayOfWeek")); const openTime = value(formData, "openTime", 5); const closeTime = value(formData, "closeTime", 5); const slotMinutes = Number(formData.get("slotMinutes")); const isClosed = formData.get("isClosed") === "true";
-  if (!Number.isInteger(clinicId) || !Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6 || !Number.isInteger(slotMinutes) || slotMinutes < 15 || slotMinutes > 240 || !validTime(openTime) || !validTime(closeTime) || (!isClosed && openTime! >= closeTime!)) return;
-  await prisma.clinicHours.upsert({ where: { clinicId_dayOfWeek: { clinicId, dayOfWeek } }, update: { openTime: openTime!, closeTime: closeTime!, slotMinutes, isClosed }, create: { clinicId, dayOfWeek, openTime: openTime!, closeTime: closeTime!, slotMinutes, isClosed } });
-  await recordAudit({ clinicId, userId: admin.id, action: "PLATFORM_CLINIC_HOURS_UPDATED", entityType: "ClinicHours", entityId: String(dayOfWeek), detail: `Updated ${dayOfWeek} schedule from platform control portal` });
+  const admin = await requirePlatformPermission("tenant.update");
+  const clinicId = Number(formData.get("clinicId"));
+  const schedule = scheduleInput(formData);
+  if (!Number.isInteger(clinicId) || clinicId <= 0 || !schedule) return;
+
+  await prisma.$transaction(async (tx) => {
+    const primaryLocation = await tx.clinicLocation.findFirst({
+      where: { clinicId, active: true, isPrimary: true },
+      select: { id: true },
+    });
+    if (!primaryLocation) {
+      throw new Error("No active primary branch is configured for booking.");
+    }
+
+    await tx.clinicHours.upsert({
+      where: { clinicId_dayOfWeek: { clinicId, dayOfWeek: schedule.dayOfWeek } },
+      update: schedule,
+      create: { clinicId, ...schedule },
+    });
+    await tx.clinicLocationHours.upsert({
+      where: {
+        locationId_dayOfWeek_sortOrder: {
+          locationId: primaryLocation.id,
+          dayOfWeek: schedule.dayOfWeek,
+          sortOrder: 0,
+        },
+      },
+      update: schedule,
+      create: { locationId: primaryLocation.id, sortOrder: 0, ...schedule },
+    });
+    await tx.auditLog.create({
+      data: {
+        clinicId,
+        userId: admin.id,
+        action: "PLATFORM_CLINIC_HOURS_UPDATED",
+        entityType: "ClinicLocationHours",
+        entityId: `${primaryLocation.id}:${schedule.dayOfWeek}:0`,
+        detail: `${schedule.isClosed ? "Closed" : `${schedule.openTime}-${schedule.closeTime}`} · ${schedule.slotMinutes} minute slots`,
+      },
+    });
+  });
+
   revalidatePath(`/platform/clinics/${clinicId}`);
+  revalidatePath("/dashboard/settings/operations");
 }
 
 export async function createLocationAction(formData: FormData) {
-  const admin = await requirePlatformAdmin(); const clinicId = Number(formData.get("clinicId")); const name = value(formData, "name", 120);
+  const admin = await requirePlatformPermission("tenant.update"); const clinicId = Number(formData.get("clinicId")); const name = value(formData, "name", 120);
   if (!Number.isInteger(clinicId) || !name) return;
   const existing = await prisma.clinicLocation.count({ where: { clinicId } });
   await prisma.clinicLocation.create({ data: { clinicId, name, address: value(formData, "address", 1000), phone: value(formData, "phone", 50), email: value(formData, "email", 254), timezone: value(formData, "timezone", 80), isPrimary: existing === 0 } });
@@ -42,7 +139,7 @@ export async function createLocationAction(formData: FormData) {
 }
 
 export async function updateLocationAction(formData: FormData) {
-  const admin = await requirePlatformAdmin(); const clinicId = Number(formData.get("clinicId")); const locationId = Number(formData.get("locationId")); const name = value(formData, "name", 120);
+  const admin = await requirePlatformPermission("tenant.update"); const clinicId = Number(formData.get("clinicId")); const locationId = Number(formData.get("locationId")); const name = value(formData, "name", 120);
   if (!Number.isInteger(clinicId) || !Number.isInteger(locationId) || !name) return;
   const location = await prisma.clinicLocation.findFirst({ where: { id: locationId, clinicId }, select: { id: true } }); if (!location) return;
   await prisma.clinicLocation.update({ where: { id: locationId }, data: { name, address: value(formData, "address", 1000), phone: value(formData, "phone", 50), email: value(formData, "email", 254), timezone: value(formData, "timezone", 80) } });
@@ -50,7 +147,7 @@ export async function updateLocationAction(formData: FormData) {
 }
 
 export async function deactivateLocationAction(formData: FormData) {
-  const admin = await requirePlatformAdmin(); const clinicId = Number(formData.get("clinicId")); const locationId = Number(formData.get("locationId"));
+  const admin = await requirePlatformPermission("tenant.update"); const clinicId = Number(formData.get("clinicId")); const locationId = Number(formData.get("locationId"));
   if (!Number.isInteger(clinicId) || !Number.isInteger(locationId)) return;
   const location = await prisma.clinicLocation.findFirst({ where: { id: locationId, clinicId }, select: { id: true, isPrimary: true } });
   if (!location || location.isPrimary) return;
@@ -59,15 +156,61 @@ export async function deactivateLocationAction(formData: FormData) {
 }
 
 export async function saveLocationHoursAction(formData: FormData) {
-  const admin = await requirePlatformAdmin(); const clinicId = Number(formData.get("clinicId")); const locationId = Number(formData.get("locationId")); const dayOfWeek = Number(formData.get("dayOfWeek")); const openTime = value(formData, "openTime", 5); const closeTime = value(formData, "closeTime", 5); const slotMinutes = Number(formData.get("slotMinutes")); const isClosed = formData.get("isClosed") === "true";
-  if (!Number.isInteger(clinicId) || !Number.isInteger(locationId) || dayOfWeek < 0 || dayOfWeek > 6 || !Number.isInteger(slotMinutes) || slotMinutes < 15 || slotMinutes > 240 || !validTime(openTime) || !validTime(closeTime) || (!isClosed && openTime! >= closeTime!)) return;
-  const location = await prisma.clinicLocation.findFirst({ where: { id: locationId, clinicId }, select: { id: true } }); if (!location) return;
-  await prisma.clinicLocationHours.upsert({ where: { locationId_dayOfWeek_sortOrder: { locationId, dayOfWeek, sortOrder: 0 } }, create: { locationId, dayOfWeek, openTime: openTime!, closeTime: closeTime!, slotMinutes, isClosed }, update: { openTime: openTime!, closeTime: closeTime!, slotMinutes, isClosed } });
-  await recordAudit({ clinicId, userId: admin.id, action: "CLINIC_LOCATION_HOURS_UPDATED", entityType: "ClinicLocationHours", entityId: String(locationId), detail: `Updated branch schedule for day ${dayOfWeek}` }); revalidatePath(`/platform/clinics/${clinicId}`);
+  const admin = await requirePlatformPermission("tenant.update");
+  const clinicId = Number(formData.get("clinicId"));
+  const locationId = Number(formData.get("locationId"));
+  const schedule = scheduleInput(formData);
+  if (
+    !Number.isInteger(clinicId)
+    || clinicId <= 0
+    || !Number.isInteger(locationId)
+    || locationId <= 0
+    || !schedule
+  ) return;
+
+  await prisma.$transaction(async (tx) => {
+    const location = await tx.clinicLocation.findFirst({
+      where: { id: locationId, clinicId },
+      select: { id: true, isPrimary: true },
+    });
+    if (!location) throw new Error("Branch does not belong to this clinic.");
+
+    await tx.clinicLocationHours.upsert({
+      where: {
+        locationId_dayOfWeek_sortOrder: {
+          locationId: location.id,
+          dayOfWeek: schedule.dayOfWeek,
+          sortOrder: 0,
+        },
+      },
+      create: { locationId: location.id, sortOrder: 0, ...schedule },
+      update: schedule,
+    });
+    if (location.isPrimary) {
+      await tx.clinicHours.upsert({
+        where: { clinicId_dayOfWeek: { clinicId, dayOfWeek: schedule.dayOfWeek } },
+        create: { clinicId, ...schedule },
+        update: schedule,
+      });
+    }
+    await tx.auditLog.create({
+      data: {
+        clinicId,
+        userId: admin.id,
+        action: "CLINIC_LOCATION_HOURS_UPDATED",
+        entityType: "ClinicLocationHours",
+        entityId: `${location.id}:${schedule.dayOfWeek}:0`,
+        detail: `${schedule.isClosed ? "Closed" : `${schedule.openTime}-${schedule.closeTime}`} · ${schedule.slotMinutes} minute slots`,
+      },
+    });
+  });
+
+  revalidatePath(`/platform/clinics/${clinicId}`);
+  revalidatePath("/dashboard/settings/operations");
 }
 
 export async function saveLocationAssignmentsAction(formData: FormData) {
-  const admin = await requirePlatformAdmin(); const clinicId = Number(formData.get("clinicId")); const locationId = Number(formData.get("locationId"));
+  const admin = await requirePlatformPermission("tenant.update"); const clinicId = Number(formData.get("clinicId")); const locationId = Number(formData.get("locationId"));
   const ids = (key: string) => formData.getAll(key).map(Number).filter(Number.isInteger);
   if (!Number.isInteger(clinicId) || !Number.isInteger(locationId)) return;
   const [location, providers, services] = await Promise.all([prisma.clinicLocation.findFirst({ where: { id: locationId, clinicId }, select: { id: true } }), prisma.clinicProvider.findMany({ where: { clinicId, id: { in: ids("providerIds") } }, select: { id: true } }), prisma.clinicService.findMany({ where: { clinicId, id: { in: ids("serviceIds") } }, select: { id: true } })]);
@@ -77,7 +220,7 @@ export async function saveLocationAssignmentsAction(formData: FormData) {
 }
 
 export async function setPrimaryLocationAction(formData: FormData) {
-  const admin = await requirePlatformAdmin(); const clinicId = Number(formData.get("clinicId")); const locationId = Number(formData.get("locationId"));
+  const admin = await requirePlatformPermission("tenant.update"); const clinicId = Number(formData.get("clinicId")); const locationId = Number(formData.get("locationId"));
   if (!Number.isInteger(clinicId) || !Number.isInteger(locationId)) return;
   const location = await prisma.clinicLocation.findFirst({ where: { id: locationId, clinicId, active: true }, select: { id: true } }); if (!location) return;
   await prisma.$transaction([prisma.clinicLocation.updateMany({ where: { clinicId }, data: { isPrimary: false } }), prisma.clinicLocation.update({ where: { id: locationId }, data: { isPrimary: true } })]);
@@ -85,7 +228,7 @@ export async function setPrimaryLocationAction(formData: FormData) {
 }
 
 export async function saveSubscriptionAction(formData: FormData) {
-  const admin = await requirePlatformAdmin(); const clinicId = Number(formData.get("clinicId")); const status = String(formData.get("status") || ""); const billingCycle = String(formData.get("billingCycle") || ""); const priceInput = String(formData.get("price") || ""); const price = priceInput ? Number(priceInput) : null;
+  const admin = await requirePlatformPermission("billing.manage"); const clinicId = Number(formData.get("clinicId")); const status = String(formData.get("status") || ""); const billingCycle = String(formData.get("billingCycle") || ""); const priceInput = String(formData.get("price") || ""); const price = priceInput ? Number(priceInput) : null;
   if (!Number.isInteger(clinicId) || !["TRIAL", "ACTIVE", "PAST_DUE", "SUSPENDED", "CANCELLED"].includes(status) || !["MONTHLY", "QUARTERLY", "YEARLY", "CUSTOM"].includes(billingCycle) || (price !== null && (!Number.isInteger(price) || price < 0))) return;
   const planIdInput = String(formData.get("planId") || ""); const planId = planIdInput ? Number(planIdInput) : null;
   if (planId !== null && (!Number.isInteger(planId) || !await prisma.subscriptionPlan.findFirst({ where: { id: planId, active: true }, select: { id: true } }))) return;
@@ -94,7 +237,7 @@ export async function saveSubscriptionAction(formData: FormData) {
 }
 
 export async function setFeatureEntitlementAction(formData: FormData) {
-  const admin = await requirePlatformAdmin(); const clinicId = Number(formData.get("clinicId")); const featureKey = String(formData.get("featureKey") || "") as FeatureKey; const enabled = formData.get("enabled") === "true";
+  const admin = await requirePlatformPermission("settings.manage"); const clinicId = Number(formData.get("clinicId")); const featureKey = String(formData.get("featureKey") || "") as FeatureKey; const enabled = formData.get("enabled") === "true";
   if (!Number.isInteger(clinicId) || !(featureKey in FEATURE_REGISTRY)) return;
   await prisma.tenantFeatureEntitlement.upsert({ where: { clinicId_featureKey: { clinicId, featureKey } }, create: { clinicId, featureKey, enabled }, update: { enabled, source: "PLATFORM_OVERRIDE" } });
   await recordAudit({ clinicId, userId: admin.id, action: "TENANT_FEATURE_UPDATED", entityType: "TenantFeatureEntitlement", entityId: featureKey, detail: `${featureKey} ${enabled ? "enabled" : "disabled"}` }); revalidatePath(`/platform/clinics/${clinicId}`);

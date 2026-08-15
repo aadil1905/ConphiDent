@@ -1,5 +1,5 @@
-import FeatureLoading from "@/components/dashboard/FeatureLoading";
+import PageSkeleton from "@/components/dashboard/PageSkeleton";
 
 export default function Loading() {
-  return <FeatureLoading title="Opening Help" />;
+  return <PageSkeleton shape="detail" />;
 }

@@ -1,3 +1,5 @@
-import FeatureLoading from "@/components/dashboard/FeatureLoading";
+import PageSkeleton from "@/components/dashboard/PageSkeleton";
 
-export default function LoadingPatients() { return <FeatureLoading title="Loading patient records" columns={3} />; }
+export default function Loading() {
+  return <PageSkeleton shape="list" />;
+}

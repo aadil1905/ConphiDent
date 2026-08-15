@@ -22,8 +22,9 @@ export const defaultHours = Array.from({ length: 7 }, (_, dayOfWeek) => ({
 }));
 
 export async function getClinicConfiguration(clinicId?: number) {
-  return prisma.clinic.findFirst({
-    where: clinicId ? { id: clinicId } : undefined,
+  if (!Number.isInteger(clinicId) || !clinicId) return null;
+  return prisma.clinic.findUnique({
+    where: { id: clinicId },
     include: {
       services: { where: { active: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] },
       hours: { orderBy: { dayOfWeek: "asc" } },

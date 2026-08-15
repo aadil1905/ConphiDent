@@ -1,4 +1,4 @@
-import ClinicSetupPage from "@/app/platform/page";
+import { redirect } from "next/navigation";
 
 /** Private ConphiDent onboarding portal for the administrator. */
-export default ClinicSetupPage;
+export default function ClinicSetupPage() { redirect("/platform"); }

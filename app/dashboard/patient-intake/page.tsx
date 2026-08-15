@@ -1,66 +1,64 @@
 import Link from "next/link";
-import { ClipboardPenLine, FileHeart } from "lucide-react";
+import PageHeader from "@/components/lists/PageHeader";
 import PatientIntakeWizard from "@/components/patients/PatientIntakeWizard";
+import { INTAKE_LINK_DAYS } from "@/lib/patient-intake-link";
 
 export const dynamic = "force-dynamic";
 
-const intakeSteps = [
+const STEPS = [
   {
-    title: "Send secure link",
-    description: "Enter the patient details and send a private 48-hour intake link on WhatsApp.",
-    icon: ClipboardPenLine,
+    title: "You send them a link",
+    detail: `Their name and number is enough. The link opens on their phone and works for ${INTAKE_LINK_DAYS} days.`,
   },
   {
-    title: "Patient completes form",
-    description: "The patient selects allergies and medical history, accepts the terms, and signs on their phone.",
-    icon: FileHeart,
+    title: "They fill it in before they arrive",
+    detail:
+      "Three short pages — who they are, why they are coming, and anything about their health. They sign on the phone with a finger or by typing their name.",
+  },
+  {
+    title: "It lands in their file",
+    detail:
+      "Allergies and conditions show in red at the top of Patient 360, so nobody starts treating without seeing them.",
   },
 ];
 
-export default async function PatientIntakePage({ searchParams }: { searchParams: Promise<{ name?: string; phone?: string }> }) {
+export default async function StaffIntakePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ name?: string; phone?: string }>;
+}) {
   const { name = "", phone = "" } = await searchParams;
+
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
-      <header className="rounded-3xl border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-6 shadow-sm sm:p-8">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-sky-700">
-              Paperless reception
-            </p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
-              Patient intake
-            </h1>
-            <p className="mt-3 max-w-2xl text-slate-600">
-              Register a patient and collect their essential medical information before the consultation.
-              Everything is saved directly to the patient profile.
-            </p>
-          </div>
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
+      <PageHeader
+        title="Send the intake form"
+        sub="So nobody is filling in a clipboard in your waiting room."
+        actions={
           <Link
             href="/dashboard/patients"
-            className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
           >
-            View patient records
+            Back to Patients
           </Link>
-        </div>
-      </header>
+        }
+      />
 
-      <section className="grid gap-4 md:grid-cols-2">
-        {intakeSteps.map(({ title, description, icon: Icon }, index) => (
-          <article key={title} className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <div className="flex items-start gap-4">
-              <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-sky-50 text-sky-700">
-                <Icon className="size-5" />
-              </div>
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-sky-700">
-                  Step {index + 1}
-                </p>
-                <h2 className="mt-1 font-bold text-slate-950">{title}</h2>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
-              </div>
-            </div>
-          </article>
-        ))}
+      <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
+        <h2 className="text-base font-semibold text-heading">How it goes</h2>
+        <ol className="mt-3 flex flex-col gap-3">
+          {STEPS.map((step, index) => (
+            <li key={step.title} className="flex gap-3">
+              <span className="grid h-7 w-7 flex-none place-items-center rounded-pill bg-secondary text-[13px] font-bold text-heading">
+                {index + 1}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-heading">{step.title}</span>
+                <span className="block text-[13px] text-text-muted">{step.detail}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
       </section>
 
       <PatientIntakeWizard defaultName={name} defaultPhone={phone} />

@@ -2,6 +2,7 @@ import "server-only";
 
 import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
+import { whatsappClinicCanProcessWebhook } from "@/lib/whatsapp-webhook-inbox-core";
 
 const GRAPH_VERSION = "v25.0";
 
@@ -96,5 +97,94 @@ export async function logWhatsAppTest(clinicId: number) {
 }
 
 export async function connectionForPhoneNumberId(phoneNumberId: string) {
-  return prisma.clinicWhatsAppConnection.findFirst({ where: { phoneNumberId, disconnectedAt: null } });
+  const connection = await prisma.clinicWhatsAppConnection.findUnique({
+    where: { phoneNumberId },
+    include: {
+      clinic: {
+        select: {
+          status: true,
+          featureEntitlements: {
+            where: { featureKey: "whatsapp" },
+            select: { enabled: true },
+            take: 1,
+          },
+        },
+      },
+    },
+  });
+  if (
+    !connection
+    || connection.disconnectedAt
+    || !whatsappClinicCanProcessWebhook(
+      connection.clinic.status,
+      connection.clinic.featureEntitlements[0]?.enabled,
+    )
+  ) return null;
+  return connection;
+}
+
+export type WhatsAppWebhookClinicRoute = {
+  clinicId: number;
+  phoneNumberId: string;
+  source: "EMBEDDED" | "LEGACY";
+};
+
+/** Resolve a Meta phone ID only when its clinic can legally execute automation. */
+export async function resolveWhatsAppWebhookClinic(
+  phoneNumberId: string,
+): Promise<WhatsAppWebhookClinicRoute | null> {
+  // A stored connection takes precedence over environment fallback. In
+  // particular, an explicitly disconnected stored connection must stay off.
+  const stored = await prisma.clinicWhatsAppConnection.findUnique({
+    where: { phoneNumberId },
+    include: {
+      clinic: {
+        select: {
+          status: true,
+          featureEntitlements: {
+            where: { featureKey: "whatsapp" },
+            select: { enabled: true },
+            take: 1,
+          },
+        },
+      },
+    },
+  });
+  if (stored) {
+    if (
+      stored.disconnectedAt
+      || !whatsappClinicCanProcessWebhook(
+        stored.clinic.status,
+        stored.clinic.featureEntitlements[0]?.enabled,
+      )
+    ) return null;
+    return { clinicId: stored.clinicId, phoneNumberId, source: "EMBEDDED" };
+  }
+
+  const legacyPhoneNumberId = process.env.PHONE_NUMBER_ID;
+  const legacyClinicId = Number(process.env.LEGACY_WHATSAPP_CLINIC_ID);
+  if (
+    phoneNumberId !== legacyPhoneNumberId
+    || !Number.isInteger(legacyClinicId)
+    || legacyClinicId <= 0
+  ) return null;
+  const legacyClinic = await prisma.clinic.findUnique({
+    where: { id: legacyClinicId },
+    select: {
+      status: true,
+      featureEntitlements: {
+        where: { featureKey: "whatsapp" },
+        select: { enabled: true },
+        take: 1,
+      },
+    },
+  });
+  if (
+    !legacyClinic
+    || !whatsappClinicCanProcessWebhook(
+      legacyClinic.status,
+      legacyClinic.featureEntitlements[0]?.enabled,
+    )
+  ) return null;
+  return { clinicId: legacyClinicId, phoneNumberId, source: "LEGACY" };
 }

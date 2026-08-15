@@ -7,7 +7,7 @@ function isRealTestDatabaseUrl(value) {
   if (!value) return false;
   try {
     const url = new URL(value);
-    return url.protocol.startsWith("postgres") && url.username !== "user" && url.password !== "password";
+    return url.protocol.startsWith("postgres") && /test/i.test(url.pathname) && url.username !== "user" && url.password !== "password";
   } catch {
     return false;
   }
@@ -24,6 +24,8 @@ async function deleteTestClinic(clinicId) {
   // Clinic-owned appointments deliberately use a restrictive clinic FK. Tests
   // and patients must be removed before deleting their temporary tenant.
   await prisma.appointment.deleteMany({ where: { clinicId } });
+  await prisma.payment.deleteMany({ where: { clinicId } });
+  await prisma.invoice.deleteMany({ where: { clinicId } });
   await prisma.patient.deleteMany({ where: { clinicId } });
   await prisma.clinic.delete({ where: { id: clinicId } });
 }
@@ -63,9 +65,9 @@ test("concurrent slot claims cannot both commit under serializable isolation", {
 
 test("partial payment and invoice status update commit atomically", { skip: !enabled }, async () => {
   const patient = await prisma.patient.create({ data: { clinicId: clinic.id, fullName: "Payment Patient", phone: "9000000004" } });
-  const invoice = await prisma.invoice.create({ data: { invoiceNumber: `${prefix}-invoice`, patientId: patient.id, totalAmount: 1000 } });
+  const invoice = await prisma.invoice.create({ data: { clinicId: clinic.id, invoiceNumber: `${prefix}-invoice`, patientId: patient.id, totalAmount: 1000 } });
   await prisma.$transaction(async (tx) => {
-    await tx.payment.create({ data: { invoiceId: invoice.id, amount: 400, method: "Cash" } });
+    await tx.payment.create({ data: { clinicId: clinic.id, invoiceId: invoice.id, amount: 400, method: "Cash" } });
     await tx.invoice.update({ where: { id: invoice.id }, data: { status: "Partially Paid" } });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   const saved = await prisma.invoice.findUnique({ where: { id: invoice.id }, include: { payments: true } });
@@ -74,9 +76,9 @@ test("partial payment and invoice status update commit atomically", { skip: !ena
 });
 
 test("failed transaction leaves no partial payment", { skip: !enabled }, async () => {
-  const invoice = await prisma.invoice.findUnique({ where: { invoiceNumber: `${prefix}-invoice` }, include: { payments: true } });
+  const invoice = await prisma.invoice.findFirst({ where: { clinicId: clinic.id, invoiceNumber: `${prefix}-invoice` }, include: { payments: true } });
   await assert.rejects(prisma.$transaction(async (tx) => {
-    await tx.payment.create({ data: { invoiceId: invoice.id, amount: 700, method: "Cash" } });
+    await tx.payment.create({ data: { clinicId: clinic.id, invoiceId: invoice.id, amount: 700, method: "Cash" } });
     throw new Error("payment exceeds outstanding amount");
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }));
   assert.equal(await prisma.payment.count({ where: { invoiceId: invoice.id } }), 1);
@@ -93,8 +95,8 @@ test("clinic A cannot retrieve clinic B patient, appointment, invoice, or paymen
   try {
     const patientB = await prisma.patient.create({ data: { clinicId: clinicB.id, fullName: "Clinic B Patient", phone: "9000000091" } });
     const appointmentB = await prisma.appointment.create({ data: { clinicId: clinicB.id, patientId: patientB.id, patientName: patientB.fullName, phone: patientB.phone, appointmentDate: new Date("2030-02-01T00:00:00.000Z"), appointmentTime: "10:00", treatment: "Consultation" } });
-    const invoiceB = await prisma.invoice.create({ data: { invoiceNumber: `${prefix}-tenant-b-invoice`, patientId: patientB.id, totalAmount: 1000 } });
-    const paymentB = await prisma.payment.create({ data: { invoiceId: invoiceB.id, amount: 100, method: "Cash" } });
+    const invoiceB = await prisma.invoice.create({ data: { clinicId: clinicB.id, invoiceNumber: `${prefix}-tenant-b-invoice`, patientId: patientB.id, totalAmount: 1000 } });
+    const paymentB = await prisma.payment.create({ data: { clinicId: clinicB.id, invoiceId: invoiceB.id, amount: 100, method: "Cash" } });
     assert.equal(await prisma.patient.findFirst({ where: { id: patientB.id, clinicId: clinicA.id } }), null);
     assert.equal(await prisma.appointment.findFirst({ where: { id: appointmentB.id, clinicId: clinicA.id } }), null);
     assert.equal(await prisma.invoice.findFirst({ where: { id: invoiceB.id, patient: { clinicId: clinicA.id } } }), null);

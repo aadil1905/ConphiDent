@@ -1,31 +1,315 @@
 export const dynamic = "force-dynamic";
 
-import { AlertTriangle, CheckCircle2, Clock3, FlaskConical, Plus, RotateCcw, Send } from "lucide-react";
-import { requireUser } from "@/lib/auth";
+import Link from "next/link";
+import { Suspense } from "react";
+import { FlaskConical } from "lucide-react";
+import { Prisma } from "@prisma/client";
+import { LaboratoryDirectoryForm } from "@/components/laboratory/LaboratoryDirectoryForm";
+import { LabActionForm } from "@/components/laboratory/LabActionForm";
+import { labDelayThreatensAppointment } from "@/lib/laboratory-core";
+import { requirePermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import PendingSubmitButton from "@/components/dashboard/PendingSubmitButton";
-import { WhatsAppQuickSend } from "@/components/whatsapp/WhatsAppQuickSend";
-import { archiveLaboratoryAction, createLabCaseAction, createReworkAction, saveLaboratoryAction, updateLabStatusAction } from "./actions";
+import { exactStamp, humanLabel, humanTime, overdueBy } from "@/lib/format";
+import { pageWindow, parseListQuery, type RawSearchParams } from "@/lib/list-params";
+import DataList, { ListCell, ListRow } from "@/components/lists/DataList";
+import ListSearch from "@/components/lists/ListSearch";
+import FilterChips from "@/components/lists/FilterChips";
+import EmptyState from "@/components/lists/EmptyState";
+import PageHeader from "@/components/lists/PageHeader";
+import { archiveLaboratoryAction } from "./actions";
 
-const statuses = ["SENT_TO_LAB", "IN_PROGRESS", "WAX_STAGE", "METAL_STAGE", "CERAMIC_STAGE", "READY", "DELIVERED", "COMPLETED", "REWORK", "CANCELLED"];
-const tone: Record<string, string> = { SENT_TO_LAB:"bg-sky-100 text-sky-800", IN_PROGRESS:"bg-amber-100 text-amber-800", WAX_STAGE:"bg-orange-100 text-orange-800", METAL_STAGE:"bg-slate-200 text-slate-800", CERAMIC_STAGE:"bg-fuchsia-100 text-fuchsia-800", READY:"bg-emerald-100 text-emerald-800", DELIVERED:"bg-violet-100 text-violet-800", COMPLETED:"bg-teal-100 text-teal-800", REWORK:"bg-rose-100 text-rose-800", CANCELLED:"bg-slate-100 text-slate-600" };
+const BASE = "/dashboard/laboratory";
+const CLOSED = ["COMPLETED", "CANCELLED"];
+const IN_FLIGHT = [...CLOSED, "READY", "DISPATCHED", "RECEIVED_BY_CLINIC", "FITTED"];
 
-export default async function LaboratoryPage() {
-  const user = await requireUser(); const today = new Date(); today.setHours(0,0,0,0);
-  const [cases, patients, events, laboratories] = await Promise.all([
-    prisma.labCase.findMany({ where:{ clinicId:user.clinicId }, include:{ patient:{ select:{ fullName:true, phone:true } }, events:{ orderBy:{ createdAt:"desc" }, take:1 }, reworks:{ select:{ id:true } } }, orderBy:[{ dueDate:"asc" },{ updatedAt:"desc" }], take:100 }),
-    prisma.patient.findMany({ where:{ clinicId:user.clinicId }, select:{ id:true, fullName:true, phone:true }, orderBy:{ fullName:"asc" }, take:200 }),
-    prisma.labCaseEvent.findMany({ where:{ clinicId:user.clinicId }, include:{ labCase:{ select:{ orderNumber:true, patient:{ select:{ fullName:true } } } } }, orderBy:{ createdAt:"desc" }, take:6 }),
-    prisma.laboratory.findMany({ where: { clinicId: user.clinicId, active: true }, orderBy: { name: "asc" } }),
+const COLUMNS = [
+  { key: "order", label: "Case", sortKey: "order" },
+  { key: "patient", label: "Patient" },
+  { key: "lab", label: "Lab", secondary: true },
+  { key: "due", label: "Needed by", sortKey: "due" },
+  { key: "state", label: "Where it is" },
+  { key: "open", label: "", align: "right" as const },
+];
+
+export default async function LaboratoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<RawSearchParams>;
+}) {
+  const user = await requirePermission("manageLaboratory");
+  const params = await searchParams;
+  const query = parseListQuery(params, { defaultSort: "due", defaultDir: "asc", filterKeys: ["show", "lab"] });
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const inThreeDays = new Date(now.getTime() + 72 * 60 * 60 * 1000);
+  const show = query.filters.show ?? "";
+  const labId = Number(query.filters.lab) || 0;
+
+  const search: Prisma.LabCaseWhereInput = query.q
+    ? {
+        OR: [
+          { orderNumber: { contains: query.q, mode: "insensitive" } },
+          { caseType: { contains: query.q, mode: "insensitive" } },
+          { labName: { contains: query.q, mode: "insensitive" } },
+          { patient: { fullName: { contains: query.q, mode: "insensitive" } } },
+        ],
+      }
+    : {};
+
+  const scoped: Prisma.LabCaseWhereInput = {
+    clinicId: user.clinicId,
+    ...search,
+    ...(labId ? { labId } : {}),
+    ...(show === "late"
+      ? {
+          status: { notIn: IN_FLIGHT },
+          OR: [{ dueDate: { lt: today } }, { patientAppointmentAt: { lte: inThreeDays } }],
+        }
+      : {}),
+    ...(show === "ready" ? { status: "READY" } : {}),
+    ...(show === "open" ? { status: { notIn: CLOSED } } : {}),
+  };
+
+  const total = await prisma.labCase.count({ where: scoped });
+  const { skip, take } = pageWindow(query, total);
+
+  const [cases, laboratories, openCount, readyCount, lateCount] = await Promise.all([
+    prisma.labCase.findMany({
+      where: scoped,
+      orderBy: query.sort === "order" ? { orderNumber: query.dir } : [{ dueDate: query.dir }, { updatedAt: "desc" }],
+      skip,
+      take,
+      select: {
+        id: true,
+        orderNumber: true,
+        caseType: true,
+        status: true,
+        priority: true,
+        dueDate: true,
+        patientAppointmentAt: true,
+        labName: true,
+        patient: { select: { id: true, fullName: true } },
+        laboratory: { select: { name: true } },
+      },
+    }),
+    prisma.laboratory.findMany({
+      where: { clinicId: user.clinicId, active: true, archivedAt: null },
+      orderBy: { name: "asc" },
+    }),
+    prisma.labCase.count({ where: { clinicId: user.clinicId, status: { notIn: CLOSED } } }),
+    prisma.labCase.count({ where: { clinicId: user.clinicId, status: "READY" } }),
+    prisma.labCase.count({
+      where: {
+        clinicId: user.clinicId,
+        status: { notIn: IN_FLIGHT },
+        OR: [{ dueDate: { lt: today } }, { patientAppointmentAt: { lte: inThreeDays } }],
+      },
+    }),
   ]);
-  const open = cases.filter(x=>!['DELIVERED','COMPLETED','CANCELLED'].includes(x.status)); const delayed = open.filter(x=>x.dueDate && x.dueDate < today); const ready = cases.filter(x=>x.status==='READY'); const reworks = cases.filter(x=>x.status==='REWORK');
-  const metrics = [["Total orders",cases.length,FlaskConical,"text-indigo-600"],["Pending",open.length,Clock3,"text-amber-600"],["Ready for delivery",ready.length,CheckCircle2,"text-emerald-600"],["Delayed",delayed.length,AlertTriangle,"text-rose-600"],["Rework cases",reworks.length,RotateCcw,"text-orange-600"]] as const;
-  return <div className="dashboard-list-page mx-auto max-w-7xl space-y-6">
-    <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm font-semibold uppercase tracking-[.16em] text-primary">Laboratory command centre</p><h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">Laboratory management</h1><p className="mt-2 text-muted-foreground">Live case tracking, prescription details, delivery follow-ups and permanent rework history.</p></div><span className="rounded-full bg-sky-50 px-3 py-1.5 text-sm font-bold text-sky-700">{events.length} recent timeline updates</span></header>
-    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">{metrics.map(([label,value,Icon,color])=><article key={label} className="rounded-2xl border border-border bg-card p-5 shadow-sm"><div className="flex justify-between"><div><p className="text-sm text-muted-foreground">{label}</p><p className="mt-2 text-3xl font-bold">{value}</p></div><Icon className={`size-6 ${color}`}/></div></article>)}</section>
-    <section className="grid gap-5 xl:grid-cols-[1.2fr_.8fr]"><article className="rounded-2xl border border-border bg-card p-6 shadow-sm"><div className="flex items-center gap-2"><Plus className="size-5 text-primary"/><h2 className="text-lg font-bold">New laboratory order</h2></div><form action={createLabCaseAction} className="mt-5 grid gap-3 sm:grid-cols-2"><select required name="patientId" className="h-11 rounded-xl border bg-card px-3"><option value="">Select patient</option>{patients.map(p=><option key={p.id} value={p.id}>{p.fullName} — {p.phone}</option>)}</select><select name="caseType" required className="h-11 rounded-xl border bg-card px-3"><option value="">Case type</option>{["Crown","Bridge","Veneer","Denture","Implant","Aligner","Zirconia","PFM","E-max","Temporary Crown","Wax Try-in","Metal Try-in","Custom"].map(x=><option key={x}>{x}</option>)}</select><select required name="labId" className="h-11 rounded-xl border bg-card px-3"><option value="">Select laboratory</option>{laboratories.map(lab=><option key={lab.id} value={lab.id}>{lab.name}{lab.technicianName ? ` — ${lab.technicianName}` : ""}</option>)}</select><input name="technician" placeholder="Technician override (optional)" className="h-11 rounded-xl border px-3"/><input name="teeth" placeholder="Tooth numbers (e.g. 11, 12)" className="h-11 rounded-xl border px-3"/><input name="material" placeholder="Material / margin" className="h-11 rounded-xl border px-3"/><input name="shade" placeholder="Shade" className="h-11 rounded-xl border px-3"/><input name="dueDate" type="date" className="h-11 rounded-xl border px-3"/><select name="priority" className="h-11 rounded-xl border bg-card px-3"><option value="NORMAL">Normal priority</option><option value="URGENT">Urgent priority</option></select><input name="doctor" placeholder="Treating doctor" className="h-11 rounded-xl border px-3"/><input name="notes" placeholder="Prescription / special instructions" className="h-11 rounded-xl border px-3 sm:col-span-2"/><PendingSubmitButton label="Create order" pendingLabel="Creating..." className="h-11 rounded-xl bg-primary px-4 font-semibold text-primary-foreground sm:col-span-2"/></form>{laboratories.length === 0 && <p className="mt-3 text-sm text-amber-700">Add a laboratory below before creating a case.</p>}</article>
-    <article className="rounded-2xl border border-border bg-card p-6 shadow-sm"><h2 className="text-lg font-bold">Today’s follow-ups</h2><div className="mt-4 space-y-3">{delayed.slice(0,5).map(c=><div key={c.id} className="rounded-xl bg-rose-50 p-3 text-sm"><p className="font-bold">{c.patient.fullName} · {c.labName}</p><p className="mt-1 text-rose-700">Delivery overdue — contact laboratory</p></div>)}{ready.slice(0,5).map(c=><div key={c.id} className="rounded-xl bg-emerald-50 p-3 text-sm"><p className="font-bold">{c.patient.fullName} · ready</p><p className="mt-1 text-emerald-700">Arrange patient trial or collection.</p></div>)}{!delayed.length&&!ready.length&&<p className="py-8 text-sm text-muted-foreground">No urgent laboratory follow-ups today.</p>}</div></article></section>
-    <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm"><div className="flex items-center justify-between border-b px-6 py-5"><div><h2 className="text-lg font-bold">Case board</h2><p className="text-sm text-muted-foreground">Status changes create an immutable timestamped timeline.</p></div><Send className="size-5 text-primary"/></div><div className="divide-y divide-border">{cases.map(c=>{const days=c.dueDate?Math.ceil((c.dueDate.getTime()-today.getTime())/86400000):null;return <article key={c.id} className="grid gap-4 px-6 py-5 xl:grid-cols-[1.4fr_.8fr_1fr]"><div><div className="flex flex-wrap gap-2"><p className="font-bold">{c.orderNumber || `LAB-${c.id}`} · {c.caseType}</p><span className={`rounded-full px-2 py-0.5 text-xs font-bold ${tone[c.status]}`}>{c.status.replaceAll('_',' ')}</span>{c.priority==='URGENT'&&<span className="rounded-full bg-rose-600 px-2 py-0.5 text-xs font-bold text-white">URGENT</span>}</div><p className="mt-1 text-sm text-muted-foreground">{c.patient.fullName} · {c.labName}{c.teeth?` · Teeth ${c.teeth}`:''}</p><p className="mt-1 text-xs text-muted-foreground">{c.dueDate?`${days!==null&&days<0?`${Math.abs(days)} days late`:`${days} days remaining`} · Due ${c.dueDate.toLocaleDateString('en-IN')}`:'No delivery date'} · V{c.version}</p>{c.events[0]&&<p className="mt-2 text-xs text-slate-500">Last activity: {c.events[0].type.replaceAll('_',' ')} · {c.events[0].createdAt.toLocaleString('en-IN')}</p>}</div><form action={updateLabStatusAction} className="flex gap-2"><input type="hidden" name="id" value={c.id}/><select name="status" defaultValue={c.status} className="h-10 min-w-0 rounded-xl border bg-card px-2 text-xs">{statuses.map(s=><option key={s}>{s.replaceAll('_',' ')}</option>)}</select><button className="h-10 rounded-xl border px-3 text-sm font-semibold">Update</button></form><div className="flex flex-wrap gap-2"><WhatsAppQuickSend phone={c.labWhatsapp || c.labPhone} title="Message lab"/><form action={createReworkAction} className="flex flex-wrap gap-2"><input type="hidden" name="id" value={c.id}/><input required name="reason" placeholder="Rework reason" className="h-10 min-w-0 flex-1 rounded-xl border px-3 text-sm"/><input name="dueDate" type="date" className="h-10 rounded-xl border px-2 text-xs"/><button className="h-10 rounded-xl bg-rose-50 px-3 text-sm font-bold text-rose-700">Rework</button></form></div></article>})}{!cases.length&&<p className="px-6 py-12 text-center text-sm text-muted-foreground">Create your first lab order to begin the digital register.</p>}</div></section>
-    <section className="grid gap-5 xl:grid-cols-[.9fr_1.1fr]"><article className="rounded-2xl border border-border bg-card p-5 shadow-sm"><h2 className="text-lg font-bold">Laboratory directory</h2><form action={saveLaboratoryAction} className="mt-4 grid gap-2 sm:grid-cols-2"><input required name="name" placeholder="Laboratory name" className="h-10 rounded-lg border px-3 text-sm"/><input name="contactName" placeholder="Contact person" className="h-10 rounded-lg border px-3 text-sm"/><input name="technicianName" placeholder="Technician" className="h-10 rounded-lg border px-3 text-sm"/><input name="phone" placeholder="Phone" className="h-10 rounded-lg border px-3 text-sm"/><input name="whatsapp" placeholder="WhatsApp" className="h-10 rounded-lg border px-3 text-sm"/><input name="email" type="email" placeholder="Email" className="h-10 rounded-lg border px-3 text-sm"/><input name="defaultTurnaroundDays" type="number" min="1" placeholder="Turnaround days" className="h-10 rounded-lg border px-3 text-sm"/><input name="services" placeholder="Services / case types" className="h-10 rounded-lg border px-3 text-sm"/><input name="notes" placeholder="Notes" className="h-10 rounded-lg border px-3 text-sm sm:col-span-2"/><button className="h-10 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground sm:col-span-2">Save laboratory</button></form></article><article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm"><div className="border-b px-5 py-4"><h2 className="text-lg font-bold">Active laboratories</h2><p className="mt-1 text-sm text-muted-foreground">Archive a lab without removing its existing case history.</p></div><div className="divide-y">{laboratories.map(lab=><div key={lab.id} className="flex items-center justify-between gap-3 p-4 text-sm"><div><p className="font-semibold">{lab.name}</p><p className="text-muted-foreground">{lab.technicianName || lab.contactName || "No contact recorded"}{lab.defaultTurnaroundDays ? ` · ${lab.defaultTurnaroundDays} day turnaround` : ""}</p></div><form action={archiveLaboratoryAction}><input type="hidden" name="id" value={lab.id}/><button className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700">Archive</button></form></div>)}{!laboratories.length && <p className="p-5 text-sm text-muted-foreground">No laboratories are in the directory yet.</p>}</div></article></section>
-  </div>;
+
+  return (
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        title="Laboratory"
+        sub={
+          lateCount
+            ? `${lateCount} ${lateCount === 1 ? "case is" : "cases are"} running late against a patient's visit`
+            : "Nothing is late. Nice."
+        }
+        actions={
+          <Link
+            href="/dashboard/laboratory/new"
+            className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+          >
+            New lab order
+          </Link>
+        }
+      />
+
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr))]">
+        {[
+          { label: "Out with the lab", value: openCount, tone: "text-heading" },
+          { label: "Back and ready to fit", value: readyCount, tone: "text-success" },
+          { label: "Late against a visit", value: lateCount, tone: "text-danger" },
+        ].map((tile) => (
+          <div
+            key={tile.label}
+            className="rounded-card border border-border bg-card px-4 py-3.5 shadow-[var(--shadow)]"
+          >
+            <p className="text-[11px] font-semibold tracking-[0.06em] text-text-muted uppercase">
+              {tile.label}
+            </p>
+            <p className={`text-2xl font-bold tabular-nums ${tile.tone}`}>{tile.value}</p>
+          </div>
+        ))}
+      </div>
+
+      <section className="flex flex-col gap-3 rounded-card border border-border bg-card p-4 shadow-[var(--shadow)]">
+        <div className="flex flex-wrap items-center gap-3">
+          <Suspense fallback={<div className="h-11 flex-[1_1_240px] rounded-control bg-muted" />}>
+            <ListSearch placeholder="Order, patient, lab or what was made" label="Search lab cases" />
+          </Suspense>
+          <FilterChips
+            basePath={BASE}
+            query={query}
+            name="show"
+            legend="Narrow the cases"
+            options={[
+              { value: "late", label: "Running late" },
+              { value: "ready", label: "Ready to fit" },
+              { value: "open", label: "Still out" },
+            ]}
+          />
+        </div>
+        {laboratories.length > 1 && (
+          <FilterChips
+            basePath={BASE}
+            query={query}
+            name="lab"
+            legend="Filter by laboratory"
+            options={laboratories.map((lab) => ({ value: String(lab.id), label: lab.name }))}
+          />
+        )}
+        <p className="border-t border-border/70 pt-2.5 text-xs text-text-muted">
+          Filters live in the URL — copy the link to share this view.
+        </p>
+      </section>
+
+      <DataList
+        basePath={BASE}
+        query={query}
+        columns={COLUMNS}
+        total={total}
+        shown={cases.length}
+        noun="cases"
+        empty={
+          <EmptyState
+            icon={FlaskConical}
+            title={query.q ? `Nothing matches “${query.q}”` : "Nothing out with a lab"}
+            body={
+              query.q
+                ? "Try an order number, or clear the filters."
+                : "Send your first case and you can follow it from here until it is in the patient's mouth."
+            }
+            action={{ label: "New lab order", href: "/dashboard/laboratory/new" }}
+          />
+        }
+      >
+        {cases.map((item) => {
+          const threatened = labDelayThreatensAppointment({
+            status: item.status,
+            requiredAt: item.dueDate,
+            appointmentAt: item.patientAppointmentAt,
+          });
+          const late = item.dueDate ? overdueBy(item.dueDate, now) : null;
+          return (
+            <ListRow key={item.id} needsAttention={threatened}>
+              <ListCell>
+                <Link
+                  href={`/dashboard/laboratory/${item.id}`}
+                  className="font-semibold tabular-nums text-primary hover:underline"
+                >
+                  {item.orderNumber || `LAB-${item.id}`}
+                </Link>
+                <span className="block text-xs text-text-muted">
+                  {item.caseType}
+                  {item.priority === "URGENT" ? " · urgent" : ""}
+                </span>
+              </ListCell>
+              <ListCell>
+                <Link
+                  href={`/dashboard/patients/${item.patient.id}`}
+                  className="text-primary hover:underline"
+                >
+                  {item.patient.fullName}
+                </Link>
+              </ListCell>
+              <ListCell secondary>
+                <span className="text-text-muted">{item.laboratory?.name || item.labName}</span>
+              </ListCell>
+              <ListCell>
+                {item.dueDate ? (
+                  <span
+                    title={exactStamp(item.dueDate)}
+                    className={late ? "font-semibold text-danger" : "text-text-muted"}
+                  >
+                    {late ?? humanTime(item.dueDate, now)}
+                  </span>
+                ) : (
+                  <span className="text-text-muted">no date set</span>
+                )}
+              </ListCell>
+              <ListCell>
+                <span
+                  className={`inline-flex items-center rounded-pill px-2.5 py-1 text-xs font-semibold ${
+                    threatened
+                      ? "bg-danger-bg text-danger"
+                      : item.status === "READY"
+                        ? "bg-success-bg text-success"
+                        : "bg-muted text-heading"
+                  }`}
+                >
+                  {threatened ? "The patient is booked before this lands" : humanLabel(item.status)}
+                </span>
+              </ListCell>
+              <ListCell align="right">
+                <Link href={`/dashboard/laboratory/${item.id}`} className="text-xs font-semibold text-primary">
+                  Open
+                </Link>
+              </ListCell>
+            </ListRow>
+          );
+        })}
+      </DataList>
+
+      <details className="rounded-card border border-border bg-card p-4 shadow-[var(--shadow)]">
+        <summary className="cursor-pointer text-base font-semibold text-heading">
+          The labs you work with
+        </summary>
+        <div className="mt-4 grid gap-5 lg:grid-cols-2">
+          <div>
+            <p className="mb-2 text-[13px] text-text-muted">
+              Who they are, how long they take, and how to reach them.
+            </p>
+            <LaboratoryDirectoryForm />
+          </div>
+          <div className="flex flex-col gap-3">
+            {laboratories.map((lab) => (
+              <div key={lab.id} className="rounded-control border border-border p-3">
+                <p className="text-sm font-semibold text-heading">{lab.name}</p>
+                <p className="text-xs text-text-muted">
+                  {lab.technicianName || lab.contactName || "No named contact"} ·{" "}
+                  {lab.defaultTurnaroundDays ? `${lab.defaultTurnaroundDays} days` : "turnaround not set"}
+                </p>
+                <LabActionForm
+                  action={archiveLaboratoryAction}
+                  label="Take this lab off the list"
+                  pendingLabel="Saving…"
+                  confirmMessage="They stop showing up when you send new cases. Everything already sent to them is untouched."
+                  className="mt-2.5 flex flex-wrap items-end gap-2"
+                  buttonClassName="min-h-11 rounded-control border border-danger-border px-3 text-xs font-semibold text-danger disabled:opacity-60"
+                >
+                  <input type="hidden" name="id" value={lab.id} />
+                  <label className="min-w-0 flex-1 text-xs font-semibold">
+                    Why
+                    <input
+                      required
+                      minLength={8}
+                      name="reason"
+                      placeholder="Why are they coming off?"
+                      className="mt-1 min-h-11 w-full rounded-control border border-border px-3"
+                    />
+                  </label>
+                </LabActionForm>
+              </div>
+            ))}
+            {!laboratories.length && (
+              <p className="text-[13px] text-text-muted">No labs on your list yet.</p>
+            )}
+          </div>
+        </div>
+      </details>
+    </div>
+  );
 }

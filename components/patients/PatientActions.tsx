@@ -1,6 +1,0 @@
-"use client";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-export default function PatientActions({ patientId }: { patientId: number }) { const router = useRouter(); async function remove() { if (!window.confirm("Delete this patient? Appointment records will remain but no longer be linked.")) return; const response = await fetch(`/api/patients/${patientId}`, { method: "DELETE" }); if (!response.ok) return toast.error("Could not delete patient."); toast.success("Patient deleted."); router.push("/dashboard/patients"); router.refresh(); } return <div className="flex flex-wrap gap-2"><Link href={`/dashboard/prescriptions/new?patientId=${patientId}`} className="inline-flex h-8 items-center rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white shadow-sm hover:bg-emerald-700">New prescription</Link><Link href={`/dashboard/patients/${patientId}/edit`} className="inline-flex h-8 items-center rounded-lg border border-border bg-white px-3 text-sm font-medium shadow-sm hover:bg-muted">Edit</Link><Button className="bg-red-600 hover:bg-red-700" onClick={remove}>Delete</Button></div>; }

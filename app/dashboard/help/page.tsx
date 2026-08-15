@@ -1,12 +1,90 @@
 import Link from "next/link";
-import { ArrowRight, BookOpenCheck, CalendarDays, CircleHelp, FileDown, MessageCircle } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import PageHeader from "@/components/lists/PageHeader";
 
-const guides = [
-  { title: "Manage appointments", description: "Create appointments, update their status, and send reminders from the appointment details page.", href: "/dashboard/appointments", icon: CalendarDays },
-  { title: "Follow up with patients", description: "Use the Follow-ups centre to see overdue bookings and send upcoming WhatsApp reminders.", href: "/dashboard/follow-ups", icon: MessageCircle },
-  { title: "Review and export data", description: "Use Reports for clinic performance, then download CSV files from Exports when you need them.", href: "/dashboard/reports", icon: FileDown },
+const ANSWERS = [
+  {
+    question: "Someone is in the chair — where do I write it down?",
+    answer:
+      "Open the patient and press Start visit. Chart the teeth, write the note, prescribe if you need to. Nothing waits on the booking being marked off; it all attaches to the day you pick when you save.",
+    href: "/dashboard/clinical-workspace",
+    label: "Open Clinical",
+  },
+  {
+    question: "How do I take a payment without losing my place?",
+    answer:
+      "On Money, press Collect on the row. Put in the amount, pick how they paid, done. Part payments are fine and the receipt goes out on WhatsApp on its own.",
+    href: "/dashboard/billing",
+    label: "Open Money",
+  },
+  {
+    question: "Who still needs ringing?",
+    answer:
+      "Today shows the ones that are overdue at the top. The full queue lives on Growth, with why each person is waiting and how many times you have tried.",
+    href: "/dashboard/growth?tab=callbacks",
+    label: "Open the queue",
+  },
+  {
+    question: "The day I want has no times to pick",
+    answer:
+      "That day has no hours set up yet. You can still book it — type the time by hand and it saves. To fix it properly, set the opening hours for that day.",
+    href: "/dashboard/settings/operations",
+    label: "Set opening hours",
+  },
+  {
+    question: "I need to find someone fast",
+    answer:
+      "Press Ctrl K (⌘K on a Mac) anywhere. A phone number usually finds a person quickest. It also runs things — type “book” to open the booking sheet.",
+    href: "/dashboard/search",
+    label: "Open search",
+  },
+  {
+    question: "Can I get my data out?",
+    answer:
+      "Yes, whenever you like. Patients, visits and money each download as a spreadsheet. It is your clinic's data.",
+    href: "/dashboard/exports",
+    label: "Open exports",
+  },
 ];
 
 export default function HelpPage() {
-  return <div className="mx-auto max-w-5xl space-y-6"><header className="rounded-2xl border border-border bg-card px-6 py-7 shadow-sm sm:px-8"><p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary">DentalAI guide</p><h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">Help & quick start</h1><p className="mt-2 max-w-2xl text-muted-foreground">A short guide to the main daily workflows in your clinic workspace.</p></header><section className="grid gap-5 md:grid-cols-3">{guides.map(({ title, description, href, icon: Icon }) => <Link key={title} href={href} className="group rounded-2xl border border-border bg-card p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"><div className="grid size-11 place-items-center rounded-xl bg-cyan-50 text-cyan-700"><Icon className="size-5" /></div><h2 className="mt-5 text-lg font-bold">{title}</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p><span className="mt-6 inline-flex items-center gap-1 text-sm font-semibold text-primary">Open section <ArrowRight className="size-4 transition group-hover:translate-x-1" /></span></Link>)}</section><section className="flex gap-4 rounded-2xl border border-blue-100 bg-blue-50/60 p-5 text-sm text-blue-950"><BookOpenCheck className="mt-0.5 size-5 shrink-0 text-blue-700" /><div><p className="font-semibold">WhatsApp language selection</p><p className="mt-1 text-blue-900/80">When a new patient sends Hi, Hello, Menu, or Start, DentalAI first asks them to choose English, Hindi, or Marathi.</p></div></section><section className="flex gap-4 rounded-2xl border border-border bg-card p-5 text-sm"><CircleHelp className="mt-0.5 size-5 shrink-0 text-primary" /><p className="leading-6 text-muted-foreground">If an action does not work, check your internet connection and WhatsApp settings, then try again. The new error screen will always provide a safe retry option.</p></section></div>;
+  return (
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
+      <PageHeader
+        title="How things work here"
+        sub="Short answers to the things people ask most often in the first week."
+        actions={
+          <Link
+            href="/dashboard/settings?tab=records"
+            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+          >
+            Back to Settings
+          </Link>
+        }
+      />
+
+      <div className="flex flex-col gap-3">
+        {ANSWERS.map((item) => (
+          <section
+            key={item.question}
+            className="rounded-card border border-border bg-card p-4.5 shadow-[var(--shadow)]"
+          >
+            <h2 className="text-base font-semibold text-heading">{item.question}</h2>
+            <p className="mt-1.5 text-[13px] text-text-muted">{item.answer}</p>
+            <Link
+              href={item.href}
+              className="mt-3 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold text-primary hover:underline"
+            >
+              {item.label}
+              <ArrowRight className="h-4 w-4" aria-hidden />
+            </Link>
+          </section>
+        ))}
+      </div>
+
+      <p className="rounded-control border border-border bg-muted px-3.5 py-3 text-[13px] text-text-muted">
+        Stuck on something not here? Whoever set the clinic up can reach support for you.
+      </p>
+    </div>
+  );
 }

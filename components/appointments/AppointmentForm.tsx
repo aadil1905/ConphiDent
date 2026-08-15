@@ -1,67 +1,157 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-
-import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-
+import { Loader2 } from "lucide-react";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
-import { CalendarPlus, Loader2 } from "lucide-react";
 
-import { appointmentSchema } from "@/lib/validations";
 import type { AppointmentFormValues } from "@/lib/validations";
+import { appointmentSchema } from "@/lib/validations";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+type AppointmentLocation = {
+  id: number;
+  name: string;
+  timezone?: string | null;
+  active?: boolean;
+  isPrimary: boolean;
+  providerIds: number[];
+  serviceIds: number[];
+  hours: Array<{
+    dayOfWeek: number;
+    openTime: string;
+    closeTime: string;
+    slotMinutes: number;
+    isClosed: boolean;
+    sortOrder: number;
+  }>;
+};
 
 type AppointmentFormProps = {
   defaultValues?: Partial<AppointmentFormValues>;
   appointmentId?: number;
   mode?: "create" | "edit";
-  providers?: Array<{ id: number; name: string }>;
-  chairs?: Array<{ id: number; name: string }>;
+  clinicTimezone?: string;
+  locations?: AppointmentLocation[];
+  providers?: Array<{ id: number; name: string; active?: boolean }>;
+  chairs?: Array<{ id: number; name: string; active?: boolean }>;
+  services?: Array<{ id: number; name: string; active?: boolean }>;
   returnTo?: string;
 };
 
-const timeHours = Array.from({ length: 12 }, (_, index) => String(index + 1));
-const timeMinutes = ["00", "15", "30", "45"];
-
-function toTimeParts(time: string) {
-  const match = /^(\d{2}):(\d{2})$/.exec(time);
-  if (!match) return { hour: "", minute: "", period: "AM" as const };
-  const hour24 = Number(match[1]);
-  return { hour: String(hour24 % 12 || 12), minute: match[2], period: hour24 >= 12 ? "PM" as const : "AM" as const };
+function localClock(timeZone: string, now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const part = (type: Intl.DateTimeFormatPartTypes) => (
+    parts.find((item) => item.type === type)?.value ?? ""
+  );
+  return {
+    date: `${part("year")}-${part("month")}-${part("day")}`,
+    time: `${part("hour")}:${part("minute")}`,
+  };
 }
 
-function toTwentyFourHourTime(hour: string, minute: string, period: "AM" | "PM") {
-  if (!hour || !minute) return "";
-  const hour12 = Number(hour);
-  const hour24 = period === "PM" ? (hour12 % 12) + 12 : hour12 % 12;
-  return `${String(hour24).padStart(2, "0")}:${minute}`;
+function todayFor(timeZone: string) {
+  try {
+    return localClock(timeZone).date;
+  } catch {
+    return localClock("Asia/Kolkata").date;
+  }
+}
+
+function displayTime(time: string) {
+  const [hour, minute] = time.split(":").map(Number);
+  if (!Number.isInteger(hour) || !Number.isInteger(minute)) return time;
+  return `${hour % 12 || 12}:${String(minute).padStart(2, "0")} ${hour >= 12 ? "PM" : "AM"}`;
+}
+
+function configuredSlots(
+  location: AppointmentLocation | undefined,
+  date: string,
+  clinicTimezone: string,
+) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  if (!location || !match) return [];
+  const parsedDate = new Date(Date.UTC(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3]),
+  ));
+  if (
+    parsedDate.getUTCFullYear() !== Number(match[1])
+    || parsedDate.getUTCMonth() !== Number(match[2]) - 1
+    || parsedDate.getUTCDate() !== Number(match[3])
+  ) return [];
+
+  const dayOfWeek = parsedDate.getUTCDay();
+  const slots = Array.from(new Set(location.hours
+    .filter((hours) => hours.dayOfWeek === dayOfWeek && !hours.isClosed)
+    .sort((left, right) => left.sortOrder - right.sortOrder)
+    .flatMap((hours) => {
+      const [openHour, openMinute] = hours.openTime.split(":").map(Number);
+      const [closeHour, closeMinute] = hours.closeTime.split(":").map(Number);
+      const open = openHour * 60 + openMinute;
+      const close = closeHour * 60 + closeMinute;
+      if (
+        !Number.isInteger(hours.slotMinutes)
+        || hours.slotMinutes < 15
+        || open >= close
+      ) return [];
+      const result: string[] = [];
+      for (
+        let current = open;
+        current + hours.slotMinutes <= close;
+        current += hours.slotMinutes
+      ) {
+        result.push(
+          `${String(Math.floor(current / 60)).padStart(2, "0")}:${String(current % 60).padStart(2, "0")}`,
+        );
+      }
+      return result;
+    }))).sort();
+
+  let current;
+  try {
+    current = localClock(location.timezone || clinicTimezone);
+  } catch {
+    return [];
+  }
+  if (date < current.date) return [];
+  return date === current.date
+    ? slots.filter((slot) => slot > current.time)
+    : slots;
 }
 
 export default function AppointmentForm({
   defaultValues,
   appointmentId,
   mode = "create",
+  clinicTimezone = "Asia/Kolkata",
+  locations = [],
   providers = [],
   chairs = [],
+  services = [],
   returnTo,
 }: AppointmentFormProps) {
   const router = useRouter();
-
   const [loading, setLoading] = useState(false);
   const [knownPatient, setKnownPatient] = useState<string | null>(null);
+
+  const primaryLocation = locations.find((location) => location.isPrimary) ?? locations[0];
+  const initialDate = defaultValues?.appointmentDate ?? todayFor(clinicTimezone);
+  const initialLocationId = defaultValues?.locationId ?? primaryLocation?.id ?? null;
+  const initialLocation = locations.find((location) => location.id === initialLocationId);
+  const initialTime = defaultValues?.appointmentTime
+    ?? configuredSlots(initialLocation, initialDate, clinicTimezone)[0]
+    ?? "";
 
   const {
     register,
@@ -71,23 +161,15 @@ export default function AppointmentForm({
     formState: { errors },
   } = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentSchema),
-
     defaultValues: {
       patientName: defaultValues?.patientName ?? "",
       phone: defaultValues?.phone ?? "",
-
-     appointmentDate:
-  defaultValues?.appointmentDate ?? new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }),
-
-      appointmentTime: defaultValues?.appointmentTime ?? "09:00",
-
-      treatment: defaultValues?.treatment ?? "New Consultation",
-
-      status:
-        defaultValues?.status ?? "Pending",
-
-      notes:
-        defaultValues?.notes ?? "",
+      appointmentDate: initialDate,
+      appointmentTime: initialTime,
+      treatment: defaultValues?.treatment ?? services[0]?.name ?? "New Consultation",
+      status: defaultValues?.status ?? "Pending",
+      notes: defaultValues?.notes ?? "",
+      locationId: initialLocationId,
       providerId: defaultValues?.providerId ?? null,
       chairId: defaultValues?.chairId ?? null,
     },
@@ -99,15 +181,61 @@ export default function AppointmentForm({
 
   const status = useWatch({ control, name: "status" });
   const phone = useWatch({ control, name: "phone" });
+  const appointmentDate = useWatch({ control, name: "appointmentDate" });
   const appointmentTime = useWatch({ control, name: "appointmentTime" });
-  const timeParts = toTimeParts(appointmentTime);
+  const locationId = useWatch({ control, name: "locationId" });
+  const providerId = useWatch({ control, name: "providerId" });
+  const treatment = useWatch({ control, name: "treatment" });
+  const selectedLocation = locations.find((location) => location.id === locationId);
+  const preservingOriginalSchedule = mode === "edit"
+    && locationId === initialLocationId
+    && appointmentDate === initialDate;
 
-  function updateAppointmentTime(next: Partial<typeof timeParts>) {
-    const hour = next.hour ?? timeParts.hour;
-    const minute = next.minute ?? timeParts.minute;
-    const period = next.period ?? timeParts.period;
-    setValue("appointmentTime", toTwentyFourHourTime(hour, minute, period), { shouldValidate: true, shouldDirty: true });
-  }
+  const availableTimes = useMemo(
+    () => configuredSlots(selectedLocation, appointmentDate, clinicTimezone),
+    [selectedLocation, appointmentDate, clinicTimezone],
+  );
+  const selectableTimes = preservingOriginalSchedule
+    && appointmentTime
+    && !availableTimes.includes(appointmentTime)
+    ? [appointmentTime, ...availableTimes]
+    : availableTimes;
+  const visibleProviders = useMemo(() => providers.filter((provider) => (
+    Boolean(selectedLocation?.providerIds.includes(provider.id))
+    || (preservingOriginalSchedule && provider.id === providerId)
+  )), [preservingOriginalSchedule, providerId, providers, selectedLocation]);
+  const visibleServices = useMemo(() => {
+    const assigned = selectedLocation?.serviceIds ?? [];
+    return services.filter((service) => (
+      (service.active !== false && (!assigned.length || assigned.includes(service.id)))
+      || (preservingOriginalSchedule && service.name === treatment)
+    ));
+  }, [preservingOriginalSchedule, selectedLocation, services, treatment]);
+
+  useEffect(() => {
+    if (preservingOriginalSchedule && appointmentTime) return;
+    if (!availableTimes.includes(appointmentTime)) {
+      setValue("appointmentTime", availableTimes[0] ?? "", {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+    }
+  }, [appointmentTime, availableTimes, preservingOriginalSchedule, setValue]);
+
+  useEffect(() => {
+    if (providerId && !visibleProviders.some((provider) => provider.id === providerId)) {
+      setValue("providerId", null, { shouldDirty: true });
+    }
+  }, [providerId, setValue, visibleProviders]);
+
+  useEffect(() => {
+    if (!visibleServices.some((service) => service.name === treatment)) {
+      setValue("treatment", visibleServices[0]?.name ?? "New Consultation", {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+    }
+  }, [setValue, treatment, visibleServices]);
 
   useEffect(() => {
     const cleanPhone = (phone || "").replace(/\D/g, "").slice(-10);
@@ -115,51 +243,41 @@ export default function AppointmentForm({
     const timer = window.setTimeout(async () => {
       const response = await fetch(`/api/patients?phone=${cleanPhone}`);
       const body = await response.json();
-      if (body.patient) { setKnownPatient(body.patient.fullName); setValue("patientName", body.patient.fullName, { shouldDirty: true }); setValue("treatment", "Follow Up", { shouldDirty: true }); }
-      else { setKnownPatient(null); setValue("treatment", "New Consultation", { shouldDirty: true }); }
+      const followUp = visibleServices.find((service) => /follow[ -]?up/i.test(service.name));
+      const consultation = visibleServices.find((service) => /consult/i.test(service.name));
+      if (body.patient) {
+        setKnownPatient(body.patient.fullName);
+        setValue("patientName", body.patient.fullName, { shouldDirty: true });
+        if (followUp) setValue("treatment", followUp.name, { shouldDirty: true });
+      } else {
+        setKnownPatient(null);
+        if (consultation) setValue("treatment", consultation.name, { shouldDirty: true });
+      }
     }, 350);
     return () => window.clearTimeout(timer);
-  }, [phone, mode, setValue]);
+  }, [phone, mode, setValue, visibleServices]);
 
-  async function onSubmit(
-    values: AppointmentFormValues
-  ) {
+  async function onSubmit(values: AppointmentFormValues) {
     try {
       setLoading(true);
-
-      const url =
-        mode === "create"
-          ? "/api/appointments"
-          : `/api/appointments/${appointmentId}`;
-
-      const method =
-        mode === "create"
-          ? "POST"
-          : "PATCH";
-
+      const url = mode === "create"
+        ? "/api/appointments"
+        : `/api/appointments/${appointmentId}`;
       const response = await fetch(url, {
-        method,
-
-        headers: {
-          "Content-Type": "application/json",
-        },
-
+        method: mode === "create" ? "POST" : "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
-
+      const saved = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(
-          "Failed to save appointment."
-        );
+        throw new Error(saved.error || "Failed to save appointment.");
       }
-      const saved = await response.json();
 
       toast.success(
         mode === "create"
           ? "Appointment created successfully."
-          : "Appointment updated successfully."
+          : "Appointment updated successfully.",
       );
-
       if (mode === "create" && saved.intakeRequired) {
         const query = new URLSearchParams({
           name: values.patientName,
@@ -169,231 +287,176 @@ export default function AppointmentForm({
       } else {
         router.push(returnTo || "/dashboard/appointments");
       }
-
       router.refresh();
-          } catch (error) {
+    } catch (error) {
       console.error(error);
-
       toast.error(
-        mode === "create"
-          ? "Failed to create appointment."
-          : "Failed to update appointment."
+        error instanceof Error ? error.message : "Failed to save appointment.",
       );
     } finally {
       setLoading(false);
     }
   }
 
+  const treatmentOptions = visibleServices.length
+    ? visibleServices
+    : [{ id: 0, name: "New Consultation", active: true }];
+
+  const field = "min-h-11 w-full rounded-control border border-border bg-card px-3 text-sm font-normal text-foreground outline-none";
+  const labelClass = "flex flex-col gap-1.5 text-xs font-semibold text-heading";
+  const errorClass = "text-[13px] font-normal text-danger";
+
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="overflow-hidden rounded-3xl border border-border bg-white shadow-sm"
-    >
-      <div className="border-b border-border bg-gradient-to-r from-sky-50 to-white px-6 py-5">
-        <div className="flex items-start gap-3">
-          <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-sky-100 text-sky-700"><CalendarPlus className="size-5" /></div>
-          <div><h2 className="text-lg font-bold text-slate-950">Appointment details</h2><p className="mt-1 text-sm text-muted-foreground">Add the patient, schedule, visit reason, and booking status.</p></div>
-        </div>
-      </div>
-      <div className="space-y-6 p-6">
-      <div className="grid gap-5 md:grid-cols-2">
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
+      <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
+        <h2 className="text-base font-semibold text-heading">Who is coming, and when</h2>
+        <p className="mt-0.5 text-[13px] text-text-muted">
+          Nothing here blocks a booking — if a day has no set slots, you can still type a time.
+        </p>
 
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-slate-800">
-            Patient name <span className="text-red-500">*</span>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <label className={labelClass}>Their name *
+            <input placeholder="Full name" className={field} {...register("patientName")} />
+            {knownPatient ? <span className="text-xs font-normal text-success">We know them — details filled in.</span> : null}
+            {errors.patientName ? <span className={errorClass}>{errors.patientName.message}</span> : null}
           </label>
 
-          <Input
-            placeholder="John Doe"
-            className="h-11 rounded-xl bg-white"
-            {...register("patientName")}
-          />
-          {knownPatient ? <p className="text-xs font-medium text-emerald-700">Existing patient found · follow-up selected</p> : null}
-
-          {errors.patientName && (
-            <p className="text-sm text-destructive">
-              {errors.patientName.message}
-            </p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-slate-800">
-            Phone number <span className="text-red-500">*</span>
+          <label className={labelClass}>Their phone *
+            <input placeholder="Mobile number" className={field} {...register("phone")} />
+            {errors.phone ? <span className={errorClass}>{errors.phone.message}</span> : null}
           </label>
 
-          <Input
-            placeholder="10-digit mobile number"
-            className="h-11 rounded-xl bg-white"
-            {...register("phone")}
-          />
-
-          {errors.phone && (
-            <p className="text-sm text-destructive">
-              {errors.phone.message}
-            </p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-slate-800">
-            Appointment date <span className="text-red-500">*</span>
+          <label className={labelClass}>Which branch *
+            <select className={field} {...register("locationId", { setValueAs: (value) => value ? Number(value) : null })}>
+              <option value="">Pick a branch</option>
+              {locations.map((location) => (
+                <option key={location.id} value={location.id}>
+                  {location.name}{location.isPrimary ? " (main)" : ""}{location.active === false ? " (closed — kept as it was)" : ""}
+                </option>
+              ))}
+            </select>
+            {errors.locationId ? <span className={errorClass}>{errors.locationId.message}</span> : null}
           </label>
 
-          <Input
-  type="date"
-  lang="en-CA"
-  className="h-11 rounded-xl bg-white"
-  {...register("appointmentDate")}
-/>
-          {errors.appointmentDate && (
-            <p className="text-sm text-destructive">
-              {errors.appointmentDate.message}
-            </p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-slate-800">
-            Appointment time <span className="text-red-500">*</span>
+          <label className={labelClass}>Which day *
+            <input type="date" lang="en-CA" className={field} {...register("appointmentDate")} />
+            {errors.appointmentDate ? <span className={errorClass}>{errors.appointmentDate.message}</span> : null}
           </label>
 
-          <div className="grid grid-cols-3 gap-2">
-            <select aria-label="Appointment hour" value={timeParts.hour} onChange={(event) => updateAppointmentTime({ hour: event.target.value })} className="h-11 rounded-xl border bg-white px-3 text-sm"><option value="">Hour</option>{timeHours.map((hour) => <option key={hour} value={hour}>{hour}</option>)}</select>
-            <select aria-label="Appointment minute" value={timeParts.minute} onChange={(event) => updateAppointmentTime({ minute: event.target.value })} className="h-11 rounded-xl border bg-white px-3 text-sm"><option value="">Minute</option>{timeMinutes.map((minute) => <option key={minute} value={minute}>{minute}</option>)}</select>
-            <select aria-label="Appointment period" value={timeParts.period} onChange={(event) => updateAppointmentTime({ period: event.target.value as "AM" | "PM" })} className="h-11 rounded-xl border bg-white px-3 text-sm"><option value="AM">AM</option><option value="PM">PM</option></select>
-          </div>
-          <input type="hidden" {...register("appointmentTime")} />
-
-          {errors.appointmentTime && (
-            <p className="text-sm text-destructive">
-              {errors.appointmentTime.message}
-            </p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-slate-800">
-            Reason for visit
+          {/* Booking never dead-ends: when no slots are set up for a day, the
+              time becomes free text and the visit still saves. */}
+          <label className={labelClass}>What time *
+            {selectableTimes.length ? (
+              <select
+                className={field}
+                value={appointmentTime}
+                onChange={(event) => setValue("appointmentTime", event.target.value, { shouldValidate: true, shouldDirty: true })}
+              >
+                {selectableTimes.map((time) => (
+                  <option key={time} value={time}>{displayTime(time)}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="time"
+                className={`${field} tabular-nums`}
+                value={appointmentTime}
+                onChange={(event) => setValue("appointmentTime", event.target.value, { shouldValidate: true, shouldDirty: true })}
+              />
+            )}
+            <input type="hidden" {...register("appointmentTime")} />
+            {!selectableTimes.length ? (
+              <span className="text-[13px] font-normal text-text-muted">
+                Nothing is set up for this day yet. Pick another day, or type a time here — it will still save.
+              </span>
+            ) : null}
+            {errors.appointmentTime ? <span className={errorClass}>{errors.appointmentTime.message}</span> : null}
           </label>
 
-          <select className="h-11 w-full rounded-xl border bg-white px-3" {...register("treatment")}><option>New Consultation</option><option>Follow Up</option><option>Emergency</option><option>Cleaning</option><option>RCT</option><option>Crown</option><option>Other</option></select>
-
-          {errors.treatment && (
-            <p className="text-sm text-destructive">
-              {errors.treatment.message}
-            </p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-slate-800">
-            Status
+          <label className={labelClass}>What for
+            <select className={field} {...register("treatment")}>
+              {treatmentOptions.map((service) => (
+                <option key={service.id} value={service.name}>
+                  {service.name}{service.active === false ? " (retired — kept as it was)" : ""}
+                </option>
+              ))}
+            </select>
+            {errors.treatment ? <span className={errorClass}>{errors.treatment.message}</span> : null}
           </label>
 
-          <Select
-            value={status}
-            onValueChange={(value) =>
-              setValue(
-                "status",
-                value as AppointmentFormValues["status"],
-                {
-                  shouldValidate: true,
-                  shouldDirty: true,
-                }
-              )
-            }
-          >
-            <SelectTrigger className="h-11 w-full rounded-xl bg-white">
-              <SelectValue placeholder="Select status" />
-            </SelectTrigger>
+          <label className={labelClass}>Where it stands
+            <select
+              className={field}
+              value={status}
+              onChange={(event) => setValue("status", event.target.value as AppointmentFormValues["status"], { shouldValidate: true, shouldDirty: true })}
+            >
+              {(["Pending", "Confirmed", "Completed", "Cancelled", "No-show"] as const).map((item) => (
+                <option key={item} value={item}>
+                  {item === "Pending" ? "Not confirmed" : item === "No-show" ? "Did not come" : item}
+                </option>
+              ))}
+            </select>
+            <input type="hidden" {...register("status")} />
+            {errors.status ? <span className={errorClass}>{errors.status.message}</span> : null}
+          </label>
 
-            <SelectContent>
-              <SelectItem value="Pending">
-                Pending
-              </SelectItem>
+          <label className={labelClass}>Which dentist
+            <select {...register("providerId", { setValueAs: (value) => value ? Number(value) : null })} className={field}>
+              <option value="">Nobody yet</option>
+              {visibleProviders.map((provider) => (
+                <option key={provider.id} value={provider.id}>
+                  {provider.name}{provider.active === false ? " (not working — kept as it was)" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
 
-              <SelectItem value="Confirmed">
-                Confirmed
-              </SelectItem>
+          <label className={labelClass}>Which chair
+            <select {...register("chairId", { setValueAs: (value) => value ? Number(value) : null })} className={field}>
+              <option value="">Not decided</option>
+              {chairs.map((chair) => (
+                <option key={chair.id} value={chair.id}>
+                  {chair.name}{chair.active === false ? " (out of use — kept as it was)" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
 
-              <SelectItem value="Completed">
-                Completed
-              </SelectItem>
-
-              <SelectItem value="Cancelled">
-                Cancelled
-              </SelectItem>
-              <SelectItem value="No-show">
-                No-show
-              </SelectItem>
-            </SelectContent>
-          </Select>
-
-          <input
-            type="hidden"
-            {...register("status")}
-          />
-
-          {errors.status && (
-            <p className="text-sm text-destructive">
-              {errors.status.message}
-            </p>
-          )}
+          <label className={`${labelClass} md:col-span-2`}>Anything to note
+            <textarea
+              rows={4}
+              maxLength={5000}
+              placeholder="Anything the team should know before they arrive"
+              className="rounded-control border border-border bg-card p-3 text-sm font-normal text-foreground outline-none"
+              {...register("notes")}
+            />
+            {errors.notes ? <span className={errorClass}>{errors.notes.message}</span> : null}
+          </label>
         </div>
+      </section>
 
-        <label className="space-y-2 text-sm font-semibold text-slate-800">Provider
-          <select {...register("providerId", { setValueAs: (value) => value ? Number(value) : null })} className="h-11 w-full rounded-xl border bg-white px-3"><option value="">Unassigned</option>{providers.map((provider) => <option key={provider.id} value={provider.id}>{provider.name}</option>)}</select>
-        </label>
-
-        <label className="space-y-2 text-sm font-semibold text-slate-800">Chair
-          <select {...register("chairId", { setValueAs: (value) => value ? Number(value) : null })} className="h-11 w-full rounded-xl border bg-white px-3"><option value="">Unassigned</option>{chairs.map((chair) => <option key={chair.id} value={chair.id}>{chair.name}</option>)}</select>
-        </label>
-      </div>
-            <div className="space-y-2">
-        <label className="text-sm font-semibold text-slate-800">
-          Notes
-        </label>
-
-        <Textarea
-          rows={5}
-          placeholder="Additional notes about the appointment..."
-          className="rounded-xl bg-white"
-          {...register("notes")}
-        />
-
-        {errors.notes && (
-          <p className="text-sm text-destructive">
-            {errors.notes.message}
-          </p>
-        )}
-      </div>
-      </div>
-
-      <div className="flex flex-col-reverse gap-3 border-t border-border bg-slate-50 px-6 py-4 sm:flex-row sm:justify-end">
-        <Button
+      <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end">
+        <button
           type="button"
-          variant="outline"
           disabled={loading}
-          className="h-11 rounded-xl px-5"
-          onClick={() =>
-            router.push(returnTo || "/dashboard/appointments")
-          }
+          onClick={() => router.push(returnTo || "/dashboard/appointments")}
+          className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted disabled:opacity-60"
         >
-          Cancel
-        </Button>
-
-        <Button
+          Go back
+        </button>
+        <button
           type="submit"
           disabled={loading}
-          className="h-11 rounded-xl px-6"
+          className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-control border border-primary bg-primary px-5 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
         >
-          {loading ? <><Loader2 className="size-4 animate-spin" />{mode === "create" ? "Creating appointment..." : "Saving changes..."}</> :
-            mode === "create"
-              ? "Create Appointment"
-              : "Save Changes"}
-        </Button>
+          {loading ? (
+            <>
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+              {mode === "create" ? "Booking…" : "Saving…"}
+            </>
+          ) : mode === "create" ? "Book it" : "Save the change"}
+        </button>
       </div>
     </form>
-      );
+  );
 }

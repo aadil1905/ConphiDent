@@ -42,6 +42,6 @@ export async function GET(request: Request) {
   if (!user) return response;
   const phone = new URL(request.url).searchParams.get("phone")?.replace(/\D/g, "").slice(-10) || "";
   if (phone.length !== 10) return NextResponse.json({ patient: null });
-  const patient = await prisma.patient.findUnique({ where: { clinicId_phone: { clinicId: user.clinicId, phone } }, select: { id: true, fullName: true, phone: true } });
-  return NextResponse.json({ patient });
+  const patient = await prisma.patient.findUnique({ where: { clinicId_phone: { clinicId: user.clinicId, phone } }, select: { id: true, fullName: true, phone: true, archivedAt: true } });
+  return NextResponse.json({ patient: patient?.archivedAt ? null : patient });
 }

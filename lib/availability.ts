@@ -1,53 +1,224 @@
 import { prisma } from "@/lib/prisma";
+import {
+  appointmentDateFromKey,
+  appointmentDayRange,
+  clinicNow,
+  InvalidScheduleInputError,
+  parseAppointmentTime,
+  parseClinicDate,
+  scheduleWindowSlots,
+  schedulingResourcesConflict,
+} from "@/lib/scheduling-core";
 
 export function clinicDate(value: string) {
-  const [year, month, day] = value.split("-").map(Number);
-  return new Date(year, month - 1, day, 12, 0, 0);
+  return appointmentDateFromKey(value);
 }
 
-function minutes(time: string) {
-  const [hour, minute] = time.split(":").map(Number);
-  return hour * 60 + minute;
+export type LocationAvailabilityStatus =
+  | "AVAILABLE"
+  | "CLOSED"
+  | "FULL"
+  | "PAST"
+  | "MISCONFIGURED";
+
+export type LocationAvailability = {
+  status: LocationAvailabilityStatus;
+  slots: string[];
+  timezone: string;
+};
+
+export type LocationAvailabilityOptions = {
+  providerId?: number | null;
+  chairId?: number | null;
+  serviceId?: number | null;
+  /** Ignore the appointment being edited so PATCH does not conflict with itself. */
+  excludeAppointmentId?: number;
+  /** Inspect one exact slot while retaining the same closed/full/past statuses. */
+  desiredTime?: string;
+  now?: Date;
+};
+
+export type LocationAvailabilityReader = Pick<
+  typeof prisma,
+  "clinicLocation" | "clinicChair" | "clinicLocationHours" | "appointment"
+>;
+
+function isPositiveInteger(value: number) {
+  return Number.isInteger(value) && value > 0;
 }
 
-function timeAt(total: number) {
-  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+function optionalIdIsValid(value: number | null | undefined) {
+  return value == null || isPositiveInteger(value);
 }
 
-/**
- * Branch-scoped availability. A branch must belong to the clinic and still be
- * active; its multiple hour rows deliberately represent split shifts.
- */
-export async function availableLocationSlots(clinicId: number, locationId: number, date: string, options?: { providerId?: number | null; serviceId?: number | null }) {
-  const appointmentDate = clinicDate(date);
-  const dayOfWeek = appointmentDate.getDay();
-  const [location, hours, appointments] = await Promise.all([
-    prisma.clinicLocation.findFirst({
-      where: { id: locationId, clinicId, active: true, ...(options?.providerId ? { providers: { some: { providerId: options.providerId } } } : {}), ...(options?.serviceId ? { services: { some: { serviceId: options.serviceId } } } : {}) },
-      select: { id: true },
+/** Branch-scoped availability with explicit closed/full/past failure states. */
+export async function inspectLocationAvailability(
+  clinicId: number,
+  locationId: number,
+  date: string,
+  options?: LocationAvailabilityOptions,
+  db: LocationAvailabilityReader = prisma,
+): Promise<LocationAvailability> {
+  const parsedDate = parseClinicDate(date);
+  if (
+    !isPositiveInteger(clinicId)
+    || !isPositiveInteger(locationId)
+    || !optionalIdIsValid(options?.providerId)
+    || !optionalIdIsValid(options?.chairId)
+    || !optionalIdIsValid(options?.serviceId)
+    || !optionalIdIsValid(options?.excludeAppointmentId)
+  ) {
+    throw new InvalidScheduleInputError("Scheduling resource identifiers are invalid.");
+  }
+  if (options?.desiredTime != null) parseAppointmentTime(options.desiredTime);
+
+  const [location, chair] = await Promise.all([
+    db.clinicLocation.findFirst({
+      where: {
+        id: locationId,
+        clinicId,
+        active: true,
+        ...(options?.providerId ? {
+          providers: {
+            some: {
+              providerId: options.providerId,
+              provider: { clinicId, active: true },
+            },
+          },
+        } : {}),
+        ...(options?.serviceId ? {
+          services: {
+            some: {
+              serviceId: options.serviceId,
+              service: { clinicId, active: true },
+            },
+          },
+        } : {}),
+      },
+      select: { id: true, timezone: true, clinic: { select: { timezone: true } } },
     }),
-    prisma.clinicLocationHours.findMany({ where: { locationId, dayOfWeek }, orderBy: { sortOrder: "asc" } }),
-    prisma.appointment.findMany({
-      where: { clinicId, locationId, appointmentDate, archivedAt: null, status: { notIn: ["Cancelled", "No-show"] } },
-      select: { appointmentTime: true },
+    options?.chairId
+      ? db.clinicChair.findFirst({
+          where: { id: options.chairId, clinicId, active: true },
+          select: { id: true },
+        })
+      : Promise.resolve(null),
+  ]);
+
+  const timezone = location?.timezone || location?.clinic.timezone || "Asia/Kolkata";
+  if (!location || (options?.chairId && !chair)) {
+    return { status: "CLOSED", slots: [], timezone };
+  }
+
+  let current: ReturnType<typeof clinicNow>;
+  try {
+    current = clinicNow(timezone, options?.now);
+  } catch (error) {
+    if (error instanceof InvalidScheduleInputError) {
+      return { status: "MISCONFIGURED", slots: [], timezone };
+    }
+    throw error;
+  }
+  if (date < current.date) return { status: "PAST", slots: [], timezone };
+
+  const [hours, appointments] = await Promise.all([
+    db.clinicLocationHours.findMany({
+      where: { locationId, dayOfWeek: parsedDate.dayOfWeek },
+      orderBy: { sortOrder: "asc" },
+    }),
+    db.appointment.findMany({
+      where: {
+        clinicId,
+        ...(options?.excludeAppointmentId
+          ? { id: { not: options.excludeAppointmentId } }
+          : {}),
+        appointmentDate: appointmentDayRange(date),
+        archivedAt: null,
+        status: { notIn: ["Cancelled", "No-show"] },
+      },
+      select: {
+        appointmentTime: true,
+        locationId: true,
+        providerId: true,
+        chairId: true,
+      },
     }),
   ]);
-  if (!location || !hours.length || hours.every((hour) => hour.isClosed)) return [];
-  const occupied = new Set(appointments.map((appointment) => appointment.appointmentTime));
-  return Array.from(new Set(hours.flatMap((hour) => {
-    if (hour.isClosed) return [];
-    const slots: string[] = [];
-    const slotMinutes = Math.max(15, hour.slotMinutes);
-    for (let current = minutes(hour.openTime); current + slotMinutes <= minutes(hour.closeTime); current += slotMinutes) {
-      const slot = timeAt(current);
-      if (!occupied.has(slot)) slots.push(slot);
+
+  if (!hours.length) {
+    return { status: "MISCONFIGURED", slots: [], timezone };
+  }
+  if (hours.every((hour) => hour.isClosed)) {
+    return { status: "CLOSED", slots: [], timezone };
+  }
+  if (hours.some((hour) => hour.isClosed) && hours.some((hour) => !hour.isClosed)) {
+    return { status: "MISCONFIGURED", slots: [], timezone };
+  }
+
+  let scheduledSlots: string[];
+  try {
+    scheduledSlots = scheduleWindowSlots(hours.filter((hour) => !hour.isClosed));
+  } catch (error) {
+    if (error instanceof InvalidScheduleInputError) {
+      return { status: "MISCONFIGURED", slots: [], timezone };
     }
-    return slots;
-  }))).sort();
+    throw error;
+  }
+  if (!scheduledSlots.length) {
+    return { status: "MISCONFIGURED", slots: [], timezone };
+  }
+
+  if (options?.desiredTime != null && !scheduledSlots.includes(options.desiredTime)) {
+    return { status: "CLOSED", slots: [], timezone };
+  }
+
+  const candidateSlots = options?.desiredTime != null
+    ? [options.desiredTime]
+    : scheduledSlots;
+
+  const futureSlots = date === current.date
+    ? candidateSlots.filter((slot) => slot > current.time)
+    : candidateSlots;
+  if (!futureSlots.length) {
+    return {
+      status: date === current.date ? "PAST" : "CLOSED",
+      slots: [],
+      timezone,
+    };
+  }
+
+  const requestedResources = {
+    locationId,
+    providerId: options?.providerId,
+    chairId: options?.chairId,
+  };
+  const occupied = new Set(appointments.filter((appointment) => (
+    schedulingResourcesConflict(requestedResources, appointment)
+  )).map((appointment) => appointment.appointmentTime));
+  const slots = futureSlots.filter((slot) => !occupied.has(slot));
+
+  return {
+    status: slots.length ? "AVAILABLE" : "FULL",
+    slots,
+    timezone,
+  };
+}
+
+export async function availableLocationSlots(
+  clinicId: number,
+  locationId: number,
+  date: string,
+  options?: LocationAvailabilityOptions,
+  db: LocationAvailabilityReader = prisma,
+) {
+  return (await inspectLocationAvailability(clinicId, locationId, date, options, db)).slots;
 }
 
 /** Legacy callers resolve the active primary branch rather than falling back across tenants. */
 export async function availableClinicSlots(clinicId: number, date: string) {
-  const location = await prisma.clinicLocation.findFirst({ where: { clinicId, active: true, isPrimary: true }, select: { id: true } });
+  const location = await prisma.clinicLocation.findFirst({
+    where: { clinicId, active: true, isPrimary: true },
+    select: { id: true },
+  });
   return location ? availableLocationSlots(clinicId, location.id, date) : [];
 }

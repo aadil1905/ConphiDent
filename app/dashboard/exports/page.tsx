@@ -1,13 +1,69 @@
-import { Download, FileSpreadsheet, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { Download } from "lucide-react";
 import { requirePermission } from "@/lib/permissions";
+import PageHeader from "@/components/lists/PageHeader";
 
-const exports = [
-  { name: "Appointments", description: "Schedule, treatments, statuses, sources, and reminder history.", href: "/api/exports/appointments", tone: "bg-blue-50 text-blue-700", accent: "border-blue-100" },
-  { name: "Patients", description: "Patient contact details, demographics, addresses, and medical notes.", href: "/api/exports/patients", tone: "bg-cyan-50 text-cyan-700", accent: "border-cyan-100" },
-  { name: "Billing", description: "Invoices, payment totals, outstanding balances, and invoice status.", href: "/api/exports/billing", tone: "bg-emerald-50 text-emerald-700", accent: "border-emerald-100" },
+const SHEETS = [
+  {
+    name: "Patients",
+    what: "Everyone on your list — names, numbers, addresses and the notes you keep about their health.",
+    href: "/api/exports/patients",
+  },
+  {
+    name: "Visits",
+    what: "Every appointment with its treatment, who it was with, whether they turned up, and where they came from.",
+    href: "/api/exports/appointments",
+  },
+  {
+    name: "Money",
+    what: "Invoices, what has been paid, what is still owed, and the state of each one.",
+    href: "/api/exports/billing",
+  },
 ];
 
 export default async function ExportsPage() {
   await requirePermission("exportData");
-  return <div className="mx-auto max-w-[1240px] space-y-6"><header className="rounded-2xl border border-border bg-card px-6 py-7 shadow-sm sm:px-8"><p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary">Clinic data</p><h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">Data exports</h1><p className="mt-2 max-w-2xl text-muted-foreground">Download the information your clinic needs in clean CSV files, ready for Excel, Google Sheets, and accounting tools.</p></header><section className="exports-grid">{exports.map((item) => <article key={item.name} className={`flex min-h-[270px] flex-col rounded-2xl border ${item.accent} bg-card p-6 shadow-sm`}><div className={`grid size-11 place-items-center rounded-xl ${item.tone}`}><FileSpreadsheet className="size-5" /></div><h2 className="mt-5 text-xl font-bold tracking-tight">{item.name}</h2><p className="mt-2 flex-1 text-sm leading-6 text-muted-foreground">{item.description}</p><a href={item.href} className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"><Download className="size-4" />Download CSV</a></article>)}</section><section className="flex gap-4 rounded-2xl border border-cyan-100 bg-cyan-50/60 p-5 text-sm text-cyan-950"><ShieldCheck className="mt-0.5 size-5 shrink-0 text-cyan-700" /><div><p className="font-semibold">Downloads are generated when you request them</p><p className="mt-1 text-cyan-900/80">No new database table is created. Your CSV files contain only the information already saved in DentalAI.</p></div></section></div>;
+
+  return (
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
+      <PageHeader
+        title="Take your data out"
+        sub="Spreadsheets you can open in Excel or Google Sheets. This is your clinic's data — you can have it whenever you want."
+        actions={
+          <Link
+            href="/dashboard/settings?tab=records"
+            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+          >
+            Back to Settings
+          </Link>
+        }
+      />
+
+      <div className="flex flex-col gap-3">
+        {SHEETS.map((sheet) => (
+          <section
+            key={sheet.name}
+            className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-border bg-card p-4.5 shadow-[var(--shadow)]"
+          >
+            <div className="min-w-0">
+              <h2 className="text-base font-semibold text-heading">{sheet.name}</h2>
+              <p className="mt-1 text-[13px] text-text-muted">{sheet.what}</p>
+            </div>
+            <a
+              href={sheet.href}
+              className="inline-flex min-h-11 flex-none items-center gap-2 rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+            >
+              <Download className="h-4 w-4" aria-hidden />
+              Download
+            </a>
+          </section>
+        ))}
+      </div>
+
+      <p className="rounded-control border border-border bg-muted px-3.5 py-3 text-[13px] text-text-muted">
+        These files hold real patient details. Keep them somewhere only your clinic can reach, and delete
+        them when you are done.
+      </p>
+    </div>
+  );
 }

@@ -20,11 +20,11 @@ export async function POST(request: Request, context: { params: Promise<{ token:
   const { token } = await context.params;
   try {
     const contentLength = Number(request.headers.get("content-length") || 0);
-    if (contentLength > 1_100_000) return NextResponse.json({ error: "The submitted form is too large." }, { status: 413 });
+    if (contentLength > 1_100_000) return NextResponse.json({ error: "That is more than we can take at once. Try a shorter signature." }, { status: 413 });
     const input = formSchema.parse(await request.json());
     const intake = await prisma.patientIntakeRequest.findUnique({ where: { token } });
-    if (!intake) return NextResponse.json({ error: "This form link is invalid." }, { status: 404 });
-    if (intake.expiresAt <= new Date()) return NextResponse.json({ error: "This form link has expired. Please contact the clinic." }, { status: 410 });
+    if (!intake) return NextResponse.json({ error: "We could not find this link. Ask the clinic for a fresh one." }, { status: 404 });
+    if (intake.expiresAt <= new Date()) return NextResponse.json({ error: "This link has run out. Reply to the clinic's message and they will send a new one." }, { status: 410 });
     if (["COMPLETED", "REVIEWED"].includes(intake.status)) {
       return NextResponse.json({ success: true, alreadyCompleted: true });
     }
@@ -57,6 +57,7 @@ export async function POST(request: Request, context: { params: Promise<{ token:
 
       await tx.clinicalRecord.create({
         data: {
+          clinicId: intake.clinicId,
           patientId: intake.patientId,
           visitDate: completedAt,
           chiefComplaint: "Initial patient intake",
@@ -73,6 +74,8 @@ export async function POST(request: Request, context: { params: Promise<{ token:
           patientSignature: input.patientSignature,
           guardianSignature: input.guardianSignature || null,
           consentSignedAt: completedAt,
+          source: "PATIENT_INTAKE",
+          status: "DRAFT",
         },
       });
       return true;
@@ -81,9 +84,9 @@ export async function POST(request: Request, context: { params: Promise<{ token:
     return NextResponse.json({ success: true });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.issues[0]?.message || "Please complete the required fields." }, { status: 400 });
+      return NextResponse.json({ error: "Something on the last page still needs filling in. Go back and check the highlighted boxes." }, { status: 400 });
     }
-    console.error("Public intake submission failed", error);
-    return NextResponse.json({ error: "Your form could not be submitted. Please try again." }, { status: 500 });
+    console.error("Public intake save failed", error);
+    return NextResponse.json({ error: "That didn't save." }, { status: 500 });
   }
 }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useConfirmSubmit } from "@/components/ui/confirm-submit";
 
 type AppointmentVisit = {
   id: number;
@@ -74,6 +75,7 @@ function dateKey(date: string | Date) {
   }).formatToParts(value);
   return `${parts.find((part) => part.type === "year")?.value}-${parts.find((part) => part.type === "month")?.value}-${parts.find((part) => part.type === "day")?.value}`;
 }
+const todayKey = () => dateKey(new Date());
 
 function formatVisit(appointment: AppointmentVisit) {
   const date = new Date(appointment.appointmentDate).toLocaleDateString("en-IN", {
@@ -93,14 +95,21 @@ export default function ClinicalRecordForm({ patients, selectedPatientId, editin
   const [saving, setSaving] = useState(false);
 
   const patient = useMemo(() => patients.find((item) => item.id === Number(patientId)), [patientId, patients]);
-  const completedAppointments = (patient?.appointments || []).filter((appointment) => appointment.status === "Completed");
-  const canSave = Boolean(patientId) && completedAppointments.length > 0 && !saving;
+  const completedAppointments = patient?.appointments || [];
+  const canSave = Boolean(patientId) && !saving;
+
+  const { guard, dialog } = useConfirmSubmit({
+    title: "Save this correction?",
+    body: "The note you signed before stays in the history exactly as it was — this is added alongside it, and both are visible to anyone who looks.",
+    confirmLabel: "Save the correction",
+  });
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (completedAppointments.length === 0) {
-      toast.error("Complete an appointment first, then save medical history for that visit.");
-      return;
+    if (editingRecord) {
+      const form = event.currentTarget;
+      if (form.dataset.confirmed !== "1") return guard(event);
+      delete form.dataset.confirmed;
     }
     setSaving(true);
     try {
@@ -112,6 +121,7 @@ export default function ClinicalRecordForm({ patients, selectedPatientId, editin
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          confirmed: true,
           medicalHistory: formData.getAll("medicalHistory").map(String),
           consentGiven: formData.get("consentGiven") === "on",
         }),
@@ -129,11 +139,12 @@ export default function ClinicalRecordForm({ patients, selectedPatientId, editin
   }
 
   return (
-    <form onSubmit={submit} className="clinic-workflow-form space-y-6 rounded-3xl border bg-white p-6 shadow-sm">
+    <form onSubmit={submit} className="flex flex-col gap-5 rounded-card border border-border bg-card p-4.5 shadow-[var(--shadow)]">
+      {dialog}
       {selectedPatient ? (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+        <div className="rounded-control border border-success-border bg-success-bg px-4 py-3 text-sm text-success">
           <p className="font-semibold">Continuing medical history for {selectedPatient.fullName}</p>
-          <p className="mt-1">This record will attach to one completed appointment date. No new appointment is created.</p>
+          <p className="mt-0.5">It attaches to one visit date — no new visit is created.</p>
         </div>
       ) : null}
 
@@ -148,7 +159,7 @@ export default function ClinicalRecordForm({ patients, selectedPatientId, editin
             value={patientId}
             onChange={(event) => setPatientId(event.target.value)}
             disabled={Boolean(lockedPatientId)}
-            className="h-11 w-full rounded-xl border bg-background px-3 disabled:cursor-not-allowed disabled:bg-muted"
+            className="min-h-11 w-full rounded-control border border-border bg-card px-3 text-sm disabled:cursor-not-allowed disabled:bg-muted"
           >
             <option value="">Select patient</option>
             {patients.map((item) => (
@@ -158,10 +169,10 @@ export default function ClinicalRecordForm({ patients, selectedPatientId, editin
         </label>
 
         <label className="space-y-2 text-sm font-medium">
-          Completed appointment date
-            <select required name="visitDate" defaultValue={editingRecord ? dateKey(editingRecord.visitDate) : undefined} disabled={completedAppointments.length === 0} className="h-11 w-full rounded-xl border bg-background px-3 disabled:bg-muted">
+          Which visit is this for
+            <select required name="visitDate" defaultValue={editingRecord ? dateKey(editingRecord.visitDate) : todayKey()} className="min-h-11 w-full rounded-control border border-border bg-card px-3 text-sm">
             {completedAppointments.length === 0 ? (
-              <option value="">No completed appointments</option>
+              <option value={todayKey()}>Today</option>
             ) : (
               completedAppointments.map((appointment) => (
                 <option key={appointment.id} value={dateKey(appointment.appointmentDate)}>{formatVisit(appointment)}</option>
@@ -172,15 +183,15 @@ export default function ClinicalRecordForm({ patients, selectedPatientId, editin
       </div>
 
       {patientId && completedAppointments.length === 0 ? (
-        <p className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-800">
-          This patient has no completed appointment yet. Mark the appointment as Completed first, then add clinical records.
+        <p className="rounded-control border border-border bg-muted px-4 py-3 text-[13px] text-text-muted">
+          Anything you record now attaches to today&rsquo;s visit when you save.
         </p>
       ) : null}
 
-      <section className="rounded-3xl border bg-slate-50/80 p-5">
-        <div className="mb-4">
-          <h2 className="text-lg font-bold">Visit notes</h2>
-          <p className="text-sm text-muted-foreground">Main complaint and diagnosis for this appointment date.</p>
+      <section className="rounded-control border border-border p-4">
+        <div className="mb-3.5">
+          <h2 className="text-base font-semibold text-heading">Visit notes</h2>
+          <p className="text-[13px] text-text-muted">The main complaint and diagnosis for this visit date.</p>
         </div>
         <div className="grid gap-5 md:grid-cols-2">
           <label className="block space-y-2 text-sm font-medium">
@@ -198,15 +209,15 @@ export default function ClinicalRecordForm({ patients, selectedPatientId, editin
         </div>
       </section>
 
-      <section className="rounded-3xl border bg-white p-5">
-        <div className="mb-4">
-          <h2 className="text-lg font-bold">Medical history</h2>
-          <p className="text-sm text-muted-foreground">Matches the clinic case paper and makes risk factors visible in patient summary.</p>
+      <section className="rounded-control border border-border p-4">
+        <div className="mb-3.5">
+          <h2 className="text-base font-semibold text-heading">Medical history</h2>
+          <p className="text-[13px] text-text-muted">Matches the clinic case paper — risk factors show up in Patient 360.</p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {medicalHistoryOptions.map((option) => (
-            <label key={option} className="flex items-center gap-3 rounded-2xl border bg-slate-50 px-4 py-3 text-sm font-medium transition hover:border-primary/40 hover:bg-primary/5">
-              <input name="medicalHistory" type="checkbox" value={option} defaultChecked={editingRecord ? (editingRecord.medicalHistory ?? "").includes(option) : false} className="size-4 rounded border-slate-300 accent-primary" />
+            <label key={option} className="flex min-h-11 items-center gap-2.5 rounded-control border border-border bg-card px-3.5 text-[13px] font-medium transition-colors hover:bg-muted">
+              <input name="medicalHistory" type="checkbox" value={option} defaultChecked={editingRecord ? (editingRecord.medicalHistory ?? "").includes(option) : false} className="size-4 accent-[var(--primary)]" />
               {option}
             </label>
           ))}
@@ -214,11 +225,11 @@ export default function ClinicalRecordForm({ patients, selectedPatientId, editin
         <div className="mt-5 grid gap-5 md:grid-cols-2">
           <label className="block space-y-2 text-sm font-medium">
             Blood pressure
-            <input name="bloodPressure" defaultValue={editingRecord?.bloodPressure ?? ""} placeholder="Example: 120/80" className="h-11 w-full rounded-xl border bg-background px-3" />
+            <input name="bloodPressure" defaultValue={editingRecord?.bloodPressure ?? ""} placeholder="Example: 120/80" className="min-h-11 w-full rounded-control border border-border bg-card px-3 text-sm" />
           </label>
           <label className="block space-y-2 text-sm font-medium">
             Weight
-            <input name="weightKg" defaultValue={editingRecord?.weightKg ?? ""} placeholder="Example: 65 kg" className="h-11 w-full rounded-xl border bg-background px-3" />
+            <input name="weightKg" defaultValue={editingRecord?.weightKg ?? ""} placeholder="Example: 65 kg" className="min-h-11 w-full rounded-control border border-border bg-card px-3 text-sm" />
           </label>
           <label className="block space-y-2 text-sm font-medium">
             Drug allergies
@@ -235,10 +246,10 @@ export default function ClinicalRecordForm({ patients, selectedPatientId, editin
         </div>
       </section>
 
-      <section className="rounded-3xl border bg-slate-50/80 p-5">
-        <div className="mb-4">
-          <h2 className="text-lg font-bold">Dental treatment and estimate</h2>
-          <p className="text-sm text-muted-foreground">Saved under the selected appointment date and shown in patient summary.</p>
+      <section className="rounded-control border border-border p-4">
+        <div className="mb-3.5">
+          <h2 className="text-base font-semibold text-heading">Dental treatment and estimate</h2>
+          <p className="text-[13px] text-text-muted">Saved under the visit date you picked, and shown in Patient 360.</p>
         </div>
         <div className="grid gap-5 md:grid-cols-2">
           <label className="block space-y-2 text-sm font-medium">
@@ -251,17 +262,17 @@ export default function ClinicalRecordForm({ patients, selectedPatientId, editin
           </label>
           <label className="block space-y-2 text-sm font-medium">
             Estimate amount
-            <input name="estimateAmount" defaultValue={editingRecord?.estimateAmount ?? ""} type="number" min="0" placeholder="Example: 8000" className="h-11 w-full rounded-xl border bg-background px-3" />
+            <input name="estimateAmount" defaultValue={editingRecord?.estimateAmount ?? ""} type="number" min="0" placeholder="Example: 8000" className="min-h-11 w-full rounded-control border border-border bg-card px-3 text-sm" />
           </label>
         </div>
       </section>
 
-      <section className="rounded-3xl border bg-white p-5">
-        <label className="flex items-start gap-3 rounded-2xl border bg-emerald-50 p-4 text-sm font-medium text-emerald-950">
-          <input name="consentGiven" type="checkbox" defaultChecked={editingRecord?.consentGiven ?? false} className="mt-1 size-4 rounded border-emerald-300 accent-emerald-600" />
+      <section className="rounded-control border border-border p-4">
+        <label className="flex items-start gap-2.5 rounded-control border border-success-border bg-success-bg px-3.5 py-3 text-sm font-medium text-success">
+          <input name="consentGiven" type="checkbox" defaultChecked={editingRecord?.consentGiven ?? false} className="mt-0.5 size-4 accent-[var(--primary)]" />
           <span>
-            Patient consent taken
-            <span className="mt-1 block font-normal text-emerald-800">Use this when the patient/guardian has agreed to the procedure and clinic consent process.</span>
+            The patient agreed to this
+            <span className="mt-0.5 block font-normal">Tick it once the patient or guardian has been through the consent conversation.</span>
           </span>
         </label>
         <label className="mt-4 block space-y-2 text-sm font-medium">
@@ -272,7 +283,7 @@ export default function ClinicalRecordForm({ patients, selectedPatientId, editin
 
       <div className="flex justify-end gap-3 border-t pt-5">
         <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-        <Button type="submit" disabled={!canSave}>{saving ? "Saving..." : "Save medical history"}</Button>
+        <Button type="submit" disabled={!canSave}>{saving ? "Saving..." : editingRecord ? "Sign corrected version" : "Sign medical history"}</Button>
       </div>
     </form>
   );

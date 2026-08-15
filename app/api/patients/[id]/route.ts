@@ -3,14 +3,15 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { patientSchema } from "@/lib/validations";
 import { ZodError } from "zod";
-import { getCurrentUser } from "@/lib/auth";
+import { requireApiPermission } from "@/lib/tenant";
 
 async function patientId(params: Promise<{ id: string }>) { const { id } = await params; const value = Number(id); return Number.isInteger(value) && value > 0 ? value : null; }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Please sign in again." }, { status: 401 });
+    const auth = await requireApiPermission("managePatients");
+    if (auth.response) return auth.response;
+    const user = auth.user;
     const id = await patientId(params); if (!id) return NextResponse.json({ error: "Invalid patient id." }, { status: 400 });
     const rawInput = await request.json();
     if (typeof rawInput.fullName === "string") rawInput.fullName = rawInput.fullName.trim();
@@ -24,7 +25,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
     const input = patientSchema.partial().parse(rawInput);
     if (!Object.keys(input).length) return NextResponse.json({ error: "No changes provided." }, { status: 400 });
-    const owned = await prisma.patient.findFirst({ where: { id, clinicId: user.clinicId }, select: { id: true } });
+    const owned = await prisma.patient.findFirst({ where: { id, clinicId: user.clinicId, archivedAt: null }, select: { id: true } });
     if (!owned) return NextResponse.json({ error: "Patient not found." }, { status: 404 });
     const patient = await prisma.patient.update({ data: { ...input, email: input.email === "" ? null : input.email, dateOfBirth: input.dateOfBirth ? new Date(input.dateOfBirth) : input.dateOfBirth === "" ? null : undefined, gender: input.gender === "" ? null : input.gender, address: input.address === "" ? null : input.address, medicalNotes: input.medicalNotes === "" ? null : input.medicalNotes }, where: { id: owned.id } });
     return NextResponse.json(patient);
@@ -35,7 +36,24 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 }
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  try { const user = await getCurrentUser(); if (!user) return NextResponse.json({ error: "Please sign in again." }, { status: 401 }); const id = await patientId(params); if (!id) return NextResponse.json({ error: "Invalid patient id." }, { status: 400 }); const result = await prisma.patient.deleteMany({ where: { id, clinicId: user.clinicId } }); if (!result.count) return NextResponse.json({ error: "Patient not found." }, { status: 404 }); return NextResponse.json({ success: true }); }
-  catch { return NextResponse.json({ error: "Patient not found or could not be deleted." }, { status: 404 }); }
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const auth = await requireApiPermission("managePatients");
+    if (auth.response) return auth.response;
+    const user = auth.user;
+    const id = await patientId(params);
+    if (!id) return NextResponse.json({ error: "Invalid patient id." }, { status: 400 });
+    const body = await request.json().catch(() => ({})) as { confirmed?: unknown };
+    if (body.confirmed !== true) return NextResponse.json({ error: "Confirm patient archiving." }, { status: 400 });
+    const reason = "Archived after user confirmation.";
+    const patient = await prisma.patient.findFirst({ where: { id, clinicId: user.clinicId, archivedAt: null }, select: { id: true, fullName: true } });
+    if (!patient) return NextResponse.json({ error: "Patient not found." }, { status: 404 });
+    await prisma.$transaction([
+      prisma.patient.update({ where: { id: patient.id }, data: { archivedAt: new Date(), archiveReason: reason, archivedByUserId: user.id } }),
+      prisma.auditLog.create({ data: { clinicId: user.clinicId, userId: user.id, patientId: patient.id, actorRole: user.role, action: "PATIENT_ARCHIVED", entityType: "PATIENT", entityId: String(patient.id), detail: `Archived patient ${patient.fullName}`, reason, beforeState: { archivedAt: null }, afterState: { archivedAt: new Date().toISOString() } } }),
+    ]);
+    return NextResponse.json({ success: true, archived: true });
+  } catch {
+    return NextResponse.json({ error: "Patient could not be archived." }, { status: 500 });
+  }
 }

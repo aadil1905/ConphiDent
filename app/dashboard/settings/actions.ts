@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/audit";
 import { ROLES, hashPassword, passwordPolicyError, requireOwner } from "@/lib/auth";
+import { normalizeInvoicePrefix } from "@/lib/invoice-number";
+import { requireFeature } from "@/lib/features";
 
 export async function updateClinicAction(formData: FormData) {
   const owner = await requireOwner();
@@ -33,12 +35,14 @@ export async function updateClinicAction(formData: FormData) {
 }
 
 export async function updateBillingIdentityAction(formData: FormData) {
-  const owner = await requireOwner();
-  const invoicePrefix = String(formData.get("invoicePrefix") || "INV").trim().toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 12) || "INV";
+  const owner = await requireFeature("billing");
+  const invoicePrefix = normalizeInvoicePrefix(String(formData.get("invoicePrefix") || "INV"));
   const receiptPrefix = String(formData.get("receiptPrefix") || "RCT").trim().toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 12) || "RCT";
   await prisma.clinic.update({ where: { id: owner.clinicId }, data: { gstin: String(formData.get("gstin") || "").trim().toUpperCase() || null, registrationNumber: String(formData.get("registrationNumber") || "").trim() || null, invoicePrefix, receiptPrefix, invoiceFooter: String(formData.get("invoiceFooter") || "").trim().slice(0, 500) || null, paymentDetails: String(formData.get("paymentDetails") || "").trim().slice(0, 1500) || null } });
   await recordAudit({ clinicId: owner.clinicId, userId: owner.id, action: "BILLING_IDENTITY_UPDATED", entityType: "CLINIC", entityId: String(owner.clinicId), detail: "Updated billing identity and document footer" });
   revalidatePath("/dashboard/settings");
+  revalidatePath("/dashboard/settings/billing");
+  revalidatePath("/dashboard/billing/new");
 }
 
 export async function createStaffAction(formData: FormData) {

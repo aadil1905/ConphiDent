@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Plus, ReceiptText, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,63 +11,50 @@ import { Textarea } from "@/components/ui/textarea";
 type AppointmentVisit = { id: number; appointmentDate: string | Date; appointmentTime: string; treatment: string; status: string };
 type Patient = { id: number; fullName: string; phone: string; appointments?: AppointmentVisit[] };
 type Plan = { id: number; title: string; patientId: number; visitDate?: string | Date | null; items: Array<{ name: string; price: number }> };
+type LineItem = { description: string; quantity: number; unitPrice: number; discount: number; taxPercent: number };
 
-function dateKey(date: string | Date) {
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(date));
-  return `${parts.find((part) => part.type === "year")?.value}-${parts.find((part) => part.type === "month")?.value}-${parts.find((part) => part.type === "day")?.value}`;
-}
+const field = "min-h-11 w-full rounded-control border border-border bg-card px-3 text-sm outline-none outline-none";
+const blankLine = (): LineItem => ({ description: "", quantity: 1, unitPrice: 0, discount: 0, taxPercent: 0 });
+const money = (value: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
+function dateKey(date: string | Date) { const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(date)); return `${parts.find((part) => part.type === "year")?.value}-${parts.find((part) => part.type === "month")?.value}-${parts.find((part) => part.type === "day")?.value}`; }
+const todayKey = () => dateKey(new Date());
+function formatVisit(appointment: AppointmentVisit) { return `${new Date(appointment.appointmentDate).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })} · ${appointment.appointmentTime} · ${appointment.treatment}`; }
 
-function formatVisit(appointment: AppointmentVisit) {
-  return `${new Date(appointment.appointmentDate).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })} · ${appointment.appointmentTime} · ${appointment.treatment}`;
-}
-
-export default function InvoiceForm({ patients, plans, initialPatientId, initialVisit, nextInvoiceNumber, fromPatient }: { patients: Patient[]; plans: Plan[]; initialPatientId?: number; initialVisit?: string; nextInvoiceNumber: string; fromPatient?: boolean }) {
+export default function InvoiceForm({ patients, plans, initialPatientId, initialVisit, invoiceNumberPreview, fromPatient }: { patients: Patient[]; plans: Plan[]; initialPatientId?: number; initialVisit?: string; invoiceNumberPreview: string; fromPatient?: boolean }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [patientId, setPatientId] = useState(initialPatientId ? String(initialPatientId) : "");
   const [planId, setPlanId] = useState("");
-  const [total, setTotal] = useState("");
-  const patient = useMemo(() => patients.find((item) => item.id === Number(patientId)), [patientId, patients]);
-  const completedAppointments = (patient?.appointments || []).filter((appointment) => appointment.status === "Completed");
+  const [documentType, setDocumentType] = useState("TAX_INVOICE");
+  const [lines, setLines] = useState<LineItem[]>([blankLine()]);
+  const patient = useMemo(() => patients.find((entry) => entry.id === Number(patientId)), [patientId, patients]);
+  const completedAppointments = patient?.appointments || [];
   const availablePlans = plans.filter((plan) => !patientId || plan.patientId === Number(patientId));
-  const canSave = Boolean(patientId) && completedAppointments.length > 0 && !saving;
-
+  const calculated = useMemo(() => lines.reduce((total, line) => { const base = Math.max(0, line.quantity * line.unitPrice); const discount = Math.min(base, Math.max(0, line.discount)); const taxable = base - discount; const tax = documentType === "TAX_INVOICE" ? Math.round(taxable * Math.max(0, line.taxPercent) / 100) : 0; return { subtotal: total.subtotal + base, discount: total.discount + discount, tax: total.tax + tax, total: total.total + taxable + tax }; }, { subtotal: 0, discount: 0, tax: 0, total: 0 }), [documentType, lines]);
+  const canSave = Boolean(patientId) && calculated.total > 0 && lines.every((line) => line.description.trim() && line.quantity > 0 && line.unitPrice >= 0) && !saving;
+  function updateLine(index: number, key: keyof LineItem, value: string) { setLines((current) => current.map((line, lineIndex) => lineIndex === index ? { ...line, [key]: key === "description" ? value : Math.max(0, Math.trunc(Number(value) || 0)) } : line)); }
+  function selectPlan(value: string) { setPlanId(value); const plan = availablePlans.find((entry) => entry.id === Number(value)); if (plan?.items.length) setLines(plan.items.map((item) => ({ description: item.name, quantity: 1, unitPrice: item.price, discount: 0, taxPercent: 0 }))); }
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (completedAppointments.length === 0) { toast.error("Complete an appointment first, then create an invoice for that visit."); return; }
+    if (!canSave) return void toast.error("Complete the patient, visit and line-item details.");
     setSaving(true);
     try {
-      const form = Object.fromEntries(new FormData(event.currentTarget).entries());
-      const response = await fetch("/api/invoices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-      const body = await response.json();
-      if (!response.ok) throw new Error(body.error);
-      toast.success(amountPaidToday(form) ? `Invoice ${body.invoiceNumber} created and today's payment recorded.` : `Invoice ${body.invoiceNumber} created.`);
-      const patientContext = fromPatient ? `?fromPatient=${body.patientId}${form.issueDate ? `&visit=${encodeURIComponent(String(form.issueDate))}` : ""}` : "";
-      router.push(`/dashboard/billing/${body.id}${patientContext}`);
-      router.refresh();
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not create invoice."); }
+      const payload = Object.fromEntries(new FormData(event.currentTarget).entries());
+      const response = await fetch("/api/invoices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, documentType, lineItems: lines, totalAmount: calculated.total, discountAmount: calculated.discount }) });
+      const body = await response.json(); if (!response.ok) throw new Error(body.error || "Could not create billing document.");
+      toast.success(`${documentType.replaceAll("_", " ")} ${body.invoiceNumber} created with an immutable issue snapshot.`);
+      const patientContext = fromPatient ? `?fromPatient=${body.patientId}${payload.issueDate ? `&visit=${encodeURIComponent(String(payload.issueDate))}` : ""}` : "";
+      router.push(`/dashboard/billing/${body.id}${patientContext}`); router.refresh();
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not create billing document."); }
     finally { setSaving(false); }
   }
-
-  return (
-    <form onSubmit={submit} className="clinic-workflow-form space-y-6 rounded-3xl border bg-white p-6 shadow-sm">
-      <label className="block space-y-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-medium text-sky-950">Invoice no.<Input required name="invoiceNumber" defaultValue={nextInvoiceNumber} className="bg-white" /><span className="block font-normal text-sky-700">You can edit this before creating the invoice.</span></label>
-      <div className="grid gap-5 md:grid-cols-2">
-        <label className="space-y-2 text-sm font-medium">Patient<select required name="patientId" value={patientId} onChange={(event) => setPatientId(event.target.value)} className="h-11 w-full rounded-xl border bg-background px-3"><option value="">Select patient</option>{patients.map((item) => <option key={item.id} value={item.id}>{item.fullName} - {item.phone}</option>)}</select>{initialPatientId ? <span className="text-xs font-normal text-muted-foreground">Prefilled from patient profile.</span> : null}</label>
-        <label className="space-y-2 text-sm font-medium">Completed appointment date<select required name="issueDate" defaultValue={initialVisit} disabled={completedAppointments.length === 0} className="h-11 w-full rounded-xl border bg-background px-3 disabled:bg-muted">{completedAppointments.length === 0 ? <option value="">No completed appointments</option> : completedAppointments.map((appointment) => <option key={appointment.id} value={dateKey(appointment.appointmentDate)}>{formatVisit(appointment)}</option>)}</select></label>
-        <label className="space-y-2 text-sm font-medium">Treatment plan (optional)<select name="treatmentPlanId" value={planId} onChange={(event) => { const plan = availablePlans.find((entry) => entry.id === Number(event.target.value)); setPlanId(event.target.value); if (plan?.items.length) setTotal(String(plan.items.reduce((sum, item) => sum + item.price, 0))); }} className="h-11 w-full rounded-xl border bg-background px-3"><option value="">No treatment plan</option>{availablePlans.map((plan) => <option key={plan.id} value={plan.id}>{plan.title}{plan.visitDate ? ` · ${dateKey(plan.visitDate)}` : ""}</option>)}</select></label>
-        <label className="space-y-2 text-sm font-medium">Due date (optional)<Input name="dueDate" type="date" /></label>
-        <label className="space-y-2 text-sm font-medium md:col-span-2">Total amount (INR)<Input required name="totalAmount" type="number" min="1" placeholder="0" value={total} onChange={(event) => setTotal(event.target.value)} /></label>
-      </div>
-      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4">
-        <div className="mb-3"><p className="font-semibold text-emerald-950">Payment received today <span className="font-normal text-muted-foreground">(optional)</span></p><p className="text-sm text-muted-foreground">Record the first full or partial collection without leaving this invoice.</p></div>
-        <div className="grid gap-4 sm:grid-cols-2"><label className="space-y-2 text-sm font-medium">Amount received today<Input name="amountPaidToday" type="number" min="1" placeholder="0" /></label><label className="space-y-2 text-sm font-medium">Payment method<select name="paymentMethod" className="h-9 w-full rounded-md border bg-background px-3"><option>Cash</option><option>UPI</option><option>Card</option><option>Bank transfer</option><option>Other</option></select></label><label className="space-y-2 text-sm font-medium sm:col-span-2">Payment note (optional)<Input name="paymentNotes" placeholder="UPI reference, receipt note, or instalment detail" /></label></div>
-      </div>
-      {patientId && completedAppointments.length === 0 ? <p className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-800">This patient has no completed appointment yet. Mark the appointment as Completed first, then create an invoice.</p> : null}
-      <label className="block space-y-2 text-sm font-medium">Notes<Textarea name="notes" rows={5} placeholder="Procedures, discounts, or payment instructions" /></label>
-      <div className="flex justify-end gap-3 border-t pt-5"><Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button><Button type="submit" disabled={!canSave}>{saving ? "Saving invoice..." : "Create invoice"}</Button></div>
-    </form>
-  );
+  return <form onSubmit={submit} className="rounded-card border border-border bg-card shadow-[var(--shadow)]"><header className="border-b border-border px-4.5 py-4"><h2 className="text-base font-semibold text-heading">A new bill</h2><p className="mt-0.5 text-[13px] text-text-muted">Once you issue it, the wording and figures are fixed — corrections go on a separate note.</p></header><div className="flex flex-col gap-5 p-4.5">
+    <section className="grid gap-4 rounded-card border bg-muted p-4 md:grid-cols-2 lg:grid-cols-4"><label className="space-y-1.5 text-sm font-bold">Document type<select name="documentType" value={documentType} onChange={(event) => setDocumentType(event.target.value)} className={field}><option value="ESTIMATE">Estimate</option><option value="QUOTATION">Quotation</option><option value="TAX_INVOICE">Tax invoice</option><option value="NON_TAX_INVOICE">Non-tax invoice</option></select></label><label className="space-y-1.5 text-sm font-bold">Document number<Input readOnly value={invoiceNumberPreview} aria-describedby="invoice-number-help" className="bg-card" /><span id="invoice-number-help" className="block text-xs font-normal text-text-muted">Preview only. The final tenant-safe number is allocated when you create the document.</span></label><label className="space-y-1.5 text-sm font-bold lg:col-span-2">Patient<select required name="patientId" value={patientId} onChange={(event) => { setPatientId(event.target.value); setPlanId(""); }} className={field}><option value="">Select patient</option>{patients.map((entry) => <option key={entry.id} value={entry.id}>{entry.fullName} · {entry.phone}</option>)}</select>{initialPatientId ? <span className="block text-xs font-normal text-primary">Preselected from Patient 360.</span> : null}</label><label className="space-y-1.5 text-sm font-bold lg:col-span-2">Which visit is this for<select required name="issueDate" defaultValue={initialVisit || todayKey()} className={field}><option value={todayKey()}>Today</option>{completedAppointments.map((appointment) => <option key={appointment.id} value={dateKey(appointment.appointmentDate)}>{formatVisit(appointment)}</option>)}</select></label><label className="space-y-1.5 text-sm font-bold">Treatment plan<select name="treatmentPlanId" value={planId} onChange={(event) => selectPlan(event.target.value)} className={field}><option value="">No linked plan</option>{availablePlans.map((plan) => <option key={plan.id} value={plan.id}>{plan.title}</option>)}</select></label><label className="space-y-1.5 text-sm font-bold">Due / validity date<Input name="dueDate" type="date" /></label></section>
+    {patientId && !completedAppointments.length ? <p className="rounded-control border border-border bg-muted p-3.5 text-[13px] text-text-muted">Anything you record now attaches to today&rsquo;s visit when you save.</p> : null}
+    <section><div className="flex items-center justify-between gap-3"><div><h3 className="flex items-center gap-2 text-base font-semibold text-heading"><ReceiptText className="size-5 text-primary"/>Line items</h3><p className="mt-1 text-sm text-text-muted">Indian number formatting and tax calculations are generated from these structured rows.</p></div><Button type="button" variant="outline" onClick={() => setLines((current) => [...current, blankLine()])}><Plus className="size-4"/>Add line</Button></div><div className="mt-4 space-y-3">{lines.map((line, index) => <article key={index} className="grid gap-3 rounded-card border p-4 sm:grid-cols-2 lg:grid-cols-[minmax(220px,2fr)_90px_130px_120px_100px_110px_40px] lg:items-end"><label className="space-y-1.5 text-sm font-bold">Description *<input required value={line.description} onChange={(event) => updateLine(index,"description",event.target.value)} className={field}/></label><label className="space-y-1.5 text-sm font-bold">Qty<input required type="number" min="1" value={line.quantity} onChange={(event) => updateLine(index,"quantity",event.target.value)} className={field}/></label><label className="space-y-1.5 text-sm font-bold">Unit price<input required type="number" min="0" value={line.unitPrice} onChange={(event) => updateLine(index,"unitPrice",event.target.value)} className={field}/></label><label className="space-y-1.5 text-sm font-bold">Discount<input type="number" min="0" value={line.discount} onChange={(event) => updateLine(index,"discount",event.target.value)} className={field}/></label><label className="space-y-1.5 text-sm font-bold">Tax %<input type="number" min="0" max="100" disabled={documentType !== "TAX_INVOICE"} value={documentType === "TAX_INVOICE" ? line.taxPercent : 0} onChange={(event) => updateLine(index,"taxPercent",event.target.value)} className={field}/></label><div className="min-h-11 rounded-control bg-primary px-3 py-3 text-right text-sm font-semibold text-white">{money(Math.max(0,line.quantity*line.unitPrice-Math.min(line.quantity*line.unitPrice,line.discount)) + (documentType === "TAX_INVOICE" ? Math.round(Math.max(0,line.quantity*line.unitPrice-line.discount)*line.taxPercent/100) : 0))}</div><button type="button" disabled={lines.length===1} onClick={() => setLines((current) => current.filter((_,lineIndex)=>lineIndex!==index))} className="grid size-10 place-items-center rounded-control border border-danger-border text-danger disabled:opacity-40" aria-label={`Remove billing line ${index+1}`}><Trash2 className="size-4"/></button></article>)}</div></section>
+    <section className="grid gap-5 lg:grid-cols-[1fr_360px]"><div className="space-y-4"><label className="block space-y-1.5 text-sm font-bold">Notes<Textarea name="notes" rows={3} placeholder="Clinical or billing note shown on the document" /></label><label className="block space-y-1.5 text-sm font-bold">Terms<Textarea name="terms" rows={3} placeholder="Validity, payment terms, cancellation, or refund conditions" /></label></div><div className="rounded-card bg-primary p-5 text-sm text-white"><h3 className="font-semibold">What it comes to</h3><div className="mt-4 space-y-2"><Total label="Subtotal" value={calculated.subtotal}/><Total label="Discount" value={-calculated.discount}/><Total label="Tax" value={calculated.tax}/><div className="mt-3 flex justify-between border-t border-white/20 pt-3 text-base font-semibold text-heading"><span>Total</span><span>{money(calculated.total)}</span></div></div><input type="hidden" name="totalAmount" value={calculated.total}/><input type="hidden" name="discountAmount" value={calculated.discount}/></div></section>
+    {documentType.includes("INVOICE") ? <section className="rounded-card border border-success-border bg-success-bg/70 p-4"><p className="font-semibold text-success">Payment received now <span className="font-normal text-text-muted">(optional)</span></p><div className="mt-3 grid gap-3 sm:grid-cols-3"><label className="space-y-1.5 text-sm font-bold">Amount<Input name="amountPaidToday" type="number" min="1" max={calculated.total} placeholder="0" /></label><label className="space-y-1.5 text-sm font-bold">Method<select name="paymentMethod" className={field}><option>Cash</option><option>UPI</option><option>Card</option><option>Bank transfer</option><option>Other</option></select></label><label className="space-y-1.5 text-sm font-bold">Reference<Input name="paymentNotes" placeholder="UPI / bank reference" /></label></div></section> : null}
+    <footer className="flex flex-col-reverse gap-3 border-t pt-5 sm:flex-row sm:justify-end"><Button type="button" variant="outline" onClick={()=>router.back()}>Cancel</Button><Button type="submit" disabled={!canSave}>{saving ? "Finalizing…" : `Create ${documentType.replaceAll("_"," ").toLowerCase()}`}</Button></footer>
+  </div></form>;
 }
-
-function amountPaidToday(form: Record<string, FormDataEntryValue>) { return Number(form.amountPaidToday || 0) > 0; }
+function Total({label,value}:{label:string;value:number}){return <div className="flex justify-between gap-5 text-white/80"><span>{label}</span><strong className="text-white">{money(value)}</strong></div>;}

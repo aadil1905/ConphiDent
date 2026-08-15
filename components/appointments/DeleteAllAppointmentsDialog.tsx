@@ -55,7 +55,7 @@ export default function DeleteAllAppointmentsDialog({
         variant="outline"
         disabled={appointmentCount === 0}
         onClick={() => setOpen(true)}
-        className="h-10 gap-2 border-amber-200 bg-white px-4 font-semibold text-amber-700 shadow-sm hover:bg-amber-50"
+        className="min-h-11 gap-2 border-warning-border bg-card px-4 font-semibold text-warning shadow-sm hover:bg-warning-bg"
       >
         <Archive className="size-4" />
         Archive All
@@ -82,7 +82,7 @@ export default function DeleteAllAppointmentsDialog({
             type="button"
             disabled={deleting}
             onClick={deleteAll}
-            className="bg-amber-600 text-white hover:bg-amber-700"
+            className="border border-danger-border bg-card text-danger hover:bg-danger-bg"
           >
             {deleting ? "Archiving..." : "Archive All"}
           </Button>
