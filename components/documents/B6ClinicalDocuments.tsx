@@ -106,7 +106,7 @@ const B6_PRINT_CSS = `
 `;
 
 function safeAccent(value?: string | null) {
-  return value && /^#[0-9a-f]{6}$/i.test(value) ? value : "#0e7490";
+  return value && /^#[0-9a-f]{6}$/i.test(value) ? value : "#176b87";
 }
 
 function DocumentFrame({ accentColor, children }: { accentColor?: string | null; children: ReactNode }) {
@@ -115,7 +115,7 @@ function DocumentFrame({ accentColor, children }: { accentColor?: string | null;
       <style>{B6_PRINT_CSS}</style>
       <article
         data-document-format="B6-125x176mm"
-        className="b6-document-sheet mx-auto flex min-h-[176mm] w-full max-w-[125mm] flex-col overflow-hidden rounded-[5mm] border border-slate-200 bg-white p-[8mm] text-[10px] leading-[1.42] text-slate-900 shadow-2xl shadow-slate-950/10"
+        className="b6-document-sheet mx-auto flex min-h-[176mm] w-full max-w-[125mm] flex-col overflow-hidden rounded-[5mm] border border-border bg-white p-[8mm] text-[10px] leading-[1.42] text-heading shadow-2xl shadow-[var(--shadow-overlay)]"
         style={{ borderTopColor: safeAccent(accentColor), borderTopWidth: "2.5mm" }}
       >
         {children}
@@ -128,36 +128,36 @@ function DocumentHeader({ clinic, title, number }: { clinic: ClinicDocumentBrand
   const brand = clinic.brandName?.trim() || clinic.name;
   const contact = [clinic.address, [clinic.phone, clinic.email].filter(Boolean).join(" · ")].filter(Boolean);
   return (
-    <header className="b6-break-avoid grid grid-cols-[1fr_auto] gap-[5mm] border-b-2 border-slate-900 pb-[4mm]">
+    <header className="b6-break-avoid grid grid-cols-[1fr_auto] gap-[5mm] border-b-2 border-heading pb-[4mm]">
       <div className="flex min-w-0 items-start gap-[3mm]">
         {clinic.logoUrl ? (
-          <div className="flex size-[15mm] shrink-0 items-center justify-center overflow-hidden rounded-[2mm] border border-slate-200 bg-white p-[1mm]">
+          <div className="flex size-[15mm] shrink-0 items-center justify-center overflow-hidden rounded-[2mm] border border-border bg-white p-[1mm]">
             <Image src={clinic.logoUrl} alt={`${brand} logo`} width={96} height={96} unoptimized className="max-h-full max-w-full object-contain" />
           </div>
         ) : (
-          <div className="grid size-[13mm] shrink-0 place-items-center rounded-[2mm] bg-slate-900 text-[18px] font-black text-white">{brand.slice(0, 1).toUpperCase()}</div>
+          <div className="grid size-[13mm] shrink-0 place-items-center rounded-[2mm] bg-heading text-[18px] font-black text-white">{brand.slice(0, 1).toUpperCase()}</div>
         )}
         <div className="min-w-0">
-          <h1 className="break-words font-serif text-[17px] font-black leading-tight text-slate-950">{brand}</h1>
-          {brand !== clinic.name ? <p className="mt-0.5 text-[8px] font-semibold uppercase tracking-wide text-slate-500">{clinic.name}</p> : null}
-          <div className="mt-1 max-w-[62mm] whitespace-pre-line text-[8px] leading-[1.35] text-slate-600">{contact.join("\n")}</div>
-          {clinic.registrationNumber ? <p className="mt-1 text-[8px] text-slate-600">Clinic registration: {clinic.registrationNumber}</p> : null}
+          <h1 className="break-words font-serif text-[17px] font-black leading-tight text-heading">{brand}</h1>
+          {brand !== clinic.name ? <p className="mt-0.5 text-[8px] font-semibold uppercase tracking-wide text-text-muted">{clinic.name}</p> : null}
+          <div className="mt-1 max-w-[62mm] whitespace-pre-line text-[8px] leading-[1.35] text-text-muted">{contact.join("\n")}</div>
+          {clinic.registrationNumber ? <p className="mt-1 text-[8px] text-text-muted">Clinic registration: {clinic.registrationNumber}</p> : null}
         </div>
       </div>
       <div className="text-right">
-        <p className="text-[8px] font-black uppercase tracking-[.18em] text-cyan-800">{title}</p>
-        <p className="mt-1 text-[13px] font-black text-slate-950">{number}</p>
+        <p className="text-[8px] font-black uppercase tracking-[.18em] text-primary">{title}</p>
+        <p className="mt-1 text-[13px] font-black text-heading">{number}</p>
       </div>
     </header>
   );
 }
 
 function Field({ label, value, className = "" }: { label: string; value: ReactNode; className?: string }) {
-  return <div className={className}><p className="text-[7px] font-black uppercase tracking-[.12em] text-slate-500">{label}</p><div className="mt-0.5 min-w-0 font-semibold text-slate-900">{value}</div></div>;
+  return <div className={className}><p className="text-[7px] font-black uppercase tracking-[.12em] text-text-muted">{label}</p><div className="mt-0.5 min-w-0 font-semibold text-heading">{value}</div></div>;
 }
 
-function DocumentFooter({ left, right = "Powered by ConphiDent" }: { left: string; right?: string }) {
-  return <footer className="b6-break-avoid flex items-end justify-between gap-4 border-t border-slate-300 pt-[2mm] text-[7px] leading-snug text-slate-500"><span>{left}</span><span className="shrink-0 text-right font-bold text-slate-600">{right}</span></footer>;
+function DocumentFooter({ left, right }: { left: string; right: string }) {
+  return <footer className="b6-break-avoid flex items-end justify-between gap-4 border-t border-border-strong pt-[2mm] text-[7px] leading-snug text-text-muted"><span>{left}</span><span className="shrink-0 text-right font-bold text-text-muted">{right}</span></footer>;
 }
 
 function DocumentPageTable({
@@ -189,7 +189,7 @@ function DocumentPageTable({
         {children}
         <tr aria-hidden="true" className="b6-page-fill"><td colSpan={columns} /></tr>
       </tbody>
-      <tfoot><tr><td colSpan={columns} className="pt-[3mm]"><DocumentFooter left={footerLeft} right={footerRight} /></td></tr></tfoot>
+      <tfoot><tr><td colSpan={columns} className="pt-[3mm]"><DocumentFooter left={footerLeft} right={footerRight ?? (clinic.brandName?.trim() || clinic.name)} /></td></tr></tfoot>
     </table>
   );
 }
@@ -210,7 +210,7 @@ export function PrescriptionDocument({ clinic, prescription }: { clinic: ClinicD
         footerLeft={`${number} · Issued clinical record for ${prescription.patient.fullName}`}
       >
         <tr className="b6-break-avoid"><td>
-          <section className="grid grid-cols-2 gap-x-[5mm] gap-y-[2.5mm] border-b border-slate-300 pb-[3.5mm]">
+          <section className="grid grid-cols-2 gap-x-[5mm] gap-y-[2.5mm] border-b border-border-strong pb-[3.5mm]">
             <Field label="Patient" value={prescription.patient.fullName} />
             <Field label="Age / sex" value={patientDetails} />
             <Field label="Issued" value={date(issuedAt)} />
@@ -224,30 +224,30 @@ export function PrescriptionDocument({ clinic, prescription }: { clinic: ClinicD
 
         {prescription.allergySnapshot ? <tr className="b6-break-avoid"><td className="pt-[3mm]"><section className="rounded-[2mm] border border-amber-300 bg-amber-50 px-[3mm] py-[2mm] text-[8px] text-amber-950"><strong>Allergies / clinical alerts:</strong> {prescription.allergySnapshot}</section></td></tr> : null}
 
-        <tr className="b6-break-avoid"><td className="pt-[3mm]"><div className="flex items-end justify-between border-b border-slate-900 pb-[1.5mm]"><p className="font-serif text-[19px] font-black italic text-cyan-900">Rx</p><p className="text-[7px] font-bold uppercase tracking-wider text-slate-500">Medication directions</p></div></td></tr>
+        <tr className="b6-break-avoid"><td className="pt-[3mm]"><div className="flex items-end justify-between border-b border-heading pb-[1.5mm]"><p className="font-serif text-[19px] font-black italic text-primary">Rx</p><p className="text-[7px] font-bold uppercase tracking-wider text-text-muted">Medication directions</p></div></td></tr>
 
         {prescription.medicationItems.map((item, index) => {
           const directions = [`${item.dose} ${item.doseUnit}`, item.route, item.frequency, item.mealRelation, item.timing, item.duration, item.asNeeded ? `As needed${item.maxDose ? ` (max ${item.maxDose})` : ""}` : null].filter(Boolean).join(" · ");
           return (
-            <tr key={item.id} className="b6-break-avoid"><td className="pt-[2mm]"><section className="grid grid-cols-[6mm_1fr] gap-[2mm] rounded-[2mm] border border-slate-200 p-[2.5mm]">
-              <span className="grid size-[5mm] place-items-center rounded-full bg-cyan-800 text-[8px] font-black text-white">{index + 1}</span>
+            <tr key={item.id} className="b6-break-avoid"><td className="pt-[2mm]"><section className="grid grid-cols-[6mm_1fr] gap-[2mm] rounded-[2mm] border border-border p-[2.5mm]">
+              <span className="grid size-[5mm] place-items-center rounded-full bg-primary text-[8px] font-black text-white">{index + 1}</span>
               <div className="min-w-0">
-                <p className="font-black text-slate-950">{item.genericName} {item.strength} {item.dosageForm}{item.brandName ? ` (${item.brandName})` : ""}</p>
-                {item.formulation || item.indication ? <p className="mt-0.5 text-[8px] text-slate-500">{[item.formulation, item.indication && `For ${item.indication}`].filter(Boolean).join(" · ")}</p> : null}
+                <p className="font-black text-heading">{item.genericName} {item.strength} {item.dosageForm}{item.brandName ? ` (${item.brandName})` : ""}</p>
+                {item.formulation || item.indication ? <p className="mt-0.5 text-[8px] text-text-muted">{[item.formulation, item.indication && `For ${item.indication}`].filter(Boolean).join(" · ")}</p> : null}
                 <p className="mt-1 font-semibold">{directions}</p>
-                {item.instructions ? <p className="mt-0.5 text-[8px] text-slate-600">{item.instructions}</p> : null}
-                <p className="mt-1 text-[7px] text-slate-500">{item.quantity ? `Quantity: ${item.quantity} · ` : ""}{item.substitutionAllowed ? "Substitution permitted" : "Do not substitute"}</p>
+                {item.instructions ? <p className="mt-0.5 text-[8px] text-text-muted">{item.instructions}</p> : null}
+                <p className="mt-1 text-[7px] text-text-muted">{item.quantity ? `Quantity: ${item.quantity} · ` : ""}{item.substitutionAllowed ? "Substitution permitted" : "Do not substitute"}</p>
               </div>
             </section></td></tr>
           );
         })}
 
         {legacyMedicationText ? <tr className="b6-break-avoid"><td className="pt-[2mm]"><section className="rounded-[2mm] border border-amber-300 bg-amber-50 p-[3mm]"><p className="text-[7px] font-black uppercase tracking-wide text-amber-800">Legacy directions</p><p className="mt-1 whitespace-pre-wrap text-[9px]">{legacyMedicationText}</p></section></td></tr> : null}
-        {prescription.instructions ? <tr className="b6-break-avoid"><td className="pt-[3mm]"><section className="rounded-[2mm] bg-slate-100 p-[3mm]"><p className="text-[7px] font-black uppercase tracking-wide text-slate-500">Patient instructions</p><p className="mt-1 whitespace-pre-wrap text-[8px]">{prescription.instructions}</p></section></td></tr> : null}
+        {prescription.instructions ? <tr className="b6-break-avoid"><td className="pt-[3mm]"><section className="rounded-[2mm] bg-muted p-[3mm]"><p className="text-[7px] font-black uppercase tracking-wide text-text-muted">Patient instructions</p><p className="mt-1 whitespace-pre-wrap text-[8px]">{prescription.instructions}</p></section></td></tr> : null}
 
-        <tr className="b6-break-avoid"><td className="pt-[4mm]"><section className="ml-auto w-[55mm] border-t border-slate-400 pt-[2mm] text-right">
+        <tr className="b6-break-avoid"><td className="pt-[4mm]"><section className="ml-auto w-[55mm] border-t border-border-strong pt-[2mm] text-right">
           <p className="font-black">{prescription.signatureStatement || `Digitally issued by ${prescriber}`}</p>
-          <p className="mt-0.5 text-[7px] text-slate-500">Signed {date(prescription.signedAt || issuedAt)} · Version {prescription.version}</p>
+          <p className="mt-0.5 text-[7px] text-text-muted">Signed {date(prescription.signedAt || issuedAt)} · Version {prescription.version}</p>
         </section></td></tr>
       </DocumentPageTable>
     </DocumentFrame>
@@ -271,7 +271,7 @@ export function InvoiceDocument({ document }: { document: BillingDocument }) {
         columns={5}
         repeatingHeader={<>
           <tr className="b6-break-avoid"><td colSpan={5}>
-            <section className="grid grid-cols-2 gap-x-[5mm] gap-y-[2.5mm] border-b border-slate-300 pb-[3.5mm]">
+            <section className="grid grid-cols-2 gap-x-[5mm] gap-y-[2.5mm] border-b border-border-strong pb-[3.5mm]">
               <Field label="Bill to" value={document.patient.fullName} />
               <Field label="Status" value={document.status} />
               <Field label="Patient contact" value={[document.patient.phone, document.patient.email].filter(Boolean).join(" · ") || "Not recorded"} />
@@ -280,7 +280,7 @@ export function InvoiceDocument({ document }: { document: BillingDocument }) {
               {document.registrationNumber ? <Field label="Clinic registration" value={document.registrationNumber} /> : null}
             </section>
           </td></tr>
-          <tr className="border-y border-slate-900 bg-slate-100 text-left text-[7px] font-black uppercase tracking-wide">
+          <tr className="border-y border-heading bg-muted text-left text-[7px] font-black uppercase tracking-wide">
             <th className="w-[7mm] px-[1.5mm] py-[2mm]">#</th>
             <th className="px-[1.5mm] py-[2mm]">Description</th>
             <th className="w-[11mm] px-[1.5mm] py-[2mm] text-right">Qty</th>
@@ -289,7 +289,7 @@ export function InvoiceDocument({ document }: { document: BillingDocument }) {
           </tr>
         </>}
       >
-        {lines.map((line, index) => <tr key={line.id} className="b6-break-avoid border-b border-slate-200 align-top text-[8px]"><td className="px-[1.5mm] py-[2mm] text-slate-500">{index + 1}</td><td className="break-words px-[1.5mm] py-[2mm] font-semibold">{line.description}</td><td className="px-[1.5mm] py-[2mm] text-right">{line.quantity}</td><td className="px-[1.5mm] py-[2mm] text-right">{money(line.unitPrice)}</td><td className="px-[1.5mm] py-[2mm] text-right font-bold">{money(line.lineTotal)}</td></tr>)}
+        {lines.map((line, index) => <tr key={line.id} className="b6-break-avoid border-b border-border align-top text-[8px]"><td className="px-[1.5mm] py-[2mm] text-text-muted">{index + 1}</td><td className="break-words px-[1.5mm] py-[2mm] font-semibold">{line.description}</td><td className="px-[1.5mm] py-[2mm] text-right">{line.quantity}</td><td className="px-[1.5mm] py-[2mm] text-right">{money(line.unitPrice)}</td><td className="px-[1.5mm] py-[2mm] text-right font-bold">{money(line.lineTotal)}</td></tr>)}
 
         <tr className="b6-break-avoid"><td colSpan={5} className="pt-[3mm]"><section className="ml-auto w-[65mm] space-y-1 text-[8px]">
           <InvoiceTotal label="Subtotal" value={document.subtotalAmount} />
@@ -310,9 +310,9 @@ export function InvoiceDocument({ document }: { document: BillingDocument }) {
 }
 
 function InvoiceTotal({ label, value, strong = false }: { label: string; value: number; strong?: boolean }) {
-  return <div className={`flex justify-between gap-5 ${strong ? "border-t border-slate-900 pt-1 text-[10px] font-black" : ""}`}><span>{label}</span><span>{money(value)}</span></div>;
+  return <div className={`flex justify-between gap-5 ${strong ? "border-t border-heading pt-1 text-[10px] font-black" : ""}`}><span>{label}</span><span>{money(value)}</span></div>;
 }
 
 function DocumentSection({ title, text }: { title: string; text: string }) {
-  return <section className="b6-break-avoid rounded-[2mm] bg-slate-100 p-[2.5mm]"><p className="text-[7px] font-black uppercase tracking-wide text-slate-500">{title}</p><p className="mt-1 whitespace-pre-wrap text-[8px]">{text}</p></section>;
+  return <section className="b6-break-avoid rounded-[2mm] bg-muted p-[2.5mm]"><p className="text-[7px] font-black uppercase tracking-wide text-text-muted">{title}</p><p className="mt-1 whitespace-pre-wrap text-[8px]">{text}</p></section>;
 }
