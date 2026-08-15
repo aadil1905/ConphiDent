@@ -2,37 +2,26 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { Suspense } from "react";
-import { PhoneCall, Sprout } from "lucide-react";
-import { Prisma } from "@prisma/client";
-import { requirePermission } from "@/lib/permissions";
+import { can, requirePermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { exactStamp, humanLabel, humanTime, overdueBy, rupees } from "@/lib/format";
+import { exactStamp, humanTime, overdueBy } from "@/lib/format";
 import { growthMetrics, rangeFor } from "@/lib/metrics";
-import { listHref, pageWindow, parseListQuery, type RawSearchParams } from "@/lib/list-params";
-import DataList, { ListCell, ListRow } from "@/components/lists/DataList";
+import { listHref, parseListQuery, type RawSearchParams } from "@/lib/list-params";
+import {
+  CLOSE_OUTCOMES,
+  QUEUE_FILTERS,
+  bookingHref,
+  loadGrowthQueue,
+  parseQueueFilter,
+} from "@/lib/growth-queue";
 import ListSearch from "@/components/lists/ListSearch";
 import FilterChips from "@/components/lists/FilterChips";
-import EmptyState from "@/components/lists/EmptyState";
-import PageHeader from "@/components/lists/PageHeader";
+import WorkPage, { RailCard } from "@/components/lists/WorkPage";
+import GrowthQueue, { type QueueRow } from "@/components/growth/GrowthQueue";
+import LogEnquiry from "@/components/growth/LogEnquiry";
 
 const BASE = "/dashboard/growth";
-
-const ENQUIRY_COLUMNS = [
-  { key: "who", label: "Who", sortKey: "who" },
-  { key: "phone", label: "Phone", secondary: true },
-  { key: "want", label: "What they asked about", secondary: true },
-  { key: "from", label: "Where from", secondary: true },
-  { key: "stage", label: "How far" },
-  { key: "next", label: "Next nudge" },
-];
-
-const CALLBACK_COLUMNS = [
-  { key: "who", label: "Who" },
-  { key: "why", label: "Why" },
-  { key: "due", label: "Due", sortKey: "due" },
-  { key: "tries", label: "Tried", align: "right" as const, secondary: true },
-  { key: "open", label: "", align: "right" as const },
-];
+const DEFAULT_WANTS = ["Check-up", "Pain", "Braces", "Implant", "Whitening"];
 
 export default async function GrowthPage({
   searchParams,
@@ -41,341 +30,242 @@ export default async function GrowthPage({
 }) {
   const user = await requirePermission("managePatients");
   const params = await searchParams;
-  const query = parseListQuery(params, { defaultSort: "due", defaultDir: "asc", filterKeys: ["tab", "show"] });
+  const query = parseListQuery(params, {
+    defaultSort: "due",
+    defaultDir: "asc",
+    filterKeys: ["show", "log", "invalid"],
+  });
+  const filter = parseQueueFilter(query.filters.show);
+  // The chips and the paging links all carry the filter that is actually in
+  // force, so a bare /dashboard/growth still highlights "Due today".
+  const view = { ...query, filters: { ...query.filters, show: filter } };
+  const href = (changes: Record<string, string | number>) =>
+    listHref(BASE, view, { log: "", invalid: "", ...changes });
 
   const now = new Date();
-  const tab = query.filters.tab === "callbacks" ? "callbacks" : "enquiries";
-  const show = query.filters.show ?? "";
+  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
 
-  const metrics = await growthMetrics({ clinicId: user.clinicId }, rangeFor("month", now));
-
-  const enquirySearch: Prisma.LeadWhereInput = query.q
-    ? {
-        OR: [
-          { fullName: { contains: query.q, mode: "insensitive" } },
-          { phone: { contains: query.q.replace(/\D/g, "") || query.q } },
-          { serviceInterest: { contains: query.q, mode: "insensitive" } },
-        ],
-      }
-    : {};
-
-  const enquiryWhere: Prisma.LeadWhereInput = {
-    clinicId: user.clinicId,
-    ...enquirySearch,
-    ...(show === "new" ? { stage: "NEW" } : {}),
-    ...(show === "talking" ? { stage: { in: ["CONTACTED", "BOOKED"] } } : {}),
-    ...(show === "lost" ? { stage: "LOST" } : {}),
-    ...(show === "overdue" ? { nextFollowUpAt: { lte: now }, stage: { notIn: ["CONVERTED", "LOST"] } } : {}),
-  };
-
-  const callbackSearch: Prisma.FollowUpTaskWhereInput = query.q
-    ? {
-        OR: [
-          { patientName: { contains: query.q, mode: "insensitive" } },
-          { phone: { contains: query.q.replace(/\D/g, "") || query.q } },
-          { message: { contains: query.q, mode: "insensitive" } },
-        ],
-      }
-    : {};
-
-  const callbackWhere: Prisma.FollowUpTaskWhereInput = {
-    clinicId: user.clinicId,
-    ...callbackSearch,
-    ...(show === "overdue"
-      ? { status: { in: ["PENDING", "FAILED"] }, scheduledFor: { lte: now } }
-      : show === "done"
-        ? { status: "COMPLETED" }
-        : { status: { in: ["PENDING", "QUEUED", "SENT", "FAILED"] } }),
-  };
-
-  const total =
-    tab === "enquiries"
-      ? await prisma.lead.count({ where: enquiryWhere })
-      : await prisma.followUpTask.count({ where: callbackWhere });
-  const { skip, take } = pageWindow(query, total);
-
-  const [enquiries, callbacks, callbackCount] = await Promise.all([
-    tab === "enquiries"
-      ? prisma.lead.findMany({
-          where: enquiryWhere,
-          orderBy: query.sort === "who" ? { fullName: query.dir } : { nextFollowUpAt: query.dir },
-          skip,
-          take,
-          select: {
-            id: true,
-            fullName: true,
-            phone: true,
-            serviceInterest: true,
-            source: true,
-            stage: true,
-            nextFollowUpAt: true,
-            conversionValue: true,
-            patientId: true,
-          },
-        })
-      : [],
-    tab === "callbacks"
-      ? prisma.followUpTask.findMany({
-          where: callbackWhere,
-          orderBy: { scheduledFor: query.dir },
-          skip,
-          take,
-          select: {
-            id: true,
-            patientName: true,
-            phone: true,
-            message: true,
-            taskType: true,
-            status: true,
-            scheduledFor: true,
-            attemptCount: true,
-            patientId: true,
-            leadId: true,
-          },
-        })
-      : [],
-    prisma.followUpTask.count({
-      where: { clinicId: user.clinicId, status: { in: ["PENDING", "FAILED"] }, scheduledFor: { lte: now } },
+  const [queue, metrics, staff, services] = await Promise.all([
+    loadGrowthQueue({
+      clinicId: user.clinicId,
+      userId: user.id,
+      q: query.q,
+      filter,
+      now,
+      page: query.page,
+      size: query.size,
+    }),
+    growthMetrics({ clinicId: user.clinicId }, rangeFor("month", now)),
+    prisma.user.findMany({
+      where: { clinicId: user.clinicId, active: true },
+      select: { id: true, fullName: true, role: true },
+      orderBy: { fullName: "asc" },
+    }),
+    prisma.clinicService.findMany({
+      where: { clinicId: user.clinicId, active: true },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      take: 6,
+      select: { name: true },
     }),
   ]);
 
+  // Whoever is looking is the most likely person to take the work, so they lead.
+  const teammates = staff
+    .filter((member) => can(member.role, "managePatients"))
+    .map((member) => ({ id: member.id, name: member.fullName }))
+    .sort((a, b) => (a.id === user.id ? -1 : b.id === user.id ? 1 : 0));
+
+  const rows: QueueRow[] = queue.items.map((item) => {
+    const late = item.due ? overdueBy(item.due, now) : null;
+    const dueToday = Boolean(item.due && !late && item.due < endOfToday);
+    return {
+      key: item.key,
+      name: item.name,
+      phone: item.phone,
+      origin: item.origin,
+      why: item.why,
+      stage: item.stage,
+      ownerLabel: item.owner ? `With ${item.owner}` : "Nobody has taken this",
+      dueLabel: late ?? (dueToday ? "due today" : item.due ? `due ${humanTime(item.due, now)}` : "no callback promised"),
+      dueExact: item.due ? exactStamp(item.due) : "Nobody has set a date",
+      tone: late ? "overdue" : dueToday ? "today" : "later",
+      kindLabel: item.isPatient ? "Our patient" : "New enquiry",
+      isPatient: item.isPatient,
+      patientHref: item.patientId ? `/dashboard/patients/${item.patientId}` : null,
+      bookHref: bookingHref(item.patientId, item.name, item.phone),
+      primaryLabel: item.isPatient ? "Book them in" : "Message and book",
+    };
+  });
+
+  const overdue = queue.counts.overdue;
+  const reachedTop = Math.max(1, metrics.gotInTouch);
+  const funnel = [
+    { label: "People who got in touch", value: metrics.gotInTouch, bar: "var(--chart-1)" },
+    { label: "We actually reached", value: metrics.reached, bar: "var(--chart-2)" },
+    { label: "Booked a visit", value: metrics.bookedAVisit, bar: "var(--chart-3)" },
+    { label: "Came and were treated", value: metrics.treated, bar: "var(--chart-4)" },
+  ];
+
+  const filterLabel = QUEUE_FILTERS.find((option) => option.value === filter)?.label ?? "Due today";
+
   return (
-    <div className="flex flex-col gap-5">
-      <PageHeader
-        title="Growth"
-        sub={`${metrics.conversion}% became patients this month — ${metrics.conversionSentence}. One calculation, shared with Insights.`}
-      />
+    <WorkPage
+      title="People to contact"
+      sub={
+        overdue > 0
+          ? `${overdue} ${overdue === 1 ? "person" : "people"} waited longer than you promised.`
+          : "Nothing overdue. Nice."
+      }
+      actions={
+        <Link
+          href={listHref(BASE, view, { log: "1", invalid: "" })}
+          className="inline-flex min-h-11 items-center rounded-control bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+        >
+          Log an enquiry
+        </Link>
+      }
+      context={
+        <>
+          {query.filters.log === "1" && (
+            <LogEnquiry
+              wants={services.length ? services.map((service) => service.name) : DEFAULT_WANTS}
+              closeHref={href({})}
+              invalid={query.filters.invalid === "1"}
+            />
+          )}
 
-      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr))]">
-        {[
-          { label: "People got in touch", value: String(metrics.gotInTouch), note: "calls, WhatsApp, walk-ins" },
-          {
-            label: "Became patients",
-            value: `${metrics.conversion}%`,
-            note: metrics.conversionSentence,
-          },
-          {
-            label: "Worth of new patients",
-            value: rupees(metrics.worthOfNewPatients),
-            note: "treated in their first month",
-          },
-          {
-            label: "Patients to call back",
-            value: String(callbackCount),
-            note: callbackCount ? "past their date" : "nothing overdue, nice",
-          },
-        ].map((tile) => (
-          <div
-            key={tile.label}
-            className="rounded-card border border-border bg-card px-4 py-3.5 shadow-[var(--shadow)]"
-          >
-            <p className="text-[11px] font-semibold tracking-[0.06em] text-text-muted uppercase">
-              {tile.label}
+          <RailCard title="This month so far">
+            {funnel.map((step) => (
+              <div key={step.label} className="flex flex-col gap-1">
+                <div className="flex items-baseline justify-between gap-2 text-[13px]">
+                  <span className="text-text-muted">{step.label}</span>
+                  <span className="font-semibold tabular-nums text-heading">{step.value}</span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-pill bg-muted">
+                  <div
+                    className="h-full rounded-pill"
+                    style={{
+                      width: `${Math.round((step.value / reachedTop) * 100)}%`,
+                      background: step.bar,
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+            <p className="text-xs text-text-muted sm:col-span-full">
+              {metrics.conversion}% of enquiries became treated patients — {metrics.conversionSentence}.
+              Insights uses this same number; there is only one.
             </p>
-            <p className="text-2xl font-bold tabular-nums text-heading">{tile.value}</p>
-            <p className="text-xs text-text-muted">{tile.note}</p>
-          </div>
-        ))}
-      </div>
-
-      <div role="tablist" aria-label="Growth sections" className="flex gap-1 overflow-x-auto border-b border-border">
-        {[
-          { value: "enquiries", label: "Enquiries" },
-          { value: "callbacks", label: "Patients to call back" },
-        ].map((option) => (
-          <Link
-            key={option.value}
-            href={listHref(BASE, query, { tab: option.value, show: "", page: 1 })}
-            role="tab"
-            aria-selected={tab === option.value}
-            className={`inline-flex min-h-[42px] flex-none items-center border-b-2 px-3.5 text-[13px] font-semibold ${
-              tab === option.value
-                ? "border-b-primary text-heading"
-                : "border-b-transparent text-text-muted hover:text-heading"
-            }`}
-          >
-            {option.label}
-            {option.value === "callbacks" && callbackCount > 0 && (
-              <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-pill bg-primary px-1.5 text-[11px] font-bold text-white">
-                {callbackCount}
-              </span>
-            )}
-          </Link>
-        ))}
-      </div>
-
+          </RailCard>
+        </>
+      }
+    >
       <section className="flex flex-col gap-3 rounded-card border border-border bg-card p-4 shadow-[var(--shadow)]">
         <div className="flex flex-wrap items-center gap-3">
           <Suspense fallback={<div className="h-11 flex-[1_1_240px] rounded-control bg-muted" />}>
-            <ListSearch
-              placeholder={tab === "enquiries" ? "Name, phone or what they asked about" : "Name, phone or why"}
-              label={tab === "enquiries" ? "Search enquiries" : "Search callbacks"}
-            />
+            <ListSearch placeholder="Name or number" label="Search this queue" />
           </Suspense>
           <FilterChips
             basePath={BASE}
-            query={query}
+            query={view}
             name="show"
-            legend="Narrow the list"
-            options={
-              tab === "enquiries"
-                ? [
-                    { value: "overdue", label: "Nudge overdue" },
-                    { value: "new", label: "Not called yet" },
-                    { value: "talking", label: "Talking" },
-                    { value: "lost", label: "Went elsewhere" },
-                  ]
-                : [
-                    { value: "overdue", label: "Overdue" },
-                    { value: "done", label: "Done" },
-                  ]
-            }
+            legend="Show"
+            options={QUEUE_FILTERS.map((option) => ({
+              value: option.value,
+              label: option.label,
+              count: queue.counts[option.value],
+              tone: option.value === "overdue" && queue.counts.overdue > 0 ? ("danger" as const) : undefined,
+            }))}
           />
         </div>
         <p className="border-t border-border/70 pt-2.5 text-xs text-text-muted">
-          Filters live in the URL — copy the link to share this view.
+          Showing {rows.length} of {queue.total} in this filter · {queue.counts.everyone} in the whole
+          queue. Filters live in the URL — copy the link to share this view.
         </p>
       </section>
 
-      {tab === "enquiries" ? (
-        <DataList
-          basePath={BASE}
-          query={query}
-          columns={ENQUIRY_COLUMNS}
-          total={total}
-          shown={enquiries.length}
-          noun="enquiries"
-          empty={
-            <EmptyState
-              icon={Sprout}
-              title={query.q ? `Nothing matches “${query.q}”` : "Nobody has got in touch yet"}
-              body={
-                query.q
-                  ? "Try a phone number, or clear the filters."
-                  : "Enquiries from WhatsApp, the website and walk-ins all land here."
-              }
-            />
-          }
-        >
-          {enquiries.map((lead) => {
-            const late = lead.nextFollowUpAt ? overdueBy(lead.nextFollowUpAt, now) : null;
-            return (
-              <ListRow key={lead.id} needsAttention={Boolean(late)}>
-                <ListCell>
-                  {lead.patientId ? (
-                    <Link
-                      href={`/dashboard/patients/${lead.patientId}`}
-                      className="font-semibold text-primary hover:underline"
-                    >
-                      {lead.fullName}
-                    </Link>
-                  ) : (
-                    <span className="font-semibold">{lead.fullName}</span>
-                  )}
-                </ListCell>
-                <ListCell secondary>
-                  <span className="tabular-nums text-text-muted">{lead.phone}</span>
-                </ListCell>
-                <ListCell secondary>
-                  <span className="text-text-muted">{lead.serviceInterest || "Not said"}</span>
-                </ListCell>
-                <ListCell secondary>
-                  <span className="text-text-muted">{lead.source}</span>
-                </ListCell>
-                <ListCell>
-                  <span
-                    className={`inline-flex items-center rounded-pill px-2.5 py-1 text-xs font-semibold ${
-                      lead.stage === "CONVERTED"
-                        ? "bg-success-bg text-success"
-                        : lead.stage === "LOST"
-                          ? "bg-danger-bg text-danger"
-                          : "bg-muted text-heading"
-                    }`}
-                  >
-                    {lead.stage === "CONVERTED"
-                      ? "Treated"
-                      : lead.stage === "NEW"
-                        ? "Not called yet"
-                        : humanLabel(lead.stage)}
-                  </span>
-                </ListCell>
-                <ListCell>
-                  {lead.nextFollowUpAt ? (
-                    <span
-                      title={exactStamp(lead.nextFollowUpAt)}
-                      className={late ? "font-semibold text-danger" : "text-text-muted"}
-                    >
-                      {late ?? humanTime(lead.nextFollowUpAt, now)}
-                    </span>
-                  ) : (
-                    <span className="text-text-muted">nothing planned</span>
-                  )}
-                </ListCell>
-              </ListRow>
-            );
-          })}
-        </DataList>
-      ) : (
-        <DataList
-          basePath={BASE}
-          query={query}
-          columns={CALLBACK_COLUMNS}
-          total={total}
-          shown={callbacks.length}
-          noun="callbacks"
-          empty={
-            <EmptyState
-              icon={PhoneCall}
-              title={query.q ? `Nothing matches “${query.q}”` : "Nothing overdue. Nice."}
-              body={
-                query.q
-                  ? "Try a phone number, or clear the filters."
-                  : "Anyone who needs chasing will turn up here the moment they do."
-              }
-            />
-          }
-        >
-          {callbacks.map((task) => {
-            const late = overdueBy(task.scheduledFor, now);
-            return (
-              <ListRow key={task.id} needsAttention={Boolean(late)}>
-                <ListCell>
-                  {task.patientId ? (
-                    <Link
-                      href={`/dashboard/patients/${task.patientId}`}
-                      className="font-semibold text-primary hover:underline"
-                    >
-                      {task.patientName}
-                    </Link>
-                  ) : (
-                    <span className="font-semibold">{task.patientName}</span>
-                  )}
-                  <span className="block text-xs tabular-nums text-text-muted">{task.phone}</span>
-                </ListCell>
-                <ListCell>
-                  <span className="block truncate text-text-muted">{task.message}</span>
-                </ListCell>
-                <ListCell>
-                  <span
-                    title={exactStamp(task.scheduledFor)}
-                    className={late ? "font-semibold text-danger" : "text-text-muted"}
-                  >
-                    {late ?? humanTime(task.scheduledFor, now)}
-                  </span>
-                </ListCell>
-                <ListCell align="right" secondary>
-                  <span className="tabular-nums">{task.attemptCount}</span>
-                </ListCell>
-                <ListCell align="right">
-                  <Link href={`/dashboard/patients/${task.patientId ?? ""}`} className="text-xs font-semibold text-primary">
-                    Open
-                  </Link>
-                </ListCell>
-              </ListRow>
-            );
-          })}
-        </DataList>
-      )}
-    </div>
+      <GrowthQueue
+        title={filter === "everyone" ? "Everyone in the queue" : filterLabel}
+        rows={rows}
+        pageNote={`Page ${queue.page} of ${queue.pages} · ${queue.total} ${queue.total === 1 ? "person" : "people"}`}
+        outcomes={CLOSE_OUTCOMES.map((outcome) => ({ value: outcome.value, label: outcome.label }))}
+        teammates={teammates}
+        canMessage={can(user.role, "sendWhatsApp")}
+        emptyTitle={
+          filter === "overdue"
+            ? "Nothing overdue. Nice."
+            : query.q
+              ? `Nobody matches “${query.q}”`
+              : "This list is clear"
+        }
+        emptyBody={
+          query.q
+            ? "Try a phone number, or log them as a new enquiry."
+            : "Anyone who calls, messages or misses a visit lands here on their own."
+        }
+        footer={
+          queue.pages > 1 ? (
+            <nav aria-label="Pages" className="flex items-center gap-1">
+              <Link
+                href={href({ page: queue.page - 1 })}
+                aria-disabled={queue.page <= 1}
+                className={`inline-flex h-9 items-center rounded-control border border-border px-3 font-semibold ${
+                  queue.page <= 1 ? "pointer-events-none opacity-40" : "hover:bg-muted"
+                }`}
+              >
+                Back
+              </Link>
+              <Link
+                href={href({ page: queue.page + 1 })}
+                aria-disabled={queue.page >= queue.pages}
+                className={`inline-flex h-9 items-center rounded-control border border-border px-3 font-semibold ${
+                  queue.page >= queue.pages ? "pointer-events-none opacity-40" : "hover:bg-muted"
+                }`}
+              >
+                Next
+              </Link>
+            </nav>
+          ) : null
+        }
+      />
+
+      <RailCard title="Where they came from">
+        {metrics.sources.length === 0 ? (
+          <p className="text-[13px] text-text-muted">
+            Nobody has got in touch this month, so there is nothing to count yet.
+          </p>
+        ) : (
+          metrics.sources.slice(0, 6).map((source) => (
+            <div key={source.label} className="flex items-baseline justify-between gap-3 text-[13px]">
+              <span className="text-foreground">{source.label}</span>
+              <span className="tabular-nums text-text-muted">
+                {source.enquiries} · {source.treated} treated
+              </span>
+            </div>
+          ))
+        )}
+        {can(user.role, "exportData") && (
+          <Link href="/dashboard/insights" className="text-xs font-semibold text-primary hover:underline">
+            See the full picture in Insights
+          </Link>
+        )}
+      </RailCard>
+
+      <RailCard title="Why people did not come">
+        {metrics.lossReasons.length === 0 ? (
+          <p className="text-[13px] text-text-muted">
+            Nobody has been written off this month. Reasons are recorded when you press Done and pick
+            one.
+          </p>
+        ) : (
+          metrics.lossReasons.slice(0, 6).map((reason) => (
+            <div key={reason.label} className="flex items-baseline justify-between gap-3 text-[13px]">
+              <span className="text-foreground">{reason.label}</span>
+              <span className="tabular-nums text-text-muted">{reason.count}</span>
+            </div>
+          ))
+        )}
+      </RailCard>
+    </WorkPage>
   );
 }

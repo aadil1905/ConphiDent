@@ -24,6 +24,9 @@ export default async function BookAVisitPage({
     date?: string;
     time?: string;
     returnTo?: string;
+    /** An enquiry with no patient record yet still arrives with a name and number. */
+    name?: string;
+    phone?: string;
   }>;
 }) {
   await requireFeature("appointments");
@@ -130,8 +133,8 @@ export default async function BookAVisitPage({
         chairs={chairs.map((chair) => chair.name)}
         defaultIso={params.date}
         defaultTime={params.time}
-        defaultPatientName={patient?.fullName}
-        defaultPhone={patient?.phone}
+        defaultPatientName={patient?.fullName ?? params.name}
+        defaultPhone={patient?.phone ?? params.phone}
       />
     </div>
   );

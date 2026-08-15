@@ -186,7 +186,9 @@ export async function searchWorkspace(viewer: Viewer, query: string): Promise<Se
       kind: "Enquiry",
       title: item.fullName,
       detail: `${item.phone} · ${item.stage.toLowerCase().replace(/_/g, " ")}`,
-      href: `/dashboard/leads?lead=${item.id}`,
+      // There is no enquiry detail page — the queue, searched by their number,
+      // is the one place this person actually appears.
+      href: `/dashboard/growth?show=everyone&q=${encodeURIComponent(item.phone)}`,
     })),
     ...labCases.map((item): SearchHit => ({
       kind: "Lab",

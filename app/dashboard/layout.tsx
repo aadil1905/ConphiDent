@@ -98,7 +98,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     overdueFollowUps > 0 && {
       label: `${overdueFollowUps} ${plural(overdueFollowUps, "patient", "patients")} to call back`,
       detail: "These follow-ups are past their date and still need an outcome.",
-      href: "/dashboard/growth?tab=callbacks",
+      href: "/dashboard/growth?show=overdue",
       tone: "danger" as const,
     },
     delayedLabCases > 0 && {

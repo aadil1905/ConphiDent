@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { listHref, type ListQuery } from "@/lib/list-params";
 
-export type FilterOption = { value: string; label: string; count?: number };
+export type FilterOption = {
+  value: string;
+  label: string;
+  count?: number;
+  /** Colours the count when the number itself is the warning — overdue work. */
+  tone?: "danger";
+};
 
 /**
  * URL-persisted filters as links, so they work before the JavaScript lands and
@@ -39,7 +45,13 @@ export default function FilterChips({
           >
             {option.label}
             {typeof option.count === "number" && (
-              <span className="tabular-nums text-text-muted">{option.count}</span>
+              <span
+                className={`tabular-nums ${
+                  option.tone === "danger" && option.count > 0 ? "text-danger" : "text-text-muted"
+                }`}
+              >
+                {option.count}
+              </span>
             )}
           </Link>
         );

@@ -139,9 +139,8 @@ export default async function TodayPage() {
       secondaryLabel: "Open",
       secondaryHref: task.patientId
         ? `/dashboard/patients/${task.patientId}`
-        : task.leadId
-          ? `/dashboard/growth?lead=${task.leadId}`
-          : "/dashboard/growth?tab=callbacks",
+        : // No enquiry detail page exists, so land on the queue with them found.
+          `/dashboard/growth?show=everyone&q=${encodeURIComponent(task.phone)}`,
     };
   });
   const overdueInQueue = queue.filter((item) => item.overdue).length;
@@ -253,7 +252,7 @@ export default async function TodayPage() {
         items={queue}
         total={openTaskCount}
         overdueCount={overdueInQueue}
-        moreHref="/dashboard/growth?tab=callbacks"
+        moreHref="/dashboard/growth?show=overdue"
       />
 
       <ChairList

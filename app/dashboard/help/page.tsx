@@ -21,7 +21,7 @@ const ANSWERS = [
     question: "Who still needs ringing?",
     answer:
       "Today shows the ones that are overdue at the top. The full queue lives on Growth, with why each person is waiting and how many times you have tried.",
-    href: "/dashboard/growth?tab=callbacks",
+    href: "/dashboard/growth?show=overdue",
     label: "Open the queue",
   },
   {
