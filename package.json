@@ -20,11 +20,12 @@
     "test:patient-whatsapp": "node --test tests/patient-whatsapp-policy.integration.mjs",
     "test:platform": "node --test tests/platform-authorization.integration.mjs",
     "test:scheduling": "node --test tests/scheduling-core.integration.mjs",
-    "verify": "npm run lint && npm run typecheck && npm run verify:security && npm run verify:architecture && npm run test:scheduling && npm run test:clinical && npm run test:imaging && npm run test:laboratory && npm run test:phase45 && npm run test:whatsapp && npm run test:patient-whatsapp && npm run test:reliability && npm run test:provisioning && npm run test:platform",
+    "verify": "npm run lint && npm run typecheck && npm run verify:security && npm run verify:architecture && npm run verify:links && npm run test:scheduling && npm run test:clinical && npm run test:imaging && npm run test:laboratory && npm run test:phase45 && npm run test:whatsapp && npm run test:patient-whatsapp && npm run test:reliability && npm run test:provisioning && npm run test:platform",
     "verify:security": "node scripts/verify-security-boundaries.mjs",
     "export:update": "node scripts/export-update-package.mjs",
     "seed:services": "node scripts/seed-deepika-services.mjs",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "verify:links": "node scripts/verify-links.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
