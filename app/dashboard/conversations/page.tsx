@@ -5,7 +5,7 @@ import { MessagesSquare } from "lucide-react";
 import { Prisma } from "@prisma/client";
 import { requireFeature } from "@/lib/features";
 import { prisma } from "@/lib/prisma";
-import { exactStamp, humanTime, rupees } from "@/lib/format";
+import { clockTime, exactStamp, humanTime, rupees } from "@/lib/format";
 import PageHeader from "@/components/lists/PageHeader";
 import ConversationComposer from "@/components/whatsapp/ConversationComposer";
 import HandoffControl from "@/components/whatsapp/HandoffControl";
@@ -56,6 +56,19 @@ function href(changes: Record<string, string | number | undefined>, current: Rec
   }
   const search = params.toString();
   return search ? `${BASE}?${search}` : BASE;
+}
+
+/** Two stamps on the same calendar day. */
+function sameDay(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+/** "Today", "Yesterday", then the date — the separator between days. */
+function dayLabel(value: Date, now: Date) {
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  if (sameDay(value, now)) return "Today";
+  if (sameDay(value, yesterday)) return "Yesterday";
+  return value.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
 export default async function MessagesInboxPage({
@@ -406,25 +419,62 @@ export default async function MessagesInboxPage({
                   />
                 </div>
 
-                <div className="flex min-h-[220px] flex-1 flex-col justify-end gap-2.5 overflow-y-auto bg-background px-4 py-3.5">
-                  {active.messages.map((message) => {
+                <div className="flex min-h-[220px] flex-1 flex-col justify-end overflow-y-auto bg-background px-4 py-3.5">
+                  {active.messages.map((message, index) => {
                     const ours = message.direction === "OUTBOUND";
                     const state = ours ? STATE_WORDS[message.deliveryStatus] : null;
+                    const previous = active.messages[index - 1];
+                    const next = active.messages[index + 1];
+
+                    // The date belongs once at the top of a day, not stamped on
+                    // every line — four "5 Aug 2026"s in a row is noise.
+                    const newDay = !previous || !sameDay(previous.createdAt, message.createdAt);
+                    // A run of messages from one side reads as one turn.
+                    const startsRun = newDay || previous.direction !== message.direction;
+                    const endsRun =
+                      !next ||
+                      next.direction !== message.direction ||
+                      !sameDay(message.createdAt, next.createdAt);
+
                     return (
-                      <div
-                        key={message.id}
-                        className={`flex max-w-[min(84%,460px)] flex-col gap-[3px] ${ours ? "self-end" : "self-start"}`}
-                      >
+                      <div key={message.id} className="flex flex-col">
+                        {newDay && (
+                          <div className="my-3 flex items-center gap-3" aria-hidden>
+                            <span className="h-px flex-1 bg-border" />
+                            <span className="rounded-pill bg-muted px-2.5 py-1 text-[11px] font-semibold text-text-muted">
+                              {dayLabel(message.createdAt, now)}
+                            </span>
+                            <span className="h-px flex-1 bg-border" />
+                          </div>
+                        )}
+
                         <div
-                          className={`rounded-[0.75rem] border px-3 py-2 text-[13px] whitespace-pre-line text-foreground ${
-                            ours ? "border-border-strong bg-secondary" : "border-border bg-card"
+                          className={`flex max-w-[min(78%,34rem)] flex-col ${ours ? "self-end items-end" : "self-start items-start"} ${
+                            startsRun ? "" : "mt-[3px]"
                           }`}
                         >
-                          {message.content}
-                        </div>
-                        <div className={`flex items-center gap-1.5 text-[11px] text-text-muted ${ours ? "justify-end" : "justify-start"}`}>
-                          <span title={exactStamp(message.createdAt)}>{humanTime(message.createdAt, now)}</span>
-                          {state && <span className={`font-semibold ${state.tone}`}>{state.label}</span>}
+                          <div
+                            className={`px-3.5 py-2.5 text-[13px] leading-[1.45] whitespace-pre-line shadow-[0_1px_2px_rgba(18,59,93,0.06)] ${
+                              ours
+                                ? "bg-primary text-white"
+                                : "border border-border bg-card text-foreground"
+                            } ${
+                              // Square off the corner facing the run so a turn
+                              // reads as one block rather than separate cards.
+                              ours
+                                ? `rounded-[1rem] ${startsRun ? "" : "rounded-tr-[0.3rem]"} ${endsRun ? "" : "rounded-br-[0.3rem]"}`
+                                : `rounded-[1rem] ${startsRun ? "" : "rounded-tl-[0.3rem]"} ${endsRun ? "" : "rounded-bl-[0.3rem]"}`
+                            }`}
+                          >
+                            {message.content}
+                          </div>
+
+                          {endsRun && (
+                            <div className="mt-1 flex items-center gap-1.5 px-1 text-[11px] text-text-muted">
+                              <span title={exactStamp(message.createdAt)}>{clockTime(message.createdAt)}</span>
+                              {state && <span className={`font-semibold ${state.tone}`}>{state.label}</span>}
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
