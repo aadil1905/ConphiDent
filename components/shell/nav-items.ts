@@ -77,7 +77,6 @@ export const NAV_DESTINATIONS: readonly NavDestination[] = [
     children: [
       { href: "/dashboard/treatment-plans", label: "Treatment plans", feature: "clinical", permission: "viewClinical" },
       { href: "/dashboard/prescriptions", label: "Prescriptions", feature: "clinical", permission: "viewClinical" },
-      { href: "/dashboard/clinical-records", label: "Notes archive", feature: "clinical", permission: "viewClinical" },
     ],
   },
   {
@@ -89,18 +88,10 @@ export const NAV_DESTINATIONS: readonly NavDestination[] = [
   },
   {
     href: "/dashboard/conversations", label: "Messages", icon: MessagesSquare, hint: "WhatsApp inbox and automations", feature: "whatsapp", permission: "sendWhatsApp", badge: "messages",
-    children: [
-      { href: "/dashboard/automation", label: "Automations", feature: "whatsapp", permission: "manageSchedule" },
-      { href: "/dashboard/whatsapp-operations", label: "Delivery and failures", feature: "whatsapp", permission: "sendWhatsApp" },
-      { href: "/dashboard/ai-coach", label: "AI coach", feature: "ai_coach" },
-    ],
   },
   { href: "/dashboard/growth", label: "Growth", icon: Sprout, hint: "Enquiries and patients to call back", feature: "crm", permission: "managePatients", badge: "growth" },
   {
     href: "/dashboard/laboratory", label: "Laboratory", icon: FlaskConical, hint: "Cases out with the lab", feature: "laboratory", permission: "manageLaboratory", badge: "laboratory",
-    children: [
-      { href: "/dashboard/laboratory/new", label: "Send a case", feature: "laboratory", permission: "manageLaboratory" },
-    ],
   },
   { href: "/dashboard/imaging", label: "Imaging", icon: Scan, hint: "X-rays and scans", feature: "imaging", permission: "viewImaging", badge: "imaging" },
   { href: "/dashboard/operations", label: "Operations", icon: PackageCheck, hint: "Stock, suppliers and the day sheet", feature: "inventory", permission: "manageInventory" },

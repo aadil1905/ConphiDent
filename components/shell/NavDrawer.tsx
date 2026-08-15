@@ -41,17 +41,31 @@ function Section({
   const Icon = item.icon;
 
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex flex-col gap-px">
       <Link
         href={item.href}
         onClick={onClose}
         aria-current={active ? "page" : undefined}
-        className={`flex min-h-11 items-center gap-2.5 rounded-control px-2.5 py-2.5 ${
-          active ? "bg-primary-soft font-semibold text-heading" : "text-foreground"
+        className={`group relative flex min-h-11 items-center gap-3 rounded-control px-2.5 py-2.5 text-[13.5px] transition-colors duration-150 ${
+          active
+            ? "bg-primary-soft font-semibold text-heading"
+            : "font-medium text-foreground hover:bg-muted"
         }`}
       >
-        <Icon className="h-[17px] w-[17px] flex-none" strokeWidth={1.9} aria-hidden />
-        <span className="flex-1">{item.label}</span>
+        {/* The active section carries a stroke down its edge, the same mark the
+            lists use for a row that needs attention. */}
+        <span
+          aria-hidden
+          className={`absolute top-1.5 bottom-1.5 left-0 w-[3px] rounded-pill transition-colors duration-150 ${
+            active ? "bg-primary" : "bg-transparent"
+          }`}
+        />
+        <Icon
+          className={`h-[18px] w-[18px] flex-none ${active ? "text-primary" : "text-text-muted"}`}
+          strokeWidth={1.9}
+          aria-hidden
+        />
+        <span className="flex-1 truncate">{item.label}</span>
         {count > 0 && (
           <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-pill bg-primary px-1.5 text-[11px] font-bold tabular-nums text-white">
             {count > 99 ? "99+" : count}
@@ -59,24 +73,31 @@ function Section({
         )}
       </Link>
 
-      {item.children?.map((child) => {
-        // The parent already lights up for anything beneath it, so a child only
-        // claims the highlight on its own page.
-        const childActive = pathname === child.href || pathname.startsWith(`${child.href}/`);
-        return (
-          <Link
-            key={child.href}
-            href={child.href}
-            onClick={onClose}
-            aria-current={childActive ? "page" : undefined}
-            className={`ml-[1.85rem] flex min-h-10 items-center rounded-control border-l border-border px-2.5 py-2 text-[13px] ${
-              childActive ? "bg-primary-soft font-semibold text-heading" : "text-text-muted"
-            }`}
-          >
-            {child.label}
-          </Link>
-        );
-      })}
+      {item.children && item.children.length > 0 && (
+        <div className="relative mb-1 ml-[1.55rem] flex flex-col gap-px pl-3">
+          <span aria-hidden className="absolute inset-y-1 left-0 w-px bg-border" />
+          {item.children.map((child) => {
+            // The parent already lights up for anything beneath it, so a child
+            // only claims the highlight on its own page.
+            const childActive = pathname === child.href || pathname.startsWith(`${child.href}/`);
+            return (
+              <Link
+                key={child.href}
+                href={child.href}
+                onClick={onClose}
+                aria-current={childActive ? "page" : undefined}
+                className={`flex min-h-9 items-center rounded-control px-2.5 py-1.5 text-[13px] transition-colors duration-150 ${
+                  childActive
+                    ? "bg-primary-soft font-semibold text-heading"
+                    : "text-text-muted hover:bg-muted hover:text-heading"
+                }`}
+              >
+                {child.label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

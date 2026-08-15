@@ -24,9 +24,6 @@ export type BookableDay = {
 
 type Draft = { who: string; note: string; reason: string; iso: string; slot: string | null };
 
-const HOURS = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
-const MINUTES = ["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"];
-
 function initialsOf(name: string) {
   return (
     name
@@ -54,13 +51,23 @@ function readDraft(): Draft | null {
   }
 }
 
+/**
+ * Two kinds of visit, not a list of treatments. What is being treated belongs on
+ * the clinical note; what the desk needs to know is whether this person's
+ * details have ever been taken. The API already reads "New consultation" to
+ * decide whether intake is outstanding.
+ */
+const VISIT_TYPES = [
+  { value: "New consultation", note: "We take their details next" },
+  { value: "Follow-up", note: "Straight to their file" },
+] as const;
+
 const card = "rounded-card border border-border bg-card shadow-[var(--shadow)]";
 const chip = (on: boolean) =>
   `cursor-pointer rounded-control border text-heading ${on ? "border-primary bg-secondary" : "border-border-strong bg-card"}`;
 
 export default function BookAVisit({
   days,
-  reasons,
   chairs,
   defaultIso,
   defaultTime,
@@ -68,7 +75,6 @@ export default function BookAVisit({
   defaultPhone,
 }: {
   days: BookableDay[];
-  reasons: string[];
   chairs: string[];
   defaultIso?: string;
   defaultTime?: string;
@@ -89,12 +95,8 @@ export default function BookAVisit({
   const startIndex = Math.max(0, days.findIndex((day) => day.iso === defaultIso));
   const [dayIndex, setDayIndex] = useState(startIndex);
   const [slot, setSlot] = useState<string | null>(defaultTime ?? null);
-  const [manual, setManual] = useState(Boolean(defaultTime));
-  const [hour, setHour] = useState("10");
-  const [minute, setMinute] = useState("30");
-  const [meridiem, setMeridiem] = useState("am");
 
-  const [reason, setReason] = useState(reasons[0] ?? "New consultation");
+  const [reason, setReason] = useState<string>(VISIT_TYPES[0].value);
   const [note, setNote] = useState("");
   const [remind, setRemind] = useState(true);
 
@@ -104,8 +106,7 @@ export default function BookAVisit({
   const [draftOffered, setDraftOffered] = useState(Boolean(draft?.who));
 
   const day = days[Math.min(dayIndex, days.length - 1)];
-  const manualTime = `${hour}:${minute} ${meridiem}`;
-  const chosen = manual ? manualTime : slot ? pretty(slot) : null;
+  const chosen = slot ? pretty(slot) : null;
 
   // Autosave so a dropped connection never loses typed work.
   const keep = (next: Partial<Draft> = {}) => {
@@ -158,14 +159,11 @@ export default function BookAVisit({
       return;
     }
     if (!chosen) {
-      toast.error("Pick a time first — any of the free ones, or set your own.");
+      toast.error("Pick one of the free times first.");
       return;
     }
 
-    // The API wants 24-hour time; the screen speaks in am/pm.
-    const time = manual
-      ? `${String((Number(hour) % 12) + (meridiem === "pm" ? 12 : 0)).padStart(2, "0")}:${minute}`
-      : slot!;
+    const time = slot!;
 
     setSaving(true);
     try {
@@ -201,9 +199,15 @@ export default function BookAVisit({
         setPhone("");
         setNote("");
         setSlot(null);
-        setManual(false);
         setTried(false);
         router.refresh();
+      } else if (body.intakeRequired) {
+        // A first visit: take their details while they are still in front of you.
+        const query = new URLSearchParams({ name: picked.name, phone: isNew ? phone : picked.phone });
+        router.push(`/dashboard/patient-intake?${query.toString()}`);
+      } else if (body.patientId) {
+        // Somebody already on the list: their file is what you want next.
+        router.push(`/dashboard/patients/${body.patientId}`);
       } else {
         router.push("/dashboard/appointments");
       }
@@ -416,7 +420,6 @@ export default function BookAVisit({
                 onClick={() => {
                   setDayIndex(index);
                   setSlot(null);
-                  setManual(false);
                   keep({ iso: item.iso, slot: null });
                 }}
                 aria-pressed={index === dayIndex}
@@ -445,11 +448,10 @@ export default function BookAVisit({
                     type="button"
                     onClick={() => {
                       setSlot(time);
-                      setManual(false);
                       keep({ slot: time });
                     }}
-                    aria-pressed={!manual && slot === time}
-                    className={`flex min-h-[52px] flex-col items-start gap-px px-3.5 py-1.5 ${chip(!manual && slot === time)}`}
+                    aria-pressed={slot === time}
+                    className={`flex min-h-[52px] flex-col items-start gap-px px-3.5 py-1.5 ${chip(slot === time)}`}
                   >
                     <span className="text-sm font-semibold tabular-nums whitespace-nowrap">
                       {pretty(time)}
@@ -470,72 +472,31 @@ export default function BookAVisit({
             </p>
           )}
 
-          <div className="flex flex-wrap items-end gap-2.5 border-t border-border/70 pt-3">
-            <div>
-              <p className="mb-1.5 text-xs font-semibold text-heading">Or set a time yourself</p>
-              <div className="flex items-center gap-2">
-                <select
-                  value={hour}
-                  onChange={(event) => setHour(event.target.value)}
-                  aria-label="Hour"
-                  className="min-h-[46px] rounded-control border border-border-strong bg-white px-2.5 text-sm tabular-nums text-foreground"
-                >
-                  {HOURS.map((value) => (
-                    <option key={value}>{value}</option>
-                  ))}
-                </select>
-                <span className="font-semibold text-text-muted">:</span>
-                <select
-                  value={minute}
-                  onChange={(event) => setMinute(event.target.value)}
-                  aria-label="Minutes"
-                  className="min-h-[46px] rounded-control border border-border-strong bg-white px-2.5 text-sm tabular-nums text-foreground"
-                >
-                  {MINUTES.map((value) => (
-                    <option key={value}>{value}</option>
-                  ))}
-                </select>
-                <select
-                  value={meridiem}
-                  onChange={(event) => setMeridiem(event.target.value)}
-                  aria-label="am or pm"
-                  className="min-h-[46px] rounded-control border border-border-strong bg-white px-2.5 text-sm text-foreground"
-                >
-                  <option value="am">am</option>
-                  <option value="pm">pm</option>
-                </select>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setManual(true);
-                    setSlot(null);
-                    toast(`Time set to ${manualTime} — outside the usual slots, that is fine.`);
-                  }}
-                  className="min-h-[46px] cursor-pointer rounded-control border border-border-strong bg-muted px-3.5 text-[13px] font-semibold text-heading"
-                >
-                  Use this time
-                </button>
-              </div>
-            </div>
-          </div>
         </section>
 
-        {/* --- Why ---------------------------------------------------------- */}
+        {/* --- Which kind of visit ------------------------------------------ */}
         <section className={`${card} flex flex-col gap-3.5 px-4.5 pt-4 pb-4.5`}>
-          <h2 className="text-base font-semibold text-heading">What is it for?</h2>
+          <div>
+            <h2 className="text-base font-semibold text-heading">What kind of visit?</h2>
+            <p className="mt-0.5 text-xs text-text-muted">
+              This decides where you land after saving — a new patient needs their details taken,
+              somebody you already treat does not.
+            </p>
+          </div>
           <div className="flex flex-wrap gap-2">
-            {reasons.map((item) => (
+            {VISIT_TYPES.map((item) => (
               <button
-                key={item}
+                key={item.value}
                 type="button"
                 onClick={() => {
-                  setReason(item);
-                  keep({ reason: item });
+                  setReason(item.value);
+                  keep({ reason: item.value });
                 }}
-                aria-pressed={reason === item}
-                className={`min-h-[46px] px-4 text-sm font-semibold ${chip(reason === item)}`}
+                aria-pressed={reason === item.value}
+                className={`flex min-h-[58px] flex-col items-start justify-center px-4 text-left ${chip(reason === item.value)}`}
               >
-                {item}
+                <span className="text-sm font-semibold">{item.value}</span>
+                <span className="text-xs font-normal text-text-muted">{item.note}</span>
               </button>
             ))}
           </div>

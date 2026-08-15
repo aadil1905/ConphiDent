@@ -4,7 +4,7 @@ import Link from "next/link";
 import { requireFeature } from "@/lib/features";
 import { requirePermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { buildTimeSlots, defaultHours } from "@/lib/clinic-config";
+import { bookableSlotsByWeekday } from "@/lib/appointment-scheduling";
 import PageHeader from "@/components/lists/PageHeader";
 import BookAVisit, { type BookableDay } from "@/components/appointments/BookAVisit";
 
@@ -38,13 +38,8 @@ export default async function BookAVisitPage({
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const windowEnd = new Date(today.getTime() + DAYS_SHOWN * DAY);
 
-  const [hours, services, chairs, booked, patient] = await Promise.all([
-    prisma.clinicHours.findMany({ where: { clinicId: user.clinicId }, orderBy: { dayOfWeek: "asc" } }),
-    prisma.clinicService.findMany({
-      where: { clinicId: user.clinicId, active: true },
-      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-      select: { name: true },
-    }),
+  const [slotsByWeekday, chairs, booked, patient] = await Promise.all([
+    bookableSlotsByWeekday(user.clinicId),
     prisma.clinicChair.findMany({
       where: { clinicId: user.clinicId, active: true },
       orderBy: { name: "asc" },
@@ -67,21 +62,16 @@ export default async function BookAVisitPage({
       : null,
   ]);
 
-  const hoursByDay = new Map(hours.map((entry) => [entry.dayOfWeek, entry]));
-
-  // A day's free times are its configured slots minus whatever is already booked.
+  // A day's free times are the branch's configured slots minus what is booked.
+  // Nothing is offered that the write would refuse — they read the same rows.
   const days: BookableDay[] = Array.from({ length: DAYS_SHOWN }, (_, offset) => {
     const date = new Date(today.getTime() + offset * DAY);
-    const setup = hoursByDay.get(date.getDay()) ?? defaultHours[date.getDay()];
     const iso = isoOf(date);
+    const configured = slotsByWeekday.get(date.getDay()) ?? [];
 
     const takenToday = booked.filter((visit) => isoOf(visit.appointmentDate) === iso);
     const taken = new Set(takenToday.map((visit) => visit.appointmentTime));
-    const slots = setup.isClosed
-      ? []
-      : buildTimeSlots(setup.openTime, setup.closeTime, setup.slotMinutes).filter(
-          (time) => !taken.has(time),
-        );
+    const slots = configured.filter((time) => !taken.has(time));
 
     const unconfirmed = takenToday.filter((visit) => visit.status === "Pending").length;
 
@@ -96,8 +86,8 @@ export default async function BookAVisitPage({
             ? "tomorrow"
             : date.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" }),
       slots,
-      glance: setup.isClosed
-        ? "Closed — unless someone opens a slot"
+      glance: configured.length === 0
+        ? "No hours set up for this day"
         : [
             `${takenToday.length} booked`,
             `${slots.length} free ${slots.length === 1 ? "time" : "times"}`,
@@ -108,15 +98,11 @@ export default async function BookAVisitPage({
     };
   });
 
-  const reasons = services.length
-    ? services.map((service) => service.name)
-    : ["New consultation", "Follow up"];
-
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
         title="Book a visit"
-        sub="If a day has no times set up, you can still type one — it will save."
+        sub="Only times this branch is actually open for are offered, so anything you can pick will save."
         actions={
           <Link
             href="/dashboard/appointments"
@@ -129,7 +115,6 @@ export default async function BookAVisitPage({
 
       <BookAVisit
         days={days}
-        reasons={reasons}
         chairs={chairs.map((chair) => chair.name)}
         defaultIso={params.date}
         defaultTime={params.time}

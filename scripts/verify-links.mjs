@@ -120,8 +120,21 @@ const isLegacyAlias = (route) => {
   }
 };
 
-/** Reached by ⌘K from every screen and by the search box in the top bar. */
-const REACHED_ANOTHER_WAY = new Set(["/dashboard/search"]);
+/**
+ * Screens that are deliberately not in the sidebar because the section they
+ * belong to already carries them on its own tab bar. Putting them in both
+ * places was duplication, not discoverability.
+ */
+const REACHED_ANOTHER_WAY = new Set([
+  // ⌘K from every screen, and the search box in the top bar.
+  "/dashboard/search",
+  // The five tabs across the top of Messages.
+  "/dashboard/automation",
+  "/dashboard/whatsapp-operations",
+  "/dashboard/ai-coach",
+  // Reached from the Clinical workspace and from any patient's file.
+  "/dashboard/clinical-records",
+]);
 
 const stranded = [];
 for (const route of routes) {

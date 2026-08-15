@@ -39,6 +39,53 @@ function optionalId(value: number | null | undefined, label: string) {
 }
 
 /**
+ * The times the booking screen may offer, by weekday.
+ *
+ * This exists because the picker used to build its own slots from the
+ * clinic-level `ClinicHours` while the write validated against the branch's
+ * `ClinicLocationHours`. When the two disagreed — a different opening time or
+ * slot length — the screen offered a time the server then refused, and the only
+ * way to book was to guess. Both sides read the same rows through the same
+ * function now, so anything offered is bookable.
+ */
+export async function bookableSlotsByWeekday(clinicId: number, db: SchedulingReader = prisma) {
+  const location = await db.clinicLocation.findFirst({
+    // Mirrors the branch this picks when a booking names no location.
+    where: { clinicId, active: true, isPrimary: true },
+    select: {
+      hours: {
+        orderBy: { sortOrder: "asc" },
+        select: { dayOfWeek: true, openTime: true, closeTime: true, slotMinutes: true, isClosed: true },
+      },
+    },
+  });
+
+  const byWeekday = new Map<number, string[]>();
+  if (!location) return byWeekday;
+
+  const windows = new Map<number, typeof location.hours>();
+  for (const row of location.hours) {
+    windows.set(row.dayOfWeek, [...(windows.get(row.dayOfWeek) ?? []), row]);
+  }
+
+  for (const [dayOfWeek, rows] of windows) {
+    if (rows.every((row) => row.isClosed) || rows.some((row) => row.isClosed)) {
+      // Closed, or a half-configured day the write would refuse anyway.
+      byWeekday.set(dayOfWeek, []);
+      continue;
+    }
+    try {
+      byWeekday.set(dayOfWeek, scheduleWindowSlots(rows));
+    } catch {
+      // Hours that cannot produce a valid grid offer nothing, rather than
+      // offering times the write is about to reject.
+      byWeekday.set(dayOfWeek, []);
+    }
+  }
+  return byWeekday;
+}
+
+/**
  * Prove tenant ownership, configured branch hours, and resource assignments.
  * This must run inside the same Serializable transaction as the conflict check
  * and appointment write.
