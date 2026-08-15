@@ -2,59 +2,419 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, ReceiptText, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 
 type AppointmentVisit = { id: number; appointmentDate: string | Date; appointmentTime: string; treatment: string; status: string };
 type Patient = { id: number; fullName: string; phone: string; appointments?: AppointmentVisit[] };
 type Plan = { id: number; title: string; patientId: number; visitDate?: string | Date | null; items: Array<{ name: string; price: number }> };
 type LineItem = { description: string; quantity: number; unitPrice: number; discount: number; taxPercent: number };
 
-const field = "min-h-11 w-full rounded-control border border-border bg-card px-3 text-sm outline-none outline-none";
-const blankLine = (): LineItem => ({ description: "", quantity: 1, unitPrice: 0, discount: 0, taxPercent: 0 });
-const money = (value: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
-function dateKey(date: string | Date) { const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(date)); return `${parts.find((part) => part.type === "year")?.value}-${parts.find((part) => part.type === "month")?.value}-${parts.find((part) => part.type === "day")?.value}`; }
-const todayKey = () => dateKey(new Date());
-function formatVisit(appointment: AppointmentVisit) { return `${new Date(appointment.appointmentDate).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })} · ${appointment.appointmentTime} · ${appointment.treatment}`; }
+/**
+ * Four kinds of document, named for what the patient is being handed rather
+ * than for the row in the database.
+ */
+const DOCUMENT_TYPES = [
+  { value: "TAX_INVOICE", label: "Bill with GST", note: "A tax invoice" },
+  { value: "NON_TAX_INVOICE", label: "Bill", note: "No GST on it" },
+  { value: "ESTIMATE", label: "Estimate", note: "What it might come to" },
+  { value: "QUOTATION", label: "Quote", note: "A price you are holding" },
+] as const;
 
-export default function InvoiceForm({ patients, plans, initialPatientId, initialVisit, invoiceNumberPreview, fromPatient }: { patients: Patient[]; plans: Plan[]; initialPatientId?: number; initialVisit?: string; invoiceNumberPreview: string; fromPatient?: boolean }) {
+const field =
+  "min-h-11 w-full rounded-control border border-border bg-card px-3 text-sm text-foreground outline-none";
+const label = "flex flex-col gap-1.5 text-xs font-semibold text-heading";
+
+const blankLine = (): LineItem => ({ description: "", quantity: 1, unitPrice: 0, discount: 0, taxPercent: 0 });
+const money = (value: number) =>
+  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
+
+function dateKey(date: string | Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(date));
+  return `${parts.find((part) => part.type === "year")?.value}-${parts.find((part) => part.type === "month")?.value}-${parts.find((part) => part.type === "day")?.value}`;
+}
+const todayKey = () => dateKey(new Date());
+
+function formatVisit(appointment: AppointmentVisit) {
+  return `${new Date(appointment.appointmentDate).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })} · ${appointment.appointmentTime} · ${appointment.treatment}`;
+}
+
+/** What one line comes to, discount applied, tax only on a tax invoice. */
+function lineTotal(line: LineItem, taxable: boolean) {
+  const base = Math.max(0, line.quantity * line.unitPrice);
+  const afterDiscount = base - Math.min(base, Math.max(0, line.discount));
+  return afterDiscount + (taxable ? Math.round((afterDiscount * Math.max(0, line.taxPercent)) / 100) : 0);
+}
+
+export default function InvoiceForm({
+  patients,
+  plans,
+  initialPatientId,
+  initialVisit,
+  invoiceNumberPreview,
+  fromPatient,
+}: {
+  patients: Patient[];
+  plans: Plan[];
+  initialPatientId?: number;
+  initialVisit?: string;
+  invoiceNumberPreview: string;
+  fromPatient?: boolean;
+}) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [patientId, setPatientId] = useState(initialPatientId ? String(initialPatientId) : "");
   const [planId, setPlanId] = useState("");
-  const [documentType, setDocumentType] = useState("TAX_INVOICE");
+  const [documentType, setDocumentType] = useState<string>("TAX_INVOICE");
   const [lines, setLines] = useState<LineItem[]>([blankLine()]);
+  // The things most bills never need, folded away until they do.
+  const [showExtras, setShowExtras] = useState(false);
+  const [takingPayment, setTakingPayment] = useState(false);
+
+  const taxable = documentType === "TAX_INVOICE";
+  const isBill = documentType.includes("INVOICE");
   const patient = useMemo(() => patients.find((entry) => entry.id === Number(patientId)), [patientId, patients]);
-  const completedAppointments = patient?.appointments || [];
+  const visits = patient?.appointments ?? [];
   const availablePlans = plans.filter((plan) => !patientId || plan.patientId === Number(patientId));
-  const calculated = useMemo(() => lines.reduce((total, line) => { const base = Math.max(0, line.quantity * line.unitPrice); const discount = Math.min(base, Math.max(0, line.discount)); const taxable = base - discount; const tax = documentType === "TAX_INVOICE" ? Math.round(taxable * Math.max(0, line.taxPercent) / 100) : 0; return { subtotal: total.subtotal + base, discount: total.discount + discount, tax: total.tax + tax, total: total.total + taxable + tax }; }, { subtotal: 0, discount: 0, tax: 0, total: 0 }), [documentType, lines]);
-  const canSave = Boolean(patientId) && calculated.total > 0 && lines.every((line) => line.description.trim() && line.quantity > 0 && line.unitPrice >= 0) && !saving;
-  function updateLine(index: number, key: keyof LineItem, value: string) { setLines((current) => current.map((line, lineIndex) => lineIndex === index ? { ...line, [key]: key === "description" ? value : Math.max(0, Math.trunc(Number(value) || 0)) } : line)); }
-  function selectPlan(value: string) { setPlanId(value); const plan = availablePlans.find((entry) => entry.id === Number(value)); if (plan?.items.length) setLines(plan.items.map((item) => ({ description: item.name, quantity: 1, unitPrice: item.price, discount: 0, taxPercent: 0 }))); }
+
+  const totals = useMemo(
+    () =>
+      lines.reduce(
+        (running, line) => {
+          const base = Math.max(0, line.quantity * line.unitPrice);
+          const discount = Math.min(base, Math.max(0, line.discount));
+          const afterDiscount = base - discount;
+          const tax = taxable ? Math.round((afterDiscount * Math.max(0, line.taxPercent)) / 100) : 0;
+          return {
+            subtotal: running.subtotal + base,
+            discount: running.discount + discount,
+            tax: running.tax + tax,
+            total: running.total + afterDiscount + tax,
+          };
+        },
+        { subtotal: 0, discount: 0, tax: 0, total: 0 },
+      ),
+    [taxable, lines],
+  );
+
+  const canSave =
+    Boolean(patientId) &&
+    totals.total > 0 &&
+    lines.every((line) => line.description.trim() && line.quantity > 0 && line.unitPrice >= 0) &&
+    !saving;
+
+  function updateLine(index: number, key: keyof LineItem, value: string) {
+    setLines((current) =>
+      current.map((line, lineIndex) =>
+        lineIndex === index
+          ? { ...line, [key]: key === "description" ? value : Math.max(0, Math.trunc(Number(value) || 0)) }
+          : line,
+      ),
+    );
+  }
+
+  function selectPlan(value: string) {
+    setPlanId(value);
+    const plan = availablePlans.find((entry) => entry.id === Number(value));
+    if (plan?.items.length) {
+      setLines(plan.items.map((item) => ({ description: item.name, quantity: 1, unitPrice: item.price, discount: 0, taxPercent: 0 })));
+      toast.success(`${plan.items.length} treatments brought across from the plan.`);
+    }
+  }
+
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!canSave) return void toast.error("Complete the patient, visit and line-item details.");
+    if (!canSave) {
+      toast.error("Pick a patient and give every line a description and a price.");
+      return;
+    }
     setSaving(true);
     try {
       const payload = Object.fromEntries(new FormData(event.currentTarget).entries());
-      const response = await fetch("/api/invoices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, documentType, lineItems: lines, totalAmount: calculated.total, discountAmount: calculated.discount }) });
-      const body = await response.json(); if (!response.ok) throw new Error(body.error || "Could not create billing document.");
-      toast.success(`${documentType.replaceAll("_", " ")} ${body.invoiceNumber} created with an immutable issue snapshot.`);
-      const patientContext = fromPatient ? `?fromPatient=${body.patientId}${payload.issueDate ? `&visit=${encodeURIComponent(String(payload.issueDate))}` : ""}` : "";
-      router.push(`/dashboard/billing/${body.id}${patientContext}`); router.refresh();
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not create billing document."); }
-    finally { setSaving(false); }
+      const response = await fetch("/api/invoices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...payload, documentType, lineItems: lines, totalAmount: totals.total, discountAmount: totals.discount }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "That did not save.");
+
+      toast.success(`${body.invoiceNumber} raised for ${money(totals.total)}.`);
+      const context = fromPatient
+        ? `?fromPatient=${body.patientId}${payload.issueDate ? `&visit=${encodeURIComponent(String(payload.issueDate))}` : ""}`
+        : "";
+      router.push(`/dashboard/billing/${body.id}${context}`);
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "That did not save — nothing was lost, try again.");
+    } finally {
+      setSaving(false);
+    }
   }
-  return <form onSubmit={submit} className="rounded-card border border-border bg-card shadow-[var(--shadow)]"><header className="border-b border-border px-4.5 py-4"><h2 className="text-base font-semibold text-heading">A new bill</h2><p className="mt-0.5 text-[13px] text-text-muted">Once you issue it, the wording and figures are fixed — corrections go on a separate note.</p></header><div className="flex flex-col gap-5 p-4.5">
-    <section className="grid gap-4 rounded-card border bg-muted p-4 md:grid-cols-2 lg:grid-cols-4"><label className="space-y-1.5 text-sm font-bold">Document type<select name="documentType" value={documentType} onChange={(event) => setDocumentType(event.target.value)} className={field}><option value="ESTIMATE">Estimate</option><option value="QUOTATION">Quotation</option><option value="TAX_INVOICE">Tax invoice</option><option value="NON_TAX_INVOICE">Non-tax invoice</option></select></label><label className="space-y-1.5 text-sm font-bold">Document number<Input readOnly value={invoiceNumberPreview} aria-describedby="invoice-number-help" className="bg-card" /><span id="invoice-number-help" className="block text-xs font-normal text-text-muted">Preview only. The final tenant-safe number is allocated when you create the document.</span></label><label className="space-y-1.5 text-sm font-bold lg:col-span-2">Patient<select required name="patientId" value={patientId} onChange={(event) => { setPatientId(event.target.value); setPlanId(""); }} className={field}><option value="">Select patient</option>{patients.map((entry) => <option key={entry.id} value={entry.id}>{entry.fullName} · {entry.phone}</option>)}</select>{initialPatientId ? <span className="block text-xs font-normal text-primary">Preselected from Patient 360.</span> : null}</label><label className="space-y-1.5 text-sm font-bold lg:col-span-2">Which visit is this for<select required name="issueDate" defaultValue={initialVisit || todayKey()} className={field}><option value={todayKey()}>Today</option>{completedAppointments.map((appointment) => <option key={appointment.id} value={dateKey(appointment.appointmentDate)}>{formatVisit(appointment)}</option>)}</select></label><label className="space-y-1.5 text-sm font-bold">Treatment plan<select name="treatmentPlanId" value={planId} onChange={(event) => selectPlan(event.target.value)} className={field}><option value="">No linked plan</option>{availablePlans.map((plan) => <option key={plan.id} value={plan.id}>{plan.title}</option>)}</select></label><label className="space-y-1.5 text-sm font-bold">Due / validity date<Input name="dueDate" type="date" /></label></section>
-    {patientId && !completedAppointments.length ? <p className="rounded-control border border-border bg-muted p-3.5 text-[13px] text-text-muted">Anything you record now attaches to today&rsquo;s visit when you save.</p> : null}
-    <section><div className="flex items-center justify-between gap-3"><div><h3 className="flex items-center gap-2 text-base font-semibold text-heading"><ReceiptText className="size-5 text-primary"/>Line items</h3><p className="mt-1 text-sm text-text-muted">Indian number formatting and tax calculations are generated from these structured rows.</p></div><Button type="button" variant="outline" onClick={() => setLines((current) => [...current, blankLine()])}><Plus className="size-4"/>Add line</Button></div><div className="mt-4 space-y-3">{lines.map((line, index) => <article key={index} className="grid gap-3 rounded-card border p-4 sm:grid-cols-2 lg:grid-cols-[minmax(220px,2fr)_90px_130px_120px_100px_110px_40px] lg:items-end"><label className="space-y-1.5 text-sm font-bold">Description *<input required value={line.description} onChange={(event) => updateLine(index,"description",event.target.value)} className={field}/></label><label className="space-y-1.5 text-sm font-bold">Qty<input required type="number" min="1" value={line.quantity} onChange={(event) => updateLine(index,"quantity",event.target.value)} className={field}/></label><label className="space-y-1.5 text-sm font-bold">Unit price<input required type="number" min="0" value={line.unitPrice} onChange={(event) => updateLine(index,"unitPrice",event.target.value)} className={field}/></label><label className="space-y-1.5 text-sm font-bold">Discount<input type="number" min="0" value={line.discount} onChange={(event) => updateLine(index,"discount",event.target.value)} className={field}/></label><label className="space-y-1.5 text-sm font-bold">Tax %<input type="number" min="0" max="100" disabled={documentType !== "TAX_INVOICE"} value={documentType === "TAX_INVOICE" ? line.taxPercent : 0} onChange={(event) => updateLine(index,"taxPercent",event.target.value)} className={field}/></label><div className="min-h-11 rounded-control bg-primary px-3 py-3 text-right text-sm font-semibold text-white">{money(Math.max(0,line.quantity*line.unitPrice-Math.min(line.quantity*line.unitPrice,line.discount)) + (documentType === "TAX_INVOICE" ? Math.round(Math.max(0,line.quantity*line.unitPrice-line.discount)*line.taxPercent/100) : 0))}</div><button type="button" disabled={lines.length===1} onClick={() => setLines((current) => current.filter((_,lineIndex)=>lineIndex!==index))} className="grid size-10 place-items-center rounded-control border border-danger-border text-danger disabled:opacity-40" aria-label={`Remove billing line ${index+1}`}><Trash2 className="size-4"/></button></article>)}</div></section>
-    <section className="grid gap-5 lg:grid-cols-[1fr_360px]"><div className="space-y-4"><label className="block space-y-1.5 text-sm font-bold">Notes<Textarea name="notes" rows={3} placeholder="Clinical or billing note shown on the document" /></label><label className="block space-y-1.5 text-sm font-bold">Terms<Textarea name="terms" rows={3} placeholder="Validity, payment terms, cancellation, or refund conditions" /></label></div><div className="rounded-card bg-primary p-5 text-sm text-white"><h3 className="font-semibold">What it comes to</h3><div className="mt-4 space-y-2"><Total label="Subtotal" value={calculated.subtotal}/><Total label="Discount" value={-calculated.discount}/><Total label="Tax" value={calculated.tax}/><div className="mt-3 flex justify-between border-t border-white/20 pt-3 text-base font-semibold text-heading"><span>Total</span><span>{money(calculated.total)}</span></div></div><input type="hidden" name="totalAmount" value={calculated.total}/><input type="hidden" name="discountAmount" value={calculated.discount}/></div></section>
-    {documentType.includes("INVOICE") ? <section className="rounded-card border border-success-border bg-success-bg/70 p-4"><p className="font-semibold text-success">Payment received now <span className="font-normal text-text-muted">(optional)</span></p><div className="mt-3 grid gap-3 sm:grid-cols-3"><label className="space-y-1.5 text-sm font-bold">Amount<Input name="amountPaidToday" type="number" min="1" max={calculated.total} placeholder="0" /></label><label className="space-y-1.5 text-sm font-bold">Method<select name="paymentMethod" className={field}><option>Cash</option><option>UPI</option><option>Card</option><option>Bank transfer</option><option>Other</option></select></label><label className="space-y-1.5 text-sm font-bold">Reference<Input name="paymentNotes" placeholder="UPI / bank reference" /></label></div></section> : null}
-    <footer className="flex flex-col-reverse gap-3 border-t pt-5 sm:flex-row sm:justify-end"><Button type="button" variant="outline" onClick={()=>router.back()}>Cancel</Button><Button type="submit" disabled={!canSave}>{saving ? "Finalizing…" : `Create ${documentType.replaceAll("_"," ").toLowerCase()}`}</Button></footer>
-  </div></form>;
+
+  return (
+    <form onSubmit={submit} className="flex flex-col gap-5">
+      {/* --- 1. What kind of document ------------------------------------- */}
+      <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
+        <h2 className="text-base font-semibold text-heading">What are you giving them?</h2>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {DOCUMENT_TYPES.map((type) => (
+            <button
+              key={type.value}
+              type="button"
+              onClick={() => setDocumentType(type.value)}
+              aria-pressed={documentType === type.value}
+              className={`flex min-h-[3.6rem] cursor-pointer flex-col items-start justify-center rounded-control border px-4 text-left ${
+                documentType === type.value
+                  ? "border-primary bg-primary-soft text-heading"
+                  : "border-border-strong bg-card text-heading hover:bg-muted"
+              }`}
+            >
+              <span className="text-sm font-semibold">{type.label}</span>
+              <span className="text-xs font-normal text-text-muted">{type.note}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* --- 2. Who and which visit --------------------------------------- */}
+      <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
+        <h2 className="text-base font-semibold text-heading">Who is it for?</h2>
+        <div className="mt-3 grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))]">
+          <label className={label}>
+            Patient
+            <select
+              required
+              name="patientId"
+              value={patientId}
+              onChange={(event) => {
+                setPatientId(event.target.value);
+                setPlanId("");
+              }}
+              className={field}
+            >
+              <option value="">Pick a patient</option>
+              {patients.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.fullName} · {entry.phone}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className={label}>
+            Which visit
+            <select required name="issueDate" defaultValue={initialVisit || todayKey()} className={field}>
+              <option value={todayKey()}>Today</option>
+              {visits.map((visit) => (
+                <option key={visit.id} value={dateKey(visit.appointmentDate)}>
+                  {formatVisit(visit)}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {availablePlans.length > 0 && (
+            <label className={label}>
+              Bring the lines from a plan
+              <select name="treatmentPlanId" value={planId} onChange={(event) => selectPlan(event.target.value)} className={field}>
+                <option value="">Type them myself</option>
+                {availablePlans.map((plan) => (
+                  <option key={plan.id} value={plan.id}>
+                    {plan.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
+      </section>
+
+      {/* --- 3. The work -------------------------------------------------- */}
+      <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-base font-semibold text-heading">What are you charging for?</h2>
+          <button
+            type="button"
+            onClick={() => setLines((current) => [...current, blankLine()])}
+            className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+          >
+            <Plus className="h-4 w-4" aria-hidden />
+            Add a line
+          </button>
+        </div>
+
+        <div className="mt-3 flex flex-col gap-2.5">
+          {lines.map((line, index) => (
+            <div
+              key={index}
+              className={`grid items-end gap-3 rounded-control border border-border p-3 ${
+                taxable
+                  ? "sm:grid-cols-[minmax(0,1fr)_5rem_7rem_7rem_5rem_auto]"
+                  : "sm:grid-cols-[minmax(0,1fr)_5rem_7rem_7rem_auto]"
+              }`}
+            >
+              <label className={label}>
+                Treatment
+                <input
+                  required
+                  value={line.description}
+                  onChange={(event) => updateLine(index, "description", event.target.value)}
+                  placeholder="Root canal, upper left"
+                  className={field}
+                />
+              </label>
+              <label className={label}>
+                How many
+                <input required type="number" min="1" value={line.quantity} onChange={(event) => updateLine(index, "quantity", event.target.value)} className={field} />
+              </label>
+              <label className={label}>
+                Price each
+                <input required type="number" min="0" value={line.unitPrice} onChange={(event) => updateLine(index, "unitPrice", event.target.value)} className={field} />
+              </label>
+              <label className={label}>
+                Taken off
+                <input type="number" min="0" value={line.discount} onChange={(event) => updateLine(index, "discount", event.target.value)} className={field} />
+              </label>
+              {taxable && (
+                <label className={label}>
+                  GST %
+                  <input type="number" min="0" max="100" value={line.taxPercent} onChange={(event) => updateLine(index, "taxPercent", event.target.value)} className={field} />
+                </label>
+              )}
+
+              <div className="flex items-center gap-2">
+                <span className="min-h-11 flex-1 content-center rounded-control bg-muted px-3 text-right text-sm font-semibold tabular-nums text-heading sm:min-w-[6rem]">
+                  {money(lineTotal(line, taxable))}
+                </span>
+                <button
+                  type="button"
+                  disabled={lines.length === 1}
+                  onClick={() => setLines((current) => current.filter((_, lineIndex) => lineIndex !== index))}
+                  className="grid h-11 w-11 flex-none cursor-pointer place-items-center rounded-control border border-danger-border text-danger hover:bg-danger-bg disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label={`Remove line ${index + 1}`}
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 flex flex-col gap-1.5 border-t border-border pt-3.5 text-[13px]">
+          <div className="flex justify-between text-text-muted">
+            <span>Before anything is taken off</span>
+            <span className="tabular-nums">{money(totals.subtotal)}</span>
+          </div>
+          {totals.discount > 0 && (
+            <div className="flex justify-between text-text-muted">
+              <span>Taken off</span>
+              <span className="tabular-nums">−{money(totals.discount)}</span>
+            </div>
+          )}
+          {taxable && totals.tax > 0 && (
+            <div className="flex justify-between text-text-muted">
+              <span>GST</span>
+              <span className="tabular-nums">{money(totals.tax)}</span>
+            </div>
+          )}
+          <div className="mt-1 flex items-baseline justify-between border-t border-border pt-2.5">
+            <span className="text-base font-semibold text-heading">What they owe</span>
+            <span className="text-2xl font-bold tabular-nums text-heading">{money(totals.total)}</span>
+          </div>
+        </div>
+
+        <input type="hidden" name="totalAmount" value={totals.total} />
+        <input type="hidden" name="discountAmount" value={totals.discount} />
+      </section>
+
+      {/* --- 4. Paying now, only if they are ------------------------------- */}
+      {isBill && (
+        <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
+          <label className="flex cursor-pointer items-center gap-2.5 text-base font-semibold text-heading">
+            <input
+              type="checkbox"
+              checked={takingPayment}
+              onChange={(event) => setTakingPayment(event.target.checked)}
+              className="h-4 w-4 accent-[var(--primary)]"
+            />
+            They are paying something now
+          </label>
+          {takingPayment && (
+            <div className="mt-3 grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr))]">
+              <label className={label}>
+                How much
+                <input name="amountPaidToday" type="number" min="1" max={totals.total} placeholder="0" className={field} />
+              </label>
+              <label className={label}>
+                How
+                <select name="paymentMethod" className={field}>
+                  <option>Cash</option>
+                  <option>UPI</option>
+                  <option>Card</option>
+                  <option>Bank transfer</option>
+                  <option>Other</option>
+                </select>
+              </label>
+              <label className={label}>
+                Reference
+                <input name="paymentNotes" placeholder="UPI or bank reference" className={field} />
+              </label>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* --- 5. The rest, folded away -------------------------------------- */}
+      <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
+        <button
+          type="button"
+          onClick={() => setShowExtras((open) => !open)}
+          aria-expanded={showExtras}
+          className="cursor-pointer text-[13px] font-semibold text-primary hover:underline"
+        >
+          {showExtras ? "Hide the extras" : "Add a note, terms or a due date"}
+        </button>
+        {showExtras && (
+          <div className="mt-3.5 flex flex-col gap-3.5">
+            <label className={label}>
+              Pay by
+              <input name="dueDate" type="date" className={`${field} max-w-xs`} />
+            </label>
+            <label className={label}>
+              A note on the bill
+              <textarea name="notes" rows={2} placeholder="Anything the patient should read" className="rounded-control border border-border bg-card px-3 py-2.5 text-sm text-foreground" />
+            </label>
+            <label className={label}>
+              Terms
+              <textarea name="terms" rows={2} placeholder="When it is due, cancellation, refunds" className="rounded-control border border-border bg-card px-3 py-2.5 text-sm text-foreground" />
+            </label>
+          </div>
+        )}
+      </section>
+
+      <footer className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-text-muted">
+          It will be numbered {invoiceNumberPreview}. Once raised, the wording and figures are fixed —
+          a correction goes on its own note.
+        </p>
+        <div className="flex flex-wrap gap-2.5">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={!canSave}
+            className="min-h-11 cursor-pointer rounded-control border border-primary bg-primary px-5 text-[13px] font-semibold text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:border-border-strong disabled:bg-muted disabled:text-text-muted"
+          >
+            {saving ? "Raising…" : `Raise this ${DOCUMENT_TYPES.find((type) => type.value === documentType)?.label.toLowerCase()}`}
+          </button>
+        </div>
+      </footer>
+    </form>
+  );
 }
-function Total({label,value}:{label:string;value:number}){return <div className="flex justify-between gap-5 text-white/80"><span>{label}</span><strong className="text-white">{money(value)}</strong></div>;}

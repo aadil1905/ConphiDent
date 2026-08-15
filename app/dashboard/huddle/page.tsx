@@ -208,7 +208,7 @@ export default async function HuddleBriefPage() {
   ].join("\n");
 
   return (
-    <div className="mx-auto flex w-full max-w-[62rem] flex-col gap-5 print:max-w-none print:gap-3">
+    <div className="flex w-full flex-col gap-5 print:gap-3">
       <header className="flex flex-wrap items-end justify-between gap-3 print:hidden">
         <div className="min-w-0">
           <Link href="/dashboard" className="text-xs font-semibold text-primary hover:underline">
