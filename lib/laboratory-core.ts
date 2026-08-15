@@ -33,6 +33,55 @@ export const LAB_STATUS_LABELS: Record<LabCaseStatus, string> = Object.fromEntri
   LAB_CASE_STATUSES.map((status) => [status, status.replaceAll("_", " ").toLowerCase().replace(/^./, (value) => value.toUpperCase())]),
 ) as Record<LabCaseStatus, string>;
 
+/**
+ * Twenty-two statuses is the right vocabulary for the workflow and the wrong
+ * one for the question people actually ask at the desk, which is "where is it".
+ * These four steps are that answer; every status buckets into one of them.
+ */
+export const LAB_STAGES = ["Sent", "Being made", "On the way back", "Fitted"] as const;
+
+const STAGE_BY_STATUS: Partial<Record<LabCaseStatus, number>> = {
+  DRAFT: 0,
+  APPROVED: 1,
+  QUEUED: 1,
+  SENT: 1,
+  SENT_TO_LAB: 1,
+  DELIVERED_TO_ENDPOINT: 1,
+  VIEWED: 1,
+  ACCEPTED: 1,
+  CLARIFICATION_REQUESTED: 1,
+  REJECTED: 1,
+  REWORK: 1,
+  IN_PRODUCTION: 2,
+  IN_PROGRESS: 2,
+  WAX_STAGE: 2,
+  METAL_STAGE: 2,
+  CERAMIC_STAGE: 2,
+  STAGE_REVIEW: 2,
+  READY: 3,
+  DISPATCHED: 3,
+  RECEIVED_BY_CLINIC: 3,
+  DELIVERED: 3,
+  FITTED: 4,
+  COMPLETED: 4,
+};
+
+/** How many of the four steps are behind this case. 0 means not sent yet. */
+export function labCaseStage(status: string) {
+  if (status === "CANCELLED") return 0;
+  return STAGE_BY_STATUS[status as LabCaseStatus] ?? 1;
+}
+
+/** The statuses that mean the work is physically back with the clinic. */
+export const LAB_BACK_STATUSES = [
+  "READY",
+  "DISPATCHED",
+  "RECEIVED_BY_CLINIC",
+  "DELIVERED",
+  "FITTED",
+  "COMPLETED",
+] as const;
+
 const clinicTransitions: Partial<Record<LabCaseStatus, readonly LabCaseStatus[]>> = {
   DRAFT: ["APPROVED", "CANCELLED"],
   APPROVED: ["QUEUED", "SENT", "CANCELLED"],

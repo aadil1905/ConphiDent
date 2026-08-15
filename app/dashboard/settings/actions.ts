@@ -34,15 +34,34 @@ export async function updateClinicAction(formData: FormData) {
   revalidatePath("/dashboard/settings");
 }
 
-export async function updateBillingIdentityAction(formData: FormData) {
+export type BillingIdentityResult = { ok: boolean; message: string };
+
+/** 15 characters, exactly as the registration certificate prints them. */
+const GSTIN_PATTERN = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]{3}$/;
+
+export async function updateBillingIdentityAction(
+  _previous: BillingIdentityResult,
+  formData: FormData,
+): Promise<BillingIdentityResult> {
   const owner = await requireFeature("billing");
   const invoicePrefix = normalizeInvoicePrefix(String(formData.get("invoicePrefix") || "INV"));
   const receiptPrefix = String(formData.get("receiptPrefix") || "RCT").trim().toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 12) || "RCT";
-  await prisma.clinic.update({ where: { id: owner.clinicId }, data: { gstin: String(formData.get("gstin") || "").trim().toUpperCase() || null, registrationNumber: String(formData.get("registrationNumber") || "").trim() || null, invoicePrefix, receiptPrefix, invoiceFooter: String(formData.get("invoiceFooter") || "").trim().slice(0, 500) || null, paymentDetails: String(formData.get("paymentDetails") || "").trim().slice(0, 1500) || null } });
+  const gstin = String(formData.get("gstin") || "").replace(/\s/g, "").trim().toUpperCase();
+
+  // A wrong GSTIN prints onto every bill from here on, so it is worth stopping.
+  if (gstin && !GSTIN_PATTERN.test(gstin)) {
+    return { ok: false, message: "That GSTIN is not 15 characters — copy it from your certificate. Nothing was saved." };
+  }
+  if (invoicePrefix.length < 2) {
+    return { ok: false, message: "The invoice prefix needs at least two letters or numbers. Nothing was saved." };
+  }
+
+  await prisma.clinic.update({ where: { id: owner.clinicId }, data: { gstin: gstin || null, registrationNumber: String(formData.get("registrationNumber") || "").trim() || null, invoicePrefix, receiptPrefix, invoiceFooter: String(formData.get("invoiceFooter") || "").trim().slice(0, 500) || null, paymentDetails: String(formData.get("paymentDetails") || "").trim().slice(0, 1500) || null } });
   await recordAudit({ clinicId: owner.clinicId, userId: owner.id, action: "BILLING_IDENTITY_UPDATED", entityType: "CLINIC", entityId: String(owner.clinicId), detail: "Updated billing identity and document footer" });
   revalidatePath("/dashboard/settings");
   revalidatePath("/dashboard/settings/billing");
   revalidatePath("/dashboard/billing/new");
+  return { ok: true, message: `Saved. Bills from ${invoicePrefix} onwards use this.` };
 }
 
 export async function createStaffAction(formData: FormData) {
@@ -64,6 +83,10 @@ export async function createStaffAction(formData: FormData) {
         email,
         role,
         passwordHash: hashPassword(password),
+        // The password the owner types is a way in, not their password. Login
+        // sends them to /change-password before anything else, the same way a
+        // platform-created login already works.
+        mustChangePassword: true,
       },
     });
 

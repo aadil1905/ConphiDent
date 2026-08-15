@@ -3,8 +3,8 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/permissions";
-import { exactStamp, humanTime } from "@/lib/format";
-import PageHeader from "@/components/lists/PageHeader";
+import { exactStamp, humanLabel, humanTime } from "@/lib/format";
+import WorkPage from "@/components/lists/WorkPage";
 import { createStaffAction, toggleStaffAction, updateClinicAction } from "./actions";
 
 const TABS = [
@@ -22,6 +22,26 @@ const ACTION_WORDS: Record<string, string> = {
   STAFF_ACCESS_ENABLED: "A login was switched back on",
   STAFF_ACCESS_DISABLED: "A login was switched off",
 };
+
+/**
+ * Roles named by what the person can actually do. Every one of these is already
+ * accepted by createStaffAction — the picker just never offered them.
+ */
+const ROLE_CHOICES = [
+  { value: "RECEPTIONIST", label: "Front desk", note: "Book, register, message and take payments" },
+  { value: "ASSISTANT", label: "Chairside assistant", note: "Help with charting, notes and lab work" },
+  { value: "DENTIST", label: "Dentist", note: "Chart, prescribe and sign clinical records" },
+  { value: "BILLING", label: "Billing", note: "Raise and settle bills, nothing clinical" },
+  { value: "INVENTORY", label: "Stock", note: "Supplies, suppliers and the day sheet" },
+  { value: "LAB", label: "Laboratory", note: "Lab cases only" },
+  { value: "AUDITOR", label: "Auditor", note: "Read the records and exports, change nothing" },
+  { value: "ADMINISTRATOR", label: "Everything, including money", note: "Same as you. Give this rarely." },
+] as const;
+
+const ROLE_WORDS = new Map<string, string>([
+  ["OWNER", "Everything, including money"],
+  ...ROLE_CHOICES.map((choice) => [choice.value, choice.label] as [string, string]),
+]);
 
 function Card({
   title,
@@ -87,12 +107,10 @@ export default async function SettingsPage({
   const tabHref = (key: Tab) => (key === "clinic" ? "/dashboard/settings" : `/dashboard/settings?tab=${key}`);
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
-      <PageHeader
-        title="Settings"
-        sub="Everything about how the clinic runs, in one place. Only an owner can change most of it."
-      />
-
+    <WorkPage
+      title="Settings"
+      sub="Everything about how the clinic runs, in one place. Only you can see this page, and every change is logged."
+    >
       {params.error && (
         <p
           role="alert"
@@ -176,7 +194,10 @@ export default async function SettingsPage({
 
       {tab === "people" && (
         <>
-          <Card title="Give someone a login" sub="They can sign in straight away and change the password themselves.">
+          <Card
+            title="Give someone a login"
+            sub="The password you type here only gets them through the door once — they are asked to choose their own before they can do anything."
+          >
             <form action={createStaffAction} className="grid gap-3 md:grid-cols-2">
               <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">
                 Full name
@@ -187,17 +208,20 @@ export default async function SettingsPage({
                 <input name="email" type="email" required className={field} />
               </label>
               <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">
-                A password to start with
+                A password to get them started
                 <input name="password" type="password" minLength={12} required className={field} />
                 <span className="font-normal text-text-muted">
                   At least 12 characters, with upper and lower case and a number.
                 </span>
               </label>
-              <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">
-                What they do
+              <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading md:col-span-2">
+                What should they be able to do?
                 <select name="role" defaultValue="RECEPTIONIST" className={field}>
-                  <option value="RECEPTIONIST">Reception</option>
-                  <option value="DENTIST">Dentist</option>
+                  {ROLE_CHOICES.map((choice) => (
+                    <option key={choice.value} value={choice.value}>
+                      {choice.label} — {choice.note.toLowerCase()}
+                    </option>
+                  ))}
                 </select>
               </label>
               <button className="min-h-11 w-fit cursor-pointer rounded-control border border-primary bg-primary px-5 text-[13px] font-semibold text-white hover:bg-primary-hover">
@@ -217,11 +241,33 @@ export default async function SettingsPage({
                     <p className="text-sm font-semibold text-heading">
                       {member.fullName}
                       <span className="ml-2 rounded-pill bg-muted px-2 py-0.5 text-[11px] font-semibold text-text-muted">
-                        {member.role.charAt(0) + member.role.slice(1).toLowerCase()}
+                        {ROLE_WORDS.get(member.role) ?? humanLabel(member.role)}
                       </span>
                     </p>
                     <p className="text-[13px] text-text-muted">
-                      {member.email} · {member.active ? "can sign in" : "switched off"}
+                      {member.email} ·{" "}
+                      <span className={member.active ? "text-success" : "text-danger"}>
+                        {member.id === user.id
+                          ? "that is you"
+                          : member.active
+                            ? "can sign in"
+                            : "cannot sign in"}
+                      </span>
+                    </p>
+                    <p className="text-[13px] text-text-muted">
+                      {member.lastLoginAt ? (
+                        <>
+                          Last signed in{" "}
+                          <time
+                            dateTime={member.lastLoginAt.toISOString()}
+                            title={exactStamp(member.lastLoginAt)}
+                          >
+                            {humanTime(member.lastLoginAt, now)}
+                          </time>
+                        </>
+                      ) : (
+                        "Has never signed in"
+                      )}
                     </p>
                   </div>
                   {member.id !== user.id && (
@@ -302,7 +348,7 @@ export default async function SettingsPage({
                   >
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-heading">
-                        {ACTION_WORDS[entry.action] ?? entry.action}
+                        {ACTION_WORDS[entry.action] ?? humanLabel(entry.action)}
                       </p>
                       <p className="text-[13px] text-text-muted">
                         {entry.detail ?? "No detail written down"} · {entry.user?.fullName ?? "the system"}
@@ -322,6 +368,6 @@ export default async function SettingsPage({
           </Card>
         </>
       )}
-    </div>
+    </WorkPage>
   );
 }

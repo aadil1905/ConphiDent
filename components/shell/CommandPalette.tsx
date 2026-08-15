@@ -3,23 +3,16 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
+import { MAX_RECENT, RECENT_KEY, WORKSPACE_ACTIONS } from "@/lib/workspace-actions";
 
 type Hit = { kind: string; title: string; detail: string; href: string };
 type Row = Hit & { hint: string };
 
-const RECENT_KEY = "conphident.palette.recent";
-const MAX_RECENT = 6;
 const DEBOUNCE_MS = 250;
 const MIN_QUERY = 2;
 
-/** Things the palette can do as well as find. */
-const ACTIONS: Row[] = [
-  { kind: "Action", title: "Book a visit", detail: "Opens the booking sheet on Schedule", href: "/dashboard/appointments/new", hint: "Run" },
-  { kind: "Action", title: "Add a patient", detail: "Register a walk-in in four fields", href: "/dashboard/patients?add=1", hint: "Run" },
-  { kind: "Action", title: "New invoice", detail: "Bill the patient in the chair", href: "/dashboard/billing/new", hint: "Run" },
-  { kind: "Action", title: "Start charting", detail: "Open the clinical workspace for a patient", href: "/dashboard/clinical-workspace", hint: "Run" },
-  { kind: "Action", title: "Today's huddle brief", detail: "The printable page for the morning stand-up", href: "/dashboard/huddle", hint: "Run" },
-];
+/** Things the palette can do as well as find, shared with Find anything. */
+const ACTIONS: Row[] = WORKSPACE_ACTIONS;
 
 function readRecent(): Row[] {
   try {
