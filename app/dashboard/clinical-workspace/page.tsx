@@ -232,12 +232,17 @@ export default async function ClinicalPage({
       />
 
       <section className="flex flex-col gap-3 rounded-card border border-border bg-card p-4 shadow-[var(--shadow)]">
-        <Suspense fallback={<div className="h-11 rounded-control bg-muted" />}>
-          <ListSearch
-            placeholder="Chart anyone — name or phone"
-            label="Find any patient to chart"
-          />
-        </Suspense>
+        {/* ListSearch sizes itself with a 240px flex-basis, which is a width in
+            the row every other screen puts it in. Dropped straight into this
+            column it became a 240px-tall box with the field floating in it. */}
+        <div className="flex flex-wrap items-center gap-3">
+          <Suspense fallback={<div className="h-11 flex-[1_1_240px] rounded-control bg-muted" />}>
+            <ListSearch
+              placeholder="Chart anyone — name or phone"
+              label="Find any patient to chart"
+            />
+          </Suspense>
+        </div>
         <nav
           aria-label="Clinical records"
           className="flex flex-wrap items-center gap-2 border-t border-border/70 pt-3"
