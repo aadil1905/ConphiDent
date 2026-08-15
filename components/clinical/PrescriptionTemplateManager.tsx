@@ -112,7 +112,7 @@ export default function PrescriptionTemplateManager({ templates }: { templates: 
     <div className="grid items-start gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
       <ConfirmDialog open={gate.open} copy={{ title: `Archive ${selected?.name ?? "this set"}?`, body: "It stops showing up when you prescribe. Scripts already written with it are untouched.", confirmLabel: "Archive it" }} onConfirm={gate.confirm} onCancel={gate.cancel} />
 
-      <aside className="self-start overflow-hidden rounded-card border border-border bg-card shadow-[var(--shadow)] xl:sticky xl:top-24">
+      <aside className="self-start overflow-hidden rounded-card border border-border bg-card shadow-[var(--shadow)] xl:sticky xl:top-20">
         <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3.5">
           <div>
             <p className="text-sm font-semibold text-heading">Your sets</p>

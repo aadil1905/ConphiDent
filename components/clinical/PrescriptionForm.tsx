@@ -289,7 +289,7 @@ export default function PrescriptionForm({ patients, templates = [], initialPati
         </footer>
       </div>
 
-      <aside className="flex flex-col gap-3 xl:sticky xl:top-24">
+      <aside className="flex flex-col gap-3 xl:sticky xl:top-20">
         {patient ? (
           <div className="rounded-card border border-danger-border bg-danger-bg px-4 py-3.5">
             <p className="mb-1 text-[13px] font-bold text-danger">Careful with</p>
@@ -323,6 +323,28 @@ export default function PrescriptionForm({ patients, templates = [], initialPati
             </button>
             <Link href="/dashboard/prescriptions/templates" className="mt-2 inline-block text-[13px] font-semibold text-primary hover:underline">Manage your sets</Link>
           </div>
+        </div>
+
+        {/* Grows as the script does, so you can see what the patient gets
+            without leaving the form. */}
+        <div className="flex flex-col gap-2.5 rounded-card border border-border bg-card p-4 shadow-[var(--shadow)]">
+          <p className="text-[15px] font-semibold text-heading">What they will get</p>
+          <p className="text-xs text-text-muted">
+            {patient ? `Printed for ${patient.fullName}.` : "Pick a patient and this fills in."} It
+            reads exactly like this on the printed script.
+          </p>
+          <ol className="flex flex-col gap-2.5">
+            {items.map((item, index) => (
+              <li key={index} className="border-t border-border pt-2.5 first:border-t-0 first:pt-0">
+                <span className="block text-[13px] font-semibold text-heading">
+                  {item.genericName.trim()
+                    ? `${index + 1}. ${item.genericName.trim()}${item.strength ? ` ${item.strength}` : ""}`
+                    : `${index + 1}. Nothing picked yet`}
+                </span>
+                <span className="block text-xs text-text-muted">{sentenceFor(item)}</span>
+              </li>
+            ))}
+          </ol>
         </div>
       </aside>
     </form>

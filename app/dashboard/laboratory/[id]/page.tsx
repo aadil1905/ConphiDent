@@ -356,7 +356,7 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
           </section>
         </div>
 
-        <aside className="flex flex-col gap-3 xl:sticky xl:top-24">
+        <aside className="flex flex-col gap-3 xl:sticky xl:top-20">
           <div className={`rounded-card border px-4 py-3.5 ${issues.length ? "border-warning-border bg-warning-bg" : "border-success-border bg-success-bg"}`}>
             <h2 className="text-[13px] font-bold text-heading">
               {issues.length ? "Before this can be approved" : "Ready to approve"}

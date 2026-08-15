@@ -567,7 +567,7 @@ export default function BookAVisit({
       </div>
 
       {/* --- Summary -------------------------------------------------------- */}
-      <aside className="flex flex-col gap-3 xl:sticky xl:top-[84px]">
+      <aside className="flex flex-col gap-3 xl:sticky xl:top-20">
         <div className={`${card} flex flex-col gap-3 px-4.5 py-4`}>
           <h2 className="text-[15px] font-semibold text-heading">This booking</h2>
           <dl className="flex flex-col gap-2.5 text-[13px]">

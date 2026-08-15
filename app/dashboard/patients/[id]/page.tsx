@@ -764,7 +764,7 @@ export default async function Patient360Page({
           )}
         </div>
 
-        <aside className="flex flex-col gap-3 xl:sticky xl:top-[128px]">
+        <aside className="flex flex-col gap-3 xl:sticky xl:top-20">
           <div className="flex flex-col gap-2.5 rounded-card border border-border bg-card p-4 shadow-[var(--shadow)]">
             <p className="text-[13px] font-semibold text-heading">Forms and consent</p>
 

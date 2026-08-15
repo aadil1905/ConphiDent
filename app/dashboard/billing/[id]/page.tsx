@@ -419,7 +419,7 @@ export default async function InvoiceDetailPage({
         </section>
         </div>
 
-        <aside className="flex flex-col gap-3 xl:sticky xl:top-[104px]">
+        <aside className="flex flex-col gap-3 xl:sticky xl:top-20">
           <div className="flex flex-col gap-3 rounded-card border border-border bg-card p-4 shadow-[var(--shadow)]">
             <div>
               <p className="text-[11px] font-semibold tracking-[0.06em] text-text-muted uppercase">

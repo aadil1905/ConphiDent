@@ -27,7 +27,7 @@ export default function WorkPage({
       {aside ? (
         <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
           <div className="flex min-w-0 flex-col gap-5">{children}</div>
-          <aside className="flex flex-col gap-3 xl:sticky xl:top-[104px]">{aside}</aside>
+          <aside className="flex flex-col gap-3 xl:sticky xl:top-20">{aside}</aside>
         </div>
       ) : (
         <div className="flex min-w-0 flex-col gap-5">{children}</div>
