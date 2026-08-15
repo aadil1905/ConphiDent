@@ -199,6 +199,13 @@ export default async function ImagingPage({
               : "Everything has been read. Nice."
         }
         actions={
+          <>
+          <Link
+            href="/dashboard/imaging/new"
+            className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+          >
+            Add an X-ray
+          </Link>
           <form action={BASE} className="flex items-center gap-2">
             {show !== "unread" && <input type="hidden" name="show" value={show} />}
             <label className="flex min-h-11 items-center gap-2 rounded-control border border-border bg-card px-3">
@@ -211,6 +218,7 @@ export default async function ImagingPage({
               />
             </label>
           </form>
+          </>
         }
       />
 

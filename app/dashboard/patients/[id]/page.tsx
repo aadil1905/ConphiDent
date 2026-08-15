@@ -702,6 +702,14 @@ export default async function Patient360Page({
               <div className="flex flex-wrap items-baseline justify-between gap-3 px-4.5 pt-4 pb-3">
                 <h2 className="text-base font-semibold text-heading">X-rays and documents</h2>
                 <div className="flex flex-wrap gap-2">
+                  {can(user.role, "uploadImaging") && (
+                    <Link
+                      href={`/dashboard/imaging/new?patient=${patient.id}`}
+                      className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-3.5 text-[13px] font-semibold text-white hover:bg-primary-hover"
+                    >
+                      Add an X-ray
+                    </Link>
+                  )}
                   <Link
                     href={`/dashboard/patients/${patient.id}/case-paper`}
                     className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"

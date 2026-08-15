@@ -36,18 +36,32 @@ function zonedLocalToIso(value: string, timeZone: string) {
   }
 }
 
+function Step({ number, title }: { number: number; title: string }) {
+  return (
+    <div className="flex items-center gap-2.5 border-b border-border pb-2 sm:col-span-2">
+      <span className="grid h-6 w-6 flex-none place-items-center rounded-pill bg-primary text-[11px] font-bold text-white">
+        {number}
+      </span>
+      <h3 className="text-[13px] font-semibold text-heading">{title}</h3>
+    </div>
+  );
+}
+
 export default function ImagingImportForm({
   initialPatient = null,
   providers,
   clinicTimezone,
   clinicalContext,
   patientContext,
+  stepped = false,
 }: {
   initialPatient?: PatientSearchOption | null;
   providers: Option[];
   clinicTimezone: string;
   clinicalContext?: { patientId: number; encounterId?: number | null; toothCodes: string[] };
   patientContext?: { patientId: number };
+  /** Numbered sections on its own page, rather than one block inside charting. */
+  stepped?: boolean;
 }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
@@ -116,7 +130,8 @@ export default function ImagingImportForm({
         </>
       ) : null}
 
-      <div className="grid gap-3.5 sm:grid-cols-2">
+      <div className={stepped ? "flex flex-col gap-4" : "grid gap-3.5 sm:grid-cols-2"}>
+        {stepped && <Step number={1} title="Whose X-ray is it?" />}
         <label className={`${labelClass} sm:col-span-2`}>The file
           <input
             name="file"
@@ -144,6 +159,8 @@ export default function ImagingImportForm({
           </div>
         )}
 
+        {stepped && <Step number={2} title="What does it show?" />}
+
         <fieldset className="sm:col-span-2">
           <legend className="text-xs font-semibold text-heading">When in the treatment</legend>
           <div className="mt-2 grid gap-2 sm:grid-cols-3">
@@ -168,6 +185,8 @@ export default function ImagingImportForm({
             {IMAGING_MODALITIES.map((item) => <option key={item} value={item}>{IMAGING_MODALITY_LABELS[item]}</option>)}
           </select>
         </label>
+        {stepped && <Step number={3} title="The image itself" />}
+
         <label className={labelClass}>
           Taken at <span className="font-normal text-text-muted">({clinicTimezone})</span>
           <input name="acquisitionLocal" type="datetime-local" required defaultValue={localNow} className={field} />
