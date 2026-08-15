@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth";
 import { clinicDisplayName } from "@/lib/clinic-config";
 import DashboardInteractionFeedback from "@/components/dashboard/DashboardInteractionFeedback";
@@ -7,6 +8,17 @@ import type { ShellAlert } from "@/components/shell/TopBar";
 import { prisma } from "@/lib/prisma";
 import { getFeatureEntitlements } from "@/lib/features";
 import { can, PERMISSIONS, type Permission } from "@/lib/permissions";
+
+/**
+ * The clinic bought its own software, so the browser tab carries the clinic’s
+ * name. The product name belongs on the marketing site, not above a patient’s
+ * record.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const user = await requireUser();
+  const name = user.clinic.brandName?.trim() || user.clinic.name;
+  return { title: { default: name, template: `%s · ${name}` } };
+}
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();

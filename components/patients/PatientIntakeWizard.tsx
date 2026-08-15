@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { INTAKE_LINK_DAYS } from "@/lib/patient-intake-link";
 import {
  ArrowLeft,
  CheckCircle2,
@@ -191,7 +192,18 @@ export default function PatientIntakeWizard({ defaultName = "", defaultPhone = "
  toast.success("Secure intake link copied.");
  }
 
- const inputClass = "mt-2 min-h-11 w-full rounded-control border border-input bg-card px-3 text-sm outline-none focus:border-primary focus:ring-3 focus:ring-primary/10";
+ /** Statuses are for the database; this is what a person reads. */
+const INTAKE_STATUS_WORDS: Record<string, string> = {
+  CREATED: "Link made",
+  SENT: "Sent to them",
+  OPENED: "They opened it",
+  IN_PROGRESS: "They are filling it in",
+  COMPLETED: "Done — it is in their file",
+  EXPIRED: "Expired",
+  CANCELLED: "Cancelled",
+};
+
+const inputClass = "mt-2 min-h-11 w-full rounded-control border border-input bg-card px-3 text-sm outline-none focus:border-primary focus:ring-3 focus:ring-primary/10";
 
  return (
  <div className="overflow-hidden rounded-card border bg-card shadow-[var(--shadow)]">
@@ -199,7 +211,7 @@ export default function PatientIntakeWizard({ defaultName = "", defaultPhone = "
  <div>
  <p className="text-xs font-bold uppercase tracking-normal text-primary">Step {step} of 2</p>
  <h2 className="mt-1 text-xl font-bold">
- {step === 1 ? "Patient and WhatsApp details" : "Patient medical form"}
+ {step === 1 ? "Who are they, and where do we send it?" : "Sent — waiting on them"}
  </h2>
  </div>
  {step > 1 && (
@@ -220,7 +232,7 @@ export default function PatientIntakeWizard({ defaultName = "", defaultPhone = "
  <label className="text-sm font-semibold">Address<input name="address" className={inputClass} /></label>
  </div>
  <div className="mt-6 rounded-card border border-border bg-secondary p-4 text-sm leading-6 text-primary">
- The patient will receive a secure 48-hour link for allergies, medical history, consent terms, and signatures.
+ They get a private link that works for {INTAKE_LINK_DAYS} days — allergies, medical history, the consent wording and their signature.
  </div>
  <label className="mt-4 flex items-start gap-3 rounded-card border border-success-border bg-success-bg p-4 text-sm leading-6 text-success"><input required type="checkbox" name="consentConfirmed" value="1" className="mt-1 size-4" /><span>I confirmed the patient agreed to receive this private intake link on the WhatsApp number above.</span></label>
  <div className="mt-6 flex justify-end">
@@ -236,12 +248,12 @@ export default function PatientIntakeWizard({ defaultName = "", defaultPhone = "
  <div className="space-y-5 p-6">
  <div className="rounded-card border bg-muted p-6 text-center">
  <MessageCircle className="mx-auto size-11 text-success" />
- <h3 className="mt-3 text-lg font-bold">Waiting for the patient</h3>
- <p className="mt-2 text-[13px] text-text-muted">The patient completes allergies, medical history, terms, and signatures from their WhatsApp link.</p>
+ <h3 className="mt-3 text-lg font-bold text-heading">Waiting for the patient</h3>
+ <p className="mt-2 text-[13px] text-text-muted">They fill in their allergies, medical history and consent on their phone, and sign it there.</p>
  <span className={`mt-4 inline-flex rounded-full px-3 py-1 text-xs font-bold ${statusStyles[request.status] || statusStyles.CREATED}`}>
- {request.status}
+ {INTAKE_STATUS_WORDS[request.status] ?? request.status}
  </span>
- {request.warning && <p className="mt-4 rounded-control bg-warning-bg p-3 text-sm text-warning">WhatsApp did not send automatically. Copy and send the secure link manually.</p>}
+ {request.warning && <p className="mt-4 rounded-control bg-warning-bg p-3 text-sm text-warning">WhatsApp did not send it. Copy the link below and send it yourself.</p>}
  </div>
  <div className="grid gap-3 sm:grid-cols-3">
  <button type="button" onClick={copyLink} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-control border bg-card text-sm font-semibold"><ClipboardCopy className="size-4" /> Copy link</button>
