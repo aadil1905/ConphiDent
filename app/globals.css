@@ -204,6 +204,17 @@
   section {
     break-inside: avoid;
   }
+  /* The shell caps content at 107.5rem for a screen; paper has its own margins
+     and every millimetre of them costs a line of the brief. */
+  main > div {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+  /* Tints that read as a soft highlight on screen turn into grey wash on a
+     mono printer, so the sheet is printed as ink on white. */
+  .print-plain {
+    background: #ffffff !important;
+  }
 }
 
 /* Control Center: the same premium shell language as the clinic workspace. */

@@ -222,9 +222,12 @@ export default async function HuddleBriefPage() {
         </div>
       </header>
 
-      <section className="break-inside-avoid rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)] print:shadow-none">
+      <section className="break-inside-avoid rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)] print:rounded-none print:border-0 print:border-b print:border-black/25 print:px-0 print:py-2 print:shadow-none">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <div className="min-w-0">
+            <p className="hidden text-[11px] font-black tracking-[0.14em] text-text-muted uppercase print:block">
+              {user.clinic.brandName?.trim() || user.clinic.name}
+            </p>
             <h1 className="text-[22px] leading-tight font-bold text-heading">{today}</h1>
             <p className="mt-1 text-[13px] text-text-muted">
               {risks.length === 0
@@ -264,7 +267,7 @@ export default async function HuddleBriefPage() {
       </section>
 
       {risks.length > 0 && (
-        <section className="break-inside-avoid overflow-hidden rounded-card border border-danger-border bg-card shadow-[var(--shadow)] print:shadow-none">
+        <section className="break-inside-avoid overflow-hidden rounded-card border border-danger-border bg-card shadow-[var(--shadow)] print:rounded-none print:border-0 print:border-b print:border-black/25 print:shadow-none">
           <div className="px-4.5 pt-4 pb-2.5">
             <h2 className="text-base font-semibold text-danger">Could break today</h2>
             <p className="mt-1 text-[13px] text-text-muted">
@@ -291,7 +294,7 @@ export default async function HuddleBriefPage() {
         </section>
       )}
 
-      <section className="break-inside-avoid overflow-hidden rounded-card border border-border bg-card shadow-[var(--shadow)] print:shadow-none">
+      <section className="break-inside-avoid overflow-hidden rounded-card border border-border bg-card shadow-[var(--shadow)] print:rounded-none print:border-0 print:border-b print:border-black/25 print:shadow-none">
         <div className="px-4.5 pt-4 pb-2.5">
           <h2 className="text-base font-semibold text-heading">Who is coming, and what they need</h2>
           <p className="mt-1 text-[13px] text-text-muted">
@@ -375,7 +378,7 @@ export default async function HuddleBriefPage() {
       <HuddleCalls calls={calls} team={teamMembers} />
 
       {runningLow.length > 0 && (
-        <section className="break-inside-avoid rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)] print:shadow-none">
+        <section className="break-inside-avoid rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)] print:rounded-none print:border-0 print:border-b print:border-black/25 print:px-0 print:py-2 print:shadow-none">
           <h2 className="mb-2 text-base font-semibold text-heading">
             Stock that will not last the day
           </h2>
