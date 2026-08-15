@@ -222,19 +222,33 @@ export function PrescriptionDocument({ clinic, prescription }: { clinic: ClinicD
           </section>
         </td></tr>
 
-        {prescription.allergySnapshot ? <tr className="b6-break-avoid"><td className="pt-[3mm]"><section className="rounded-[2mm] border border-amber-300 bg-amber-50 px-[3mm] py-[2mm] text-[8px] text-amber-950"><strong>Allergies / clinical alerts:</strong> {prescription.allergySnapshot}</section></td></tr> : null}
+        {prescription.allergySnapshot ? <tr className="b6-break-avoid"><td className="pt-[3mm]"><section className="rounded-[2mm] border border-danger-border bg-danger-bg px-[3mm] py-[2mm] text-[8px] text-danger"><strong className="font-black uppercase tracking-wide">Allergies</strong><span className="mt-0.5 block font-semibold">{prescription.allergySnapshot}</span></section></td></tr> : null}
 
         <tr className="b6-break-avoid"><td className="pt-[3mm]"><div className="flex items-end justify-between border-b border-heading pb-[1.5mm]"><p className="font-serif text-[19px] font-black italic text-primary">Rx</p><p className="text-[7px] font-bold uppercase tracking-wider text-text-muted">Medication directions</p></div></td></tr>
 
         {prescription.medicationItems.map((item, index) => {
-          const directions = [`${item.dose} ${item.doseUnit}`, item.route, item.frequency, item.mealRelation, item.timing, item.duration, item.asNeeded ? `As needed${item.maxDose ? ` (max ${item.maxDose})` : ""}` : null].filter(Boolean).join(" · ");
+          const directions: Array<[string, string]> = ([
+            ["How much", `${item.dose} ${item.doseUnit}`],
+            ["How often", item.frequency],
+            ["When", [item.mealRelation, item.timing].filter(Boolean).join(", ")],
+            ["How long", item.duration],
+            ["How to take it", item.route],
+            ["Only if needed", item.asNeeded ? `Yes${item.maxDose ? ` — no more than ${item.maxDose}` : ""}` : ""],
+          ] as Array<[string, string | null | undefined]>).filter((entry): entry is [string, string] => Boolean(entry[1]?.trim()));
           return (
             <tr key={item.id} className="b6-break-avoid"><td className="pt-[2mm]"><section className="grid grid-cols-[6mm_1fr] gap-[2mm] rounded-[2mm] border border-border p-[2.5mm]">
               <span className="grid size-[5mm] place-items-center rounded-full bg-primary text-[8px] font-black text-white">{index + 1}</span>
               <div className="min-w-0">
                 <p className="font-black text-heading">{item.genericName} {item.strength} {item.dosageForm}{item.brandName ? ` (${item.brandName})` : ""}</p>
                 {item.formulation || item.indication ? <p className="mt-0.5 text-[8px] text-text-muted">{[item.formulation, item.indication && `For ${item.indication}`].filter(Boolean).join(" · ")}</p> : null}
-                <p className="mt-1 font-semibold">{directions}</p>
+                <dl className="mt-1 grid grid-cols-2 gap-x-[3mm]">
+                  {directions.map(([term, detail]) => (
+                    <div key={term} className="flex gap-[1.5mm]">
+                      <dt className="shrink-0 text-[7.5px] text-text-muted">{term}</dt>
+                      <dd className="min-w-0 font-semibold">{detail}</dd>
+                    </div>
+                  ))}
+                </dl>
                 {item.instructions ? <p className="mt-0.5 text-[8px] text-text-muted">{item.instructions}</p> : null}
                 <p className="mt-1 text-[7px] text-text-muted">{item.quantity ? `Quantity: ${item.quantity} · ` : ""}{item.substitutionAllowed ? "Substitution permitted" : "Do not substitute"}</p>
               </div>
@@ -242,7 +256,7 @@ export function PrescriptionDocument({ clinic, prescription }: { clinic: ClinicD
           );
         })}
 
-        {legacyMedicationText ? <tr className="b6-break-avoid"><td className="pt-[2mm]"><section className="rounded-[2mm] border border-amber-300 bg-amber-50 p-[3mm]"><p className="text-[7px] font-black uppercase tracking-wide text-amber-800">Legacy directions</p><p className="mt-1 whitespace-pre-wrap text-[9px]">{legacyMedicationText}</p></section></td></tr> : null}
+        {legacyMedicationText ? <tr className="b6-break-avoid"><td className="pt-[2mm]"><section className="rounded-[2mm] border border-warning-border bg-warning-bg p-[3mm]"><p className="text-[7px] font-black uppercase tracking-wide text-warning">Directions</p><p className="mt-1 whitespace-pre-wrap text-[9px]">{legacyMedicationText}</p></section></td></tr> : null}
         {prescription.instructions ? <tr className="b6-break-avoid"><td className="pt-[3mm]"><section className="rounded-[2mm] bg-muted p-[3mm]"><p className="text-[7px] font-black uppercase tracking-wide text-text-muted">Patient instructions</p><p className="mt-1 whitespace-pre-wrap text-[8px]">{prescription.instructions}</p></section></td></tr> : null}
 
         <tr className="b6-break-avoid"><td className="pt-[4mm]"><section className="ml-auto w-[55mm] border-t border-border-strong pt-[2mm] text-right">
@@ -273,7 +287,7 @@ export function InvoiceDocument({ document }: { document: BillingDocument }) {
           <tr className="b6-break-avoid"><td colSpan={5}>
             <section className="grid grid-cols-2 gap-x-[5mm] gap-y-[2.5mm] border-b border-border-strong pb-[3.5mm]">
               <Field label="Bill to" value={document.patient.fullName} />
-              <Field label="Status" value={document.status} />
+              <Field label="Status" value={document.status.replace(/_/g, " ").toLowerCase().replace(/^./, (c) => c.toUpperCase())} />
               <Field label="Patient contact" value={[document.patient.phone, document.patient.email].filter(Boolean).join(" · ") || "Not recorded"} />
               <Field label="Issue / due date" value={`${date(document.issuedAt)}${document.dueAt ? ` / ${date(document.dueAt)}` : ""}`} />
               {document.gstin ? <Field label="GSTIN" value={document.gstin} /> : null}
@@ -296,11 +310,16 @@ export function InvoiceDocument({ document }: { document: BillingDocument }) {
           {document.discountAmount ? <InvoiceTotal label="Discount" value={-document.discountAmount} /> : null}
           {document.taxAmount ? <InvoiceTotal label="Tax" value={document.taxAmount} /> : null}
           <InvoiceTotal label="Total" value={document.totalAmount} strong />
-          <InvoiceTotal label="Paid" value={document.paidAmount} />
-          <InvoiceTotal label="Outstanding" value={document.outstandingAmount} strong />
+          {document.paidAmount ? <InvoiceTotal label="Paid" value={document.paidAmount} /> : null}
+          <div className="mt-[1.5mm] flex items-baseline justify-between gap-3 border-t-2 border-heading pt-[1.5mm]">
+            <span className="text-[8px] font-black uppercase tracking-wide text-heading">
+              {document.outstandingAmount > 0 ? "Still to pay" : "Paid in full"}
+            </span>
+            <strong className="text-[14px] font-black text-heading">{money(document.outstandingAmount)}</strong>
+          </div>
         </section></td></tr>
 
-        {document.payments.length ? <tr className="b6-break-avoid"><td colSpan={5} className="pt-[3mm]"><section className="rounded-[2mm] border border-emerald-200 bg-emerald-50 p-[2.5mm]"><p className="text-[7px] font-black uppercase tracking-wide text-emerald-800">Payments received</p><div className="mt-1 space-y-0.5">{document.payments.map((payment, index) => <p key={`${payment.paidAt.toISOString()}-${index}`} className="flex justify-between gap-3"><span>{date(payment.paidAt)} · {payment.method}{payment.referenceNumber ? ` · Ref ${payment.referenceNumber}` : ""}</span><strong>{money(payment.amount)}</strong></p>)}</div></section></td></tr> : null}
+        {document.payments.length ? <tr className="b6-break-avoid"><td colSpan={5} className="pt-[3mm]"><section className="rounded-[2mm] border border-success-border bg-success-bg p-[2.5mm]"><p className="text-[7px] font-black uppercase tracking-wide text-success">Payments received</p><div className="mt-1 space-y-0.5">{document.payments.map((payment, index) => <p key={`${payment.paidAt.toISOString()}-${index}`} className="flex justify-between gap-3"><span>{date(payment.paidAt)} · {payment.method}{payment.referenceNumber ? ` · Ref ${payment.referenceNumber}` : ""}</span><strong>{money(payment.amount)}</strong></p>)}</div></section></td></tr> : null}
         {document.notes ? <tr className="b6-break-avoid"><td colSpan={5} className="pt-[2mm]"><DocumentSection title="Notes" text={document.notes} /></td></tr> : null}
         {document.terms ? <tr className="b6-break-avoid"><td colSpan={5} className="pt-[2mm]"><DocumentSection title="Terms" text={document.terms} /></td></tr> : null}
         {document.paymentDetails ? <tr className="b6-break-avoid"><td colSpan={5} className="pt-[2mm]"><DocumentSection title="Payment details" text={document.paymentDetails} /></td></tr> : null}
