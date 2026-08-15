@@ -5,12 +5,13 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
-import { NAV_SETTINGS, isActiveHref, type NavCounts, type NavDestination } from "./nav-items";
+import { isActiveHref, type NavCounts, type NavDestination } from "./nav-items";
 
 type NavDrawerProps = {
   open: boolean;
   onClose: () => void;
   destinations: readonly NavDestination[];
+  settings: NavDestination;
   counts: NavCounts;
   clinicName: string;
   branch: string;
@@ -20,6 +21,67 @@ type NavDrawerProps = {
 const FOCUSABLE = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
 /**
+ * A destination and the screens under it. Children are always shown rather than
+ * hidden behind a twisty — the whole reason they are here is that nobody could
+ * find them, and a closed drawer inside a closed drawer solves nothing.
+ */
+function Section({
+  item,
+  pathname,
+  counts,
+  onClose,
+}: {
+  item: NavDestination;
+  pathname: string;
+  counts: NavCounts;
+  onClose: () => void;
+}) {
+  const active = isActiveHref(pathname, item.href);
+  const count = item.badge ? counts[item.badge] ?? 0 : 0;
+  const Icon = item.icon;
+
+  return (
+    <div className="flex flex-col gap-0.5">
+      <Link
+        href={item.href}
+        onClick={onClose}
+        aria-current={active ? "page" : undefined}
+        className={`flex min-h-11 items-center gap-2.5 rounded-control px-2.5 py-2.5 ${
+          active ? "bg-primary-soft font-semibold text-heading" : "text-foreground"
+        }`}
+      >
+        <Icon className="h-[17px] w-[17px] flex-none" strokeWidth={1.9} aria-hidden />
+        <span className="flex-1">{item.label}</span>
+        {count > 0 && (
+          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-pill bg-primary px-1.5 text-[11px] font-bold tabular-nums text-white">
+            {count > 99 ? "99+" : count}
+          </span>
+        )}
+      </Link>
+
+      {item.children?.map((child) => {
+        // The parent already lights up for anything beneath it, so a child only
+        // claims the highlight on its own page.
+        const childActive = pathname === child.href || pathname.startsWith(`${child.href}/`);
+        return (
+          <Link
+            key={child.href}
+            href={child.href}
+            onClick={onClose}
+            aria-current={childActive ? "page" : undefined}
+            className={`ml-[1.85rem] flex min-h-10 items-center rounded-control border-l border-border px-2.5 py-2 text-[13px] ${
+              childActive ? "bg-primary-soft font-semibold text-heading" : "text-text-muted"
+            }`}
+          >
+            {child.label}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
  * The only navigation. Tab cycles inside it, Escape closes it, and
  * focus goes back to whatever opened it.
  */
@@ -27,6 +89,7 @@ export default function NavDrawer({
   open,
   onClose,
   destinations,
+  settings,
   counts,
   clinicName,
   branch,
@@ -114,46 +177,13 @@ export default function NavDrawer({
         </div>
 
         <nav aria-label="Main" className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-2.5">
-          {destinations.map((item) => {
-            const active = isActiveHref(pathname, item.href);
-            const count = item.badge ? counts[item.badge] ?? 0 : 0;
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onClose}
-                aria-current={active ? "page" : undefined}
-                className={`flex min-h-11 items-center gap-2.5 rounded-control px-2.5 py-2.5 ${
-                  active ? "bg-primary-soft font-semibold text-heading" : "text-foreground"
-                }`}
-              >
-                <Icon className="h-[17px] w-[17px] flex-none" strokeWidth={1.9} aria-hidden />
-                <span className="flex-1">{item.label}</span>
-                {count > 0 && (
-                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-pill bg-primary px-1.5 text-[11px] font-bold tabular-nums text-white">
-                    {count > 99 ? "99+" : count}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
+          {destinations.map((item) => (
+            <Section key={item.href} item={item} pathname={pathname} counts={counts} onClose={onClose} />
+          ))}
         </nav>
 
         <div className="border-t border-border px-2 py-2.5">
-          <Link
-            href={NAV_SETTINGS.href}
-            onClick={onClose}
-            aria-current={isActiveHref(pathname, NAV_SETTINGS.href) ? "page" : undefined}
-            className={`flex min-h-11 items-center gap-2.5 rounded-control px-2.5 py-2.5 ${
-              isActiveHref(pathname, NAV_SETTINGS.href)
-                ? "bg-primary-soft font-semibold text-heading"
-                : "text-foreground"
-            }`}
-          >
-            <NAV_SETTINGS.icon className="h-[17px] w-[17px] flex-none" strokeWidth={1.9} aria-hidden />
-            <span>Settings</span>
-          </Link>
+          <Section item={settings} pathname={pathname} counts={counts} onClose={onClose} />
         </div>
       </div>
     </>

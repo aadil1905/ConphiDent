@@ -99,4 +99,47 @@ if (dead.length > 0) {
   throw new Error(`These links do not resolve to any route:\n${lines}`);
 }
 
-console.log(`Verified ${found.size} internal links against ${routes.length} routes.`);
+// --- every screen has a way in ---------------------------------------------
+//
+// A redesign can leave a working screen with nothing pointing at it, which is
+// how treatment plans and prescriptions fell out of reach. A whole section —
+// /dashboard/<something> — has to be in the navigation. Anything deeper only
+// needs a link from somewhere.
+
+const navSource = readFileSync(join(root, "components/shell/nav-items.ts"), "utf8");
+const inNav = new Set([...navSource.matchAll(/href:\s*"([^"]+)"/g)].map((match) => match[1]));
+
+/** Kept only so an old bookmark still lands somewhere; nothing links to these. */
+const isLegacyAlias = (route) => {
+  const file = join(appDir, route.replace("/dashboard", "dashboard"), "page.tsx");
+  try {
+    const source = readFileSync(file, "utf8");
+    return /redirect\(|notFound\(/.test(source) && source.split("\n").length < 15;
+  } catch {
+    return false;
+  }
+};
+
+/** Reached by ⌘K from every screen and by the search box in the top bar. */
+const REACHED_ANOTHER_WAY = new Set(["/dashboard/search"]);
+
+const stranded = [];
+for (const route of routes) {
+  if (!route.startsWith("/dashboard/") || route.includes("[")) continue;
+  const isSection = route.split("/").filter(Boolean).length === 2;
+  if (!isSection) continue;
+  if (inNav.has(route) || REACHED_ANOTHER_WAY.has(route) || isLegacyAlias(route)) continue;
+  stranded.push(route);
+}
+
+if (stranded.length > 0) {
+  throw new Error(
+    `These screens are not in the navigation, so nobody can find them:\n${stranded
+      .map((route) => `  ${route}`)
+      .join("\n")}\nAdd them to components/shell/nav-items.ts, or make the page a redirect.`,
+  );
+}
+
+console.log(
+  `Verified ${found.size} internal links against ${routes.length} routes, and every section reachable from the nav.`,
+);

@@ -6,7 +6,7 @@ import NavDrawer from "./NavDrawer";
 import TopBar, { type ShellAlert } from "./TopBar";
 import CommandPalette from "./CommandPalette";
 import { useClientValue } from "./use-client-value";
-import { destinationsFor, type NavCounts } from "./nav-items";
+import { destinationsFor, settingsFor, type NavCounts } from "./nav-items";
 
 const POLL_MS = 30_000;
 const AGE_TICK_MS = 10_000;
@@ -99,6 +99,7 @@ export default function AppShell({
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         destinations={destinations}
+        settings={settingsFor(navHrefs)}
         counts={counts}
         clinicName={clinicName}
         branch={branch}

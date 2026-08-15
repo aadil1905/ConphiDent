@@ -107,12 +107,28 @@ export default async function PrescriptionsPage({
             : "Everything you have prescribed, newest first."
         }
         actions={
-          <Link
-            href={`${BASE}/new`}
-            className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
-          >
-            Write a prescription
-          </Link>
+          <>
+            {/* Both of these were reachable only from inside the prescription
+                form, so nobody could set them up before writing their first. */}
+            <Link
+              href={`${BASE}/profile`}
+              className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+            >
+              Your prescriber details
+            </Link>
+            <Link
+              href={`${BASE}/templates`}
+              className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+            >
+              Saved sets
+            </Link>
+            <Link
+              href={`${BASE}/new`}
+              className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+            >
+              Write a prescription
+            </Link>
+          </>
         }
       />
 
