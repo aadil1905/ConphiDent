@@ -219,7 +219,7 @@ export default function BookAVisit({
   };
 
   return (
-    <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="grid items-start gap-5">
       <div className="flex min-w-0 flex-col gap-5">
         {draftOffered && draft && (
           <div
@@ -567,7 +567,7 @@ export default function BookAVisit({
       </div>
 
       {/* --- Summary -------------------------------------------------------- */}
-      <aside className="flex flex-col gap-3 xl:sticky xl:top-20">
+      <aside className="flex flex-col gap-5">
         <div className={`${card} flex flex-col gap-3 px-4.5 py-4`}>
           <h2 className="text-[15px] font-semibold text-heading">This booking</h2>
           <dl className="flex flex-col gap-2.5 text-[13px]">

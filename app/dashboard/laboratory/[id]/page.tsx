@@ -95,7 +95,7 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
         </p>
       ) : null}
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid items-start gap-5">
         <div className="flex min-w-0 flex-col gap-5">
           <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
             <h2 className="text-base font-semibold text-heading">What the lab is making</h2>
@@ -356,7 +356,7 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
           </section>
         </div>
 
-        <aside className="flex flex-col gap-3 xl:sticky xl:top-20">
+        <aside className="flex flex-col gap-5">
           <div className={`rounded-card border px-4 py-3.5 ${issues.length ? "border-warning-border bg-warning-bg" : "border-success-border bg-success-bg"}`}>
             <h2 className="text-[13px] font-bold text-heading">
               {issues.length ? "Before this can be approved" : "Ready to approve"}

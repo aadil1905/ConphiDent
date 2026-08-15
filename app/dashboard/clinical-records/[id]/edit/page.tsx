@@ -43,7 +43,7 @@ export default async function EditClinicalRecordPage({ params }: { params: Promi
           See the note
         </Link>
       }
-      aside={
+      context={
         <>
           <RailCard title="Where this note stands">
             <p className="text-[13px] text-text-muted">

@@ -22,7 +22,7 @@ export default async function EditTreatmentPlanPage({ params }: { params: Promis
           See the plan
         </Link>
       }
-      aside={
+      context={
         <>
           <RailCard title="What this plan is worth">
             <div className="flex items-baseline justify-between gap-2 text-[13px]">

@@ -173,7 +173,7 @@ export default async function InvoiceDetailPage({
         </div>
       </header>
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid items-start gap-5">
         <div className="flex min-w-0 flex-col gap-5">
         <section className="overflow-hidden rounded-card border-2 border-heading bg-white p-4 text-heading sm:p-6">
           <div className="grid gap-5 border-b-2 border-heading pb-4 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center">
@@ -419,7 +419,7 @@ export default async function InvoiceDetailPage({
         </section>
         </div>
 
-        <aside className="flex flex-col gap-3 xl:sticky xl:top-20">
+        <aside className="flex flex-col gap-5">
           <div className="flex flex-col gap-3 rounded-card border border-border bg-card p-4 shadow-[var(--shadow)]">
             <div>
               <p className="text-[11px] font-semibold tracking-[0.06em] text-text-muted uppercase">

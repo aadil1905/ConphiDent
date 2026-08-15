@@ -70,7 +70,7 @@ export default async function NewTreatmentPlanPage({
     <WorkPage
       title="New treatment plan"
       sub="Agree the work and what it costs. It attaches to the visit you pick when you save."
-      aside={
+      context={
         <>
           {selectedPatient && (
             <RailCard title="Who this is for">

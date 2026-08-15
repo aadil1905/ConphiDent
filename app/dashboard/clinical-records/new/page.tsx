@@ -61,7 +61,7 @@ export default async function NewClinicalRecordPage({ searchParams }: Props) {
           ? `Write up what happened at ${selectedPatient.fullName}'s visit. It attaches to the visit you pick — no new visit is created.`
           : "Write up what happened at a visit. It attaches to the visit you pick when you save."
       }
-      aside={
+      context={
         selectedPatient ? (
           <>
             <RailCard title="Who this is for">

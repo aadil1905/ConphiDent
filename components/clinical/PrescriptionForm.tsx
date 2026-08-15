@@ -118,7 +118,7 @@ export default function PrescriptionForm({ patients, templates = [], initialPati
   }
 
   return (
-    <form onSubmit={submit} className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+    <form onSubmit={submit} className="grid items-start gap-5">
       {dialog}
       <div className="flex min-w-0 flex-col gap-5">
         {!prescriberReady ? (
@@ -289,7 +289,7 @@ export default function PrescriptionForm({ patients, templates = [], initialPati
         </footer>
       </div>
 
-      <aside className="flex flex-col gap-3 xl:sticky xl:top-20">
+      <aside className="flex flex-col gap-5">
         {patient ? (
           <div className="rounded-card border border-danger-border bg-danger-bg px-4 py-3.5">
             <p className="mb-1 text-[13px] font-bold text-danger">Careful with</p>

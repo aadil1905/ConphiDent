@@ -65,7 +65,7 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
     <WorkPage
       title="New invoice"
       sub="Bill the work you did. It attaches to the visit you pick — or stands on its own if there is none."
-      aside={
+      context={
         <>
           <RailCard title="This document">
             <div className="flex items-baseline justify-between gap-2 text-[13px]">

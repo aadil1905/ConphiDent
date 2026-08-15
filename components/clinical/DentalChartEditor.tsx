@@ -268,7 +268,7 @@ export default function DentalChartEditor({
         : `${selectedTeeth.length} teeth`;
 
   return (
-    <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="grid items-start gap-5">
       <div className="flex min-w-0 flex-col gap-5">
         <section className="rounded-card border border-border bg-card p-4.5 shadow-[var(--shadow)] sm:p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -425,7 +425,7 @@ export default function DentalChartEditor({
         </details>
       </div>
 
-      <aside className="flex flex-col gap-3 xl:sticky xl:top-20">
+      <aside className="flex flex-col gap-5">
         <div className="flex flex-col gap-3 rounded-card border border-primary/25 bg-card p-4 shadow-[var(--shadow)]">
           <h2 className="text-[15px] font-semibold text-heading">Record on {selectionLabel}</h2>
 

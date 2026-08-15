@@ -359,7 +359,7 @@ export default async function Patient360Page({
         </div>
       </header>
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid items-start gap-5">
         <div className="flex min-w-0 flex-col gap-5">
           {tab === "Overview" && (
             <Card>
@@ -764,7 +764,7 @@ export default async function Patient360Page({
           )}
         </div>
 
-        <aside className="flex flex-col gap-3 xl:sticky xl:top-20">
+        <aside className="flex flex-col gap-5">
           <div className="flex flex-col gap-2.5 rounded-card border border-border bg-card p-4 shadow-[var(--shadow)]">
             <p className="text-[13px] font-semibold text-heading">Forms and consent</p>
 
