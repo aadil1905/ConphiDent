@@ -1,8 +1,16 @@
 # Handoff — where to pick up
 
-Branch `phase-b-redesign`, committed at `8a59d3d`. `npm run verify` (18 steps,
-161 tests) and `npm run build` both exit 0. **Not yet deployed** — the deploy
-command was blocked by a permission guard and needs Aadil to run or approve it.
+Branch `phase-b-redesign`. `npm run verify` (18 steps, 161 tests) and
+`npm run build` both exit 0.
+
+**Deployed to production on 2026-08-17** (`dpl_C536R6TVN3RPn7Bnhs1R38BjnjAo`).
+Verified live: `/api/health` returns `ok` with a 294ms database round-trip,
+which is the proof the tenant guard is in the query path and not blocking; all
+nine marketing routes and `/login` return 200.
+
+`TENANT_GUARD_MODE` is **unset in production**, so the guard is in `report`
+mode — an unscoped query still runs and is logged rather than refused. That was
+the intended first deploy. Setting it to `enforce` is the remaining step.
 
 **One migration is written and deliberately NOT applied**, and it destroys data:
 `CLINICAL_RECORD_REMOVAL_MIGRATION.sql` in the repository root. Read it before
@@ -290,10 +298,10 @@ that choice open.
 
 ## Next, in priority order
 
-1. **Deploy.** Everything below is committed and green but not live; production
-   still runs the old code. `npx vercel deploy --prod` from this folder. The
-   deploy is safe with respect to data — no file was placed in
-   `prisma/migrations/`, so `prisma migrate deploy` has nothing to apply.
+1. **Watch for `tenant.unscoped-query` in the logs, then flip the guard.** A
+   week of clean traffic, then `TENANT_GUARD_MODE=enforce`. Until that happens
+   the isolation work is only half-landed: it reports, it does not refuse.
+   Setting `ERROR_WEBHOOK_URL` first is what makes those events reach a person.
 
 2. **Decide the drop migration.** `CLINICAL_RECORD_REMOVAL_MIGRATION.sql` is
    written and unapplied. Until it runs the app ignores the table and the rows
