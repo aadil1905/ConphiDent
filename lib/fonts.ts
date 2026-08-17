@@ -15,16 +15,26 @@ import { Inter, Plus_Jakarta_Sans } from "next/font/google";
  * display size wants roughly -0.03em. Headings look untouched but loose if the
  * old values are left behind.
  */
+/**
+ * No `weight` array on either, deliberately.
+ *
+ * Listing weights makes `next/font` fetch one static file per weight — seven
+ * files, about 157KB, measured on the live site. Omitting it fetches the
+ * variable font instead: one file per family covering the whole axis. Fewer
+ * requests and less total weight, which is what matters for a clinic opening
+ * this on mobile data.
+ *
+ * An 800 was being shipped and never used; nothing in marketing.css or
+ * portal.css asks for a weight above 700.
+ */
 export const displayFont = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  weight: ["600", "700", "800"],
   variable: "--font-display",
   display: "swap",
 });
 
 export const bodyFont = Inter({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
   variable: "--font-body",
   display: "swap",
 });
