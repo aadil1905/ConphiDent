@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Building2, Download, FileClock, KeyRound, Lock, ShieldCheck, UserCog } from "lucide-react";
-import { Aurora, Lift, Reveal, Stagger, WordReveal } from "@/components/marketing/Motion";
+import { Aurora, Lift, Reveal, Stagger, StaggerChild, WordReveal } from "@/components/marketing/Motion";
 import PublicShell, { SETUP_URL } from "@/components/marketing/PublicShell";
 
 export const metadata: Metadata = {
@@ -10,6 +10,40 @@ export const metadata: Metadata = {
     "How ConphiDent protects clinic data: per-clinic isolation, nine roles and twenty-two permissions, encrypted WhatsApp credentials, signature-verified webhooks, access-controlled clinical files, activity records and data export.",
   alternates: { canonical: "/security" },
 };
+
+/**
+ * The order is not editorial. It is the order `lib/tenant.ts` applies:
+ * requireApiUser -> can(role, permission) -> hasFeature(clinicId, feature),
+ * then the scoped query, then the audit write. The status codes are the ones
+ * the routes really return.
+ */
+const gates = [
+  {
+    step: "Session",
+    copy: "No valid session, no request. An account still owing a password change is stopped here too, before it can read anything.",
+    rejects: "401",
+  },
+  {
+    step: "Role",
+    copy: "Twenty-two permissions across nine roles, checked on the server for pages, server actions and API routes alike — never in the browser, where it could be skipped.",
+    rejects: "403",
+  },
+  {
+    step: "Module",
+    copy: "A clinic that has not enabled a module cannot reach it even with the right role. Entitlement and permission are separate questions and both are asked.",
+    rejects: "403",
+  },
+  {
+    step: "Clinic",
+    copy: "Every read and write carries the clinic resolved from the session, so a record belonging to another practice is not addressable from this one.",
+    rejects: "no rows",
+  },
+  {
+    step: "Record",
+    copy: "Sensitive actions write an audit row naming who did it and when. Clinical corrections supersede rather than overwrite, so the original stays readable.",
+    rejects: "kept",
+  },
+];
 
 const controls = [
   { icon: Building2, title: "Every record belongs to one clinic", copy: "Clinic context is resolved from the request and applied across the product's workflows. One clinic's patients, invoices, messages and images are not reachable from another clinic's session." },
@@ -71,6 +105,33 @@ export default function SecurityPage() {
       </section>
 
       <section className="mk-section on-tint">
+        <div className="cf-wrap">
+          <Reveal>
+            <div className="mk-section-heading">
+              <p className="mk-kicker">How a request is checked</p>
+              <h2 className="t-h2">Five gates, in this order, on every request.</h2>
+              <p className="t-lead">
+                Not a policy — the sequence the code runs. A request that fails any one of them
+                never reaches the next.
+              </p>
+            </div>
+          </Reveal>
+          <Stagger className="mk-gates" as="ul" step={0.07}>
+            {gates.map((gate, index) => (
+              <StaggerChild key={gate.step} as="li" className="mk-gate">
+                <span className="mk-gate-index" aria-hidden="true">{index + 1}</span>
+                <div>
+                  <h3>{gate.step}</h3>
+                  <p>{gate.copy}</p>
+                </div>
+                <span className="mk-gate-code">{gate.rejects}</span>
+              </StaggerChild>
+            ))}
+          </Stagger>
+        </div>
+      </section>
+
+      <section className="mk-section">
         <div className="cf-wrap mk-panel">
           <Reveal>
             <p className="mk-kicker">Accounts &amp; files</p>

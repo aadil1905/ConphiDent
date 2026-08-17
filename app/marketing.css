@@ -974,3 +974,47 @@
 @media (max-width: 780px) {
   .cf-public .mk-web { display: none; }
 }
+
+/* --- Request gates -------------------------------------------------------
+   An ordered list, kept as an <ol>-shaped <ul> of rows rather than a card grid,
+   because the order is the point: each gate runs only if the one above passed.
+   The rule between rows carries that sequence better than gaps between cards. */
+.cf-public .mk-gates { display: grid; margin: 0; padding: 0; border: 1px solid var(--c-border); border-radius: var(--r-tile); background: var(--c-surface); list-style: none; overflow: hidden; }
+.cf-public .mk-gate {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 18px;
+  border-top: 1px solid var(--c-border);
+  padding: 22px 24px;
+}
+.cf-public .mk-gate:first-child { border-top: 0; }
+.cf-public .mk-gate-index {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--c-muted);
+  color: var(--c-primary);
+  font-family: var(--font-display), sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+}
+.cf-public .mk-gate h3 { margin: 4px 0 0; font-size: 17px; }
+.cf-public .mk-gate p { margin: 6px 0 0; font-size: 14.5px; }
+.cf-public .mk-gate-code {
+  align-self: center;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-pill);
+  padding: 5px 12px;
+  color: var(--c-body);
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+@media (max-width: 780px) {
+  .cf-public .mk-gate { grid-template-columns: 34px minmax(0, 1fr); gap: 14px; padding: 18px; }
+  .cf-public .mk-gate-code { grid-column: 2; justify-self: start; margin-top: 10px; }
+}

@@ -6,10 +6,21 @@ import { ArrowRight, Menu, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion, useStuck, EASE } from "./Motion";
 
+/**
+ * Five destinations, and every one is a page that exists.
+ *
+ * The brief proposed Product / Solutions / AI + WhatsApp / Security /
+ * Resources / Pricing. Solutions, Resources and Pricing have no pages behind
+ * them and building empty ones to satisfy a menu would be advertising things
+ * the product does not have — the same rule that keeps invented testimonials
+ * off this site. "Platform" became "Product" because it says what the page is,
+ * and /whatsapp covers the assistant and the limits it runs under, so it is
+ * named for both.
+ */
 const links = [
-  ["Platform", "/product"],
+  ["Product", "/product"],
   ["Capabilities", "/features"],
-  ["WhatsApp", "/whatsapp"],
+  ["AI & WhatsApp", "/whatsapp"],
   ["Security", "/security"],
   ["About", "/about"],
 ] as const;
