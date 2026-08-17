@@ -3,7 +3,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   Activity, ArrowRight, BarChart3, CalendarDays, Check, CheckCircle2, FlaskConical,
-  IndianRupee, MessagesSquare, Package, Scan, ShieldCheck, Sprout, UsersRound, X,
+  IndianRupee, MessagesSquare, Package, Scan, ShieldCheck, Siren, Sprout, Stethoscope,
+  UsersRound, X,
 } from "lucide-react";
 import { Aurora, Lift, Parallax, Reveal, Stagger, StaggerChild, Tilt, WordReveal } from "@/components/marketing/Motion";
 import PlatformExplorer from "@/components/marketing/PlatformExplorer";
@@ -85,6 +86,43 @@ const modules = [
   { icon: Package, title: "Inventory & operations", copy: "Stock items, movement, expiry and low-stock awareness, purchase orders and vendors.", span: "span-3" },
   { icon: BarChart3, title: "Reports & analytics", copy: "Appointment, revenue, lead and follow-up reporting built from connected records, plus operational exports.", span: "span-4" },
   { icon: ShieldCheck, title: "AI Coach", copy: "AI-assisted workflow support grounded in your own approved clinic information.", span: "span-2" },
+];
+
+/**
+ * Each of these is a line in `lib/prompts.ts`, which is the system prompt the
+ * assistant actually runs under. Nothing here describes intent or roadmap.
+ */
+const aiBounds = [
+  {
+    icon: Stethoscope,
+    title: "It does not diagnose or prescribe",
+    copy: "No diagnosis, no medicines, no antibiotics, no guaranteed outcomes. Clinical judgement stays with your qualified team.",
+  },
+  {
+    icon: Siren,
+    title: "Emergencies go to a person",
+    copy: "Severe swelling, uncontrolled bleeding, facial injury, difficulty breathing or a knocked-out tooth all get the same answer: seek immediate care.",
+  },
+  {
+    icon: IndianRupee,
+    title: "It cannot invent commercial terms",
+    copy: "No made-up prices, no imagined insurance cover, no EMI offers, no promotions, and no doctor availability your clinic has not configured.",
+  },
+  {
+    icon: CalendarDays,
+    title: "It never says a slot is held",
+    copy: "A time is only ever described as reserved once the booking flow has actually confirmed it against the diary.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "It answers from your approved list",
+    copy: "Services, fees, timings and FAQ answers come from your own clinic configuration — not from the model's general knowledge of dentistry.",
+  },
+  {
+    icon: MessagesSquare,
+    title: "The thread is kept",
+    copy: "Every conversation stays on the record for continuity and review, so a handover to a human starts with the full context.",
+  },
 ];
 
 const without = [
@@ -237,6 +275,42 @@ export default async function Home() {
       <PlatformExplorer />
 
       <section className="mk-section">
+        <div className="cf-wrap">
+          <Reveal>
+            <div className="mk-section-heading is-centered">
+              <p className="mk-kicker">How the automation is bounded</p>
+              <h2 className="t-h2">The limits are written down, not left to its judgement.</h2>
+              <p className="t-lead" style={{ marginTop: 18 }}>
+                An assistant that answers patients has to be wrong in safe directions. These
+                constraints are instructions the model runs under on every message, not a policy
+                page — and they are the same on the first message of the day and the four
+                hundredth.
+              </p>
+            </div>
+          </Reveal>
+
+          <Stagger className="mk-grid-3" step={0.06}>
+            {aiBounds.map((bound) => (
+              <Lift key={bound.title}>
+                <span className="mk-tile-icon"><bound.icon /></span>
+                <h3>{bound.title}</h3>
+                <p>{bound.copy}</p>
+              </Lift>
+            ))}
+          </Stagger>
+
+          <Reveal delay={0.1}>
+            <p className="mk-legal-note" style={{ marginTop: 28, textAlign: "center" }}>
+              It answers from the services, prices and opening hours you approved. Asked anything
+              outside them, it says a team member will confirm and offers an appointment rather
+              than guessing.{" "}
+              <Link href="/whatsapp" className="mk-text-link">See what it will and will not do <ArrowRight /></Link>
+            </p>
+          </Reveal>
+        </div>
+      </section>
+
+      <section className="mk-section on-tint">
         <div className="cf-wrap">
           <Reveal>
             <div className="mk-section-heading is-centered">
