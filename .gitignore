@@ -51,3 +51,8 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# One-off maintenance scripts. tmp-delete-tenants.mjs deletes whole clinics
+# and their children — it is somebody's scratch file, not part of the product,
+# and it must not sit in the repository where it can be run by mistake.
+tmp-*.mjs
