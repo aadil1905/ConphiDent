@@ -940,3 +940,37 @@
   .cf-public .mk-explorer-stage .mk-window-bar,
   .cf-public .mk-explorer-stage .mk-visual-body { transform: none; }
 }
+
+/* --- Connected record diagram -------------------------------------------
+   Hub and spokes for "one patient record underneath". Sized by its viewBox so
+   it scales without a media query; below the phone breakpoint it is dropped
+   entirely, because ten labels around an ellipse at 375px is unreadable and
+   the grid beneath already says the same thing in text. */
+.cf-public .mk-web { margin: 0 0 var(--s-3); }
+.cf-public .mk-web-svg { display: block; width: 100%; height: auto; overflow: visible; }
+.cf-public .mk-web-line { stroke: var(--c-border-strong); stroke-width: 1.25; }
+.cf-public .mk-web-node { fill: var(--c-surface); stroke: var(--c-primary); stroke-width: 2; }
+.cf-public .mk-web-label {
+  fill: var(--c-body);
+  font-family: var(--font-body), Inter, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+}
+.cf-public .mk-web-hub { fill: var(--c-primary); }
+.cf-public .mk-web-hub-label {
+  fill: #fff;
+  font-family: var(--font-display), sans-serif;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+}
+.cf-public .mk-web-hub-sub {
+  fill: rgba(255, 255, 255, .82);
+  font-family: var(--font-body), Inter, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+@media (max-width: 780px) {
+  .cf-public .mk-web { display: none; }
+}

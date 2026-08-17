@@ -7,6 +7,7 @@ import {
   UsersRound, X,
 } from "lucide-react";
 import { Aurora, Lift, Parallax, Reveal, Stagger, StaggerChild, Tilt, WordReveal } from "@/components/marketing/Motion";
+import ConnectedRecord from "@/components/marketing/ConnectedRecord";
 import PlatformExplorer from "@/components/marketing/PlatformExplorer";
 import { ProductVisual } from "@/components/marketing/ProductVisuals";
 import PublicShell, { SETUP_URL } from "@/components/marketing/PublicShell";
@@ -227,6 +228,8 @@ export default async function Home() {
               </p>
             </div>
           </Reveal>
+
+          <ConnectedRecord />
 
           <Stagger className="mk-bento">
             {modules.map((item) => (
