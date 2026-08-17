@@ -216,7 +216,7 @@
   position: relative;
   border-radius: var(--r-pill);
   padding: 9px 14px;
-  color: #3d565f;
+  color: #3f5163;
   font-size: 14.5px;
   font-weight: 600;
   text-decoration: none;
@@ -257,7 +257,7 @@
 .cf-public .mk-hero h1 em { color: var(--c-primary); font-style: normal; }
 /* Descendant, not child: motion wrappers sit between the hero and its copy. */
 .cf-public .mk-hero-copy .t-lead { max-width: 660px; margin: 26px 0 0; }
-.cf-public .mk-trust-line { display: flex; flex-wrap: wrap; gap: 12px 22px; margin-top: var(--s-2); color: #5d757e; font-size: 13px; font-weight: 600; }
+.cf-public .mk-trust-line { display: flex; flex-wrap: wrap; gap: 12px 22px; margin-top: var(--s-2); color: #516678; font-size: 13px; font-weight: 600; }
 .cf-public .mk-trust-line span { display: inline-flex; align-items: center; gap: 7px; }
 .cf-public .mk-trust-line svg { width: 15px; color: var(--c-success); }
 
@@ -279,11 +279,11 @@
   height: 38px;
   padding: 0 15px;
   border-bottom: 1px solid var(--c-border);
-  background: #fbfdfe;
-  color: #7d959d;
+  background: #fafcff;
+  color: #5f7387;
   font-size: 11px;
 }
-.cf-public .mk-window-bar i { width: 8px; height: 8px; border-radius: 50%; background: #cfe2e7; }
+.cf-public .mk-window-bar i { width: 8px; height: 8px; border-radius: 50%; background: #d3dfeb; }
 .cf-public .mk-window-bar span { margin-left: 8px; font-weight: 600; }
 .cf-public .mk-frame figcaption {
   display: flex;
@@ -291,7 +291,7 @@
   gap: 8px;
   padding: 13px 18px;
   border-top: 1px solid var(--c-border);
-  color: #607981;
+  color: #576d82;
   font-size: 12.5px;
 }
 .cf-public .mk-frame figcaption svg { width: 15px; color: var(--c-primary); }
@@ -299,8 +299,19 @@
 /* --- Section furniture --------------------------------------------------- */
 .cf-public .mk-section { padding: var(--section) 0; }
 .cf-public .mk-section.on-tint { background: var(--c-tint); }
-.cf-public .mk-section.on-ink { background: var(--c-ink); color: #b8ccd3; }
+.cf-public .mk-section.on-ink { background: var(--c-ink); color: #b6c9db; }
 .cf-public .on-ink h1, .cf-public .on-ink h2, .cf-public .on-ink h3 { color: #fff; }
+/* ...except inside a light card. A dark section can hold white cards, and the
+   blanket rule above painted their headings white on white — six of them on
+   /whatsapp were invisible, in the section that explains what the assistant
+   deliberately will not do. The body copy showed and the heading did not, so
+   the cards read as unlabelled paragraphs rather than as broken. */
+.cf-public .on-ink .mk-grid-3 > article h3,
+.cf-public .on-ink .mk-grid-2 > article h3,
+.cf-public .on-ink .mk-grid-3 > article h2,
+.cf-public .on-ink .mk-grid-2 > article h2,
+.cf-public .on-ink .mk-bento > article:not(.is-ink) h3,
+.cf-public .on-ink .mk-compare article h3 { color: var(--c-ink); }
 .cf-public .mk-section-heading { max-width: 760px; margin-bottom: var(--s-3); }
 .cf-public .mk-section-heading h2 { margin: 16px 0 0; }
 .cf-public .mk-section-heading > p:last-child { margin: 18px 0 0; }
@@ -362,7 +373,7 @@
 .cf-public .mk-bento > article.span-3 { grid-column: span 3; }
 .cf-public .mk-bento > article.span-4 { grid-column: span 4; }
 .cf-public .mk-bento > article.span-6 { grid-column: span 6; }
-.cf-public .mk-bento > article.is-ink { border-color: transparent; background: var(--c-ink); color: #b8ccd3; }
+.cf-public .mk-bento > article.is-ink { border-color: transparent; background: var(--c-ink); color: #b6c9db; }
 .cf-public .mk-bento > article.is-tint { background: var(--c-tint); }
 .cf-public .mk-tile-icon {
   display: grid;
@@ -391,7 +402,7 @@
   border-radius: var(--r-pill);
   background: #fff;
   padding: 0 18px;
-  color: #56707a;
+  color: #4e6478;
   font-family: var(--font-body), sans-serif;
   font-size: 14px;
   font-weight: 600;
@@ -422,12 +433,12 @@
 /* --- Comparison ---------------------------------------------------------- */
 .cf-public .mk-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 .cf-public .mk-compare article { border: 1px solid var(--c-border); border-radius: var(--r-tile); background: #fff; padding: 28px; }
-.cf-public .mk-compare article.is-good { border-color: #bfe0d3; background: #f4fbf8; }
-.cf-public .mk-compare-label { display: flex; align-items: center; gap: 9px; margin: 0 0 8px; font-size: 13px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #8a5a5f; }
+.cf-public .mk-compare article.is-good { border-color: #bfe3dd; background: #f2fbf9; }
+.cf-public .mk-compare-label { display: flex; align-items: center; gap: 9px; margin: 0 0 8px; font-size: 13px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #a04552; }
 .cf-public .is-good .mk-compare-label { color: var(--c-success); }
 .cf-public .mk-compare-label svg { width: 17px; }
 .cf-public .mk-compare article > div { display: flex; align-items: flex-start; gap: 11px; border-top: 1px solid rgba(71, 97, 107, .11); padding: 14px 0; font-size: 14.5px; }
-.cf-public .mk-compare article > div svg { width: 16px; margin-top: 3px; flex: 0 0 auto; color: #b2686e; }
+.cf-public .mk-compare article > div svg { width: 16px; margin-top: 3px; flex: 0 0 auto; color: #a04552; }
 .cf-public .is-good > div svg { color: var(--c-success); }
 
 /* --- WhatsApp thread demo ------------------------------------------------ */
@@ -438,7 +449,7 @@
   min-height: 420px;
   border: 1px solid var(--c-border);
   border-radius: var(--r-tile);
-  background: #eef6f3;
+  background: #eef7f5;
   padding: 20px;
   box-shadow: var(--e-2);
 }
@@ -458,6 +469,9 @@
 .cf-public .mk-thread-head .mk-avatar svg { width: 19px; }
 .cf-public .mk-thread-head b { display: block; color: var(--c-ink); font-size: 14.5px; }
 .cf-public .on-ink .mk-thread-head b { color: #fff; }
+/* --c-success is mixed for white and drops to 3.2:1 on the ink ground the
+   thread sits on in dark sections. The light pair is the same hue. */
+.cf-public .on-ink .mk-thread-head small { color: #5eead4; }
 .cf-public .mk-thread-head small { font-size: 12px; color: var(--c-success); font-weight: 600; }
 .cf-public .mk-bubble {
   max-width: 82%;
@@ -467,8 +481,8 @@
   line-height: 1.55;
   box-shadow: var(--e-1);
 }
-.cf-public .mk-bubble.is-in { align-self: flex-start; border-bottom-left-radius: 5px; background: #fff; color: #2f4a53; }
-.cf-public .mk-bubble.is-out { align-self: flex-end; border-bottom-right-radius: 5px; background: #d4f3e2; color: #17403a; }
+.cf-public .mk-bubble.is-in { align-self: flex-start; border-bottom-left-radius: 5px; background: #fff; color: #28404f; }
+.cf-public .mk-bubble.is-out { align-self: flex-end; border-bottom-right-radius: 5px; background: #cfeee9; color: #123f45; }
 .cf-public .mk-bubble b { display: block; color: var(--c-ink); font-size: 12px; }
 .cf-public .mk-bubble .mk-chiprow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
 .cf-public .mk-bubble .mk-chiprow i {
@@ -482,7 +496,7 @@
   font-weight: 600;
 }
 .cf-public .mk-typing { display: inline-flex; gap: 4px; align-self: flex-start; border-radius: 16px; border-bottom-left-radius: 5px; background: #fff; padding: 13px 15px; box-shadow: var(--e-1); }
-.cf-public .mk-typing i { width: 7px; height: 7px; border-radius: 50%; background: #9fb9c0; }
+.cf-public .mk-typing i { width: 7px; height: 7px; border-radius: 50%; background: #b6c9db; }
 
 /* --- Steps --------------------------------------------------------------- */
 .cf-public .mk-steps { display: grid; gap: 2px; counter-reset: step; }
@@ -529,7 +543,7 @@
 .cf-public .mk-grid-3 > article > svg { width: 24px; color: var(--c-success); }
 
 /* --- Final CTA ----------------------------------------------------------- */
-.cf-public .mk-final { position: relative; overflow: hidden; padding: var(--section) 0; background: var(--c-ink); color: #b8ccd3; text-align: center; }
+.cf-public .mk-final { position: relative; overflow: hidden; padding: var(--section) 0; background: var(--c-ink); color: #b6c9db; text-align: center; }
 .cf-public .mk-final .cf-wrap { position: relative; z-index: 2; max-width: 780px; }
 .cf-public .mk-final h2 { color: #fff; }
 .cf-public .mk-final p:not(.mk-kicker) { margin: 18px auto 0; }
@@ -555,7 +569,7 @@
   min-height: 48px;
   border: 1px solid var(--c-border);
   border-radius: var(--r-control);
-  background: #fbfdfe;
+  background: #fafcff;
   padding: 12px 14px;
   color: var(--c-ink);
   font-family: var(--font-body), sans-serif;
@@ -566,15 +580,15 @@
 .cf-public .cf-form select:focus,
 .cf-public .cf-form textarea:focus { border-color: var(--c-primary); box-shadow: 0 0 0 3px rgba(14, 116, 144, .14); outline: none; }
 .cf-public .cf-form input[aria-invalid="true"],
-.cf-public .cf-form select[aria-invalid="true"] { border-color: #b3454f; background: #fff8f8; }
-.cf-public .cf-field-error { display: flex; align-items: center; gap: 6px; color: #9d3b45; font-size: 12.5px; font-weight: 600; }
+.cf-public .cf-form select[aria-invalid="true"] { border-color: #a04552; background: #fff8f8; }
+.cf-public .cf-field-error { display: flex; align-items: center; gap: 6px; color: #8f3b47; font-size: 12.5px; font-weight: 600; }
 .cf-public .cf-field-error svg { width: 14px; }
 .cf-public .cf-form-wide, .cf-public .cf-form-note, .cf-public .cf-form-error, .cf-public .cf-form > .mk-button { grid-column: 1 / -1; }
-.cf-public .cf-form-note { margin: 0; color: #6d858d; font-size: 12.5px; }
-.cf-public .cf-form-error { display: flex; align-items: center; gap: 8px; margin: 0; border: 1px solid #e8c3c6; border-radius: var(--r-control); background: #fff5f5; padding: 12px 14px; color: #9d3b45; font-size: 13.5px; }
+.cf-public .cf-form-note { margin: 0; color: #576d82; font-size: 12.5px; }
+.cf-public .cf-form-error { display: flex; align-items: center; gap: 8px; margin: 0; border: 1px solid #e6c6cc; border-radius: var(--r-control); background: #fff5f5; padding: 12px 14px; color: #8f3b47; font-size: 13.5px; }
 .cf-public .cf-form-error svg { width: 17px; flex: 0 0 auto; }
 .cf-public .cf-honeypot { position: absolute; left: -9999px; }
-.cf-public .cf-form-success { border: 1px solid #bfe0d3; border-radius: var(--r-tile); background: #fff; padding: 44px 32px; text-align: center; box-shadow: var(--e-2); }
+.cf-public .cf-form-success { border: 1px solid #bfe3dd; border-radius: var(--r-tile); background: #fff; padding: 44px 32px; text-align: center; box-shadow: var(--e-2); }
 .cf-public .cf-form-success > svg { width: 40px; color: var(--c-success); }
 .cf-public .cf-form-success h3 { margin: 18px 0 0; font-size: 26px; }
 .cf-public .cf-form-success p { margin: 10px auto 0; max-width: 420px; }
@@ -588,7 +602,7 @@
   box-shadow: var(--e-2);
 }
 .cf-public .cf-wizard-rail { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 0 0 24px; padding: 0 0 20px; border-bottom: 1px solid var(--c-border); list-style: none; }
-.cf-public .cf-wizard-rail li { display: inline-flex; align-items: center; gap: 9px; color: #7b8d93; font-size: 13px; font-weight: 600; }
+.cf-public .cf-wizard-rail li { display: inline-flex; align-items: center; gap: 9px; color: #5f7387; font-size: 13px; font-weight: 600; }
 .cf-public .cf-wizard-rail li span {
   display: grid;
   width: 24px;
@@ -603,7 +617,7 @@
 .cf-public .cf-wizard-rail li.is-done { color: var(--c-success); }
 .cf-public .cf-wizard-rail li.is-done span { border-color: var(--c-success); color: var(--c-success); }
 .cf-public .cf-wizard-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 24px; }
-.cf-public .cf-optional { color: #8b9ba1; font-weight: 400; }
+.cf-public .cf-optional { color: #5f7387; font-weight: 400; }
 .cf-public .mk-aside { border-left: 2px solid var(--c-gold); padding-left: 22px; }
 
 /* --- Footer -------------------------------------------------------------- */
@@ -613,7 +627,7 @@
 .cf-public .cf-footer .mk-footer-brand { display: block; }
 .cf-public .cf-footer .mk-footer-brand .cf-logo { margin-bottom: 16px; }
 .cf-public .cf-footer .mk-footer-brand p { max-width: 300px; margin: 0; font-size: 14.5px; }
-.cf-public .cf-footer .mk-footer-brand span { display: block; margin-top: 14px; color: #7d939b; font-size: 12px; }
+.cf-public .cf-footer .mk-footer-brand span { display: block; margin-top: 14px; color: #5c7288; font-size: 12px; }
 .cf-public .cf-footer b { color: var(--c-ink); font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
 /* A footer link was a 22px-tall strip with 11px of grid gap either side, which
    is under the 24px WCAG target minimum and far under the 44px a thumb wants.
@@ -623,12 +637,12 @@
   display: inline-flex;
   align-items: center;
   min-height: 24px;
-  color: #5c757e;
+  color: #546a7d;
   font-size: 14px;
   text-decoration: none;
 }
 .cf-public .cf-footer a:hover { color: var(--c-primary); }
-.cf-public .cf-footer small { grid-column: 1 / -1; border-top: 1px solid var(--c-border); padding: 22px 0; color: #7d939b; font-size: 12.5px; }
+.cf-public .cf-footer small { grid-column: 1 / -1; border-top: 1px solid var(--c-border); padding: 22px 0; color: #5c7288; font-size: 12.5px; }
 
 /* --- Compact page hero (legal and secondary pages) ----------------------- */
 .cf-public .mk-page-hero {
@@ -648,7 +662,7 @@
 .cf-public .mk-legal { padding: var(--s-5) 0 var(--s-6); }
 .cf-public .mk-legal h2 { margin: var(--s-2) 0 0; font-size: 24px; }
 .cf-public .mk-legal p, .cf-public .mk-legal li { margin: 12px 0 0; font-size: 15.5px; line-height: 1.75; }
-.cf-public .mk-legal-note { color: #7b8f97; font-size: 13px; }
+.cf-public .mk-legal-note { color: #5f7387; font-size: 13px; }
 
 /* ==========================================================================
    Animated interface illustrations (ProductVisuals.tsx)
@@ -662,7 +676,7 @@
 .cf-public .mk-vs-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .cf-public .mk-vs-stat { border: 1px solid var(--c-border); border-radius: var(--r-card); background: #fff; padding: 14px; }
 .cf-public .mk-vs-stat b { display: block; margin-top: 10px; color: var(--c-ink); font-family: var(--font-display), sans-serif; font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
-.cf-public .mk-vs-stat small { color: #6d858d; font-size: 12px; }
+.cf-public .mk-vs-stat small { color: #576d82; font-size: 12px; }
 .cf-public .mk-vs-ico { display: grid; width: 32px; height: 32px; place-items: center; border-radius: 9px; background: var(--c-muted); color: var(--c-primary); }
 .cf-public .mk-vs-ico svg { width: 16px; }
 
@@ -683,67 +697,67 @@
 .cf-public .mk-vs-row em { color: var(--c-ink); font-size: 12.5px; font-style: normal; font-weight: 700; }
 .cf-public .mk-vs-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c-primary); }
 .cf-public .mk-vs-row b, .cf-public .mk-vs-case b, .cf-public .mk-vs-stock b { display: block; color: var(--c-ink); font-size: 13.5px; }
-.cf-public .mk-vs-row small, .cf-public .mk-vs-case small { color: #6d858d; font-size: 12px; }
+.cf-public .mk-vs-row small, .cf-public .mk-vs-case small { color: #576d82; font-size: 12px; }
 .cf-public .mk-vs-pill {
   border: 1px solid var(--c-border);
   border-radius: var(--r-pill);
   background: #f7fbfc;
   padding: 4px 10px;
-  color: #526c76;
+  color: #4e6478;
   font-size: 11.5px;
   font-style: normal;
   font-weight: 600;
   white-space: nowrap;
 }
-.cf-public .mk-vs-pill.is-good { border-color: #bfe0d3; background: #f0faf5; color: var(--c-success); }
-.cf-public .mk-vs-pill.is-late { border-color: #e8c6c9; background: #fdf4f4; color: #9d3b45; }
+.cf-public .mk-vs-pill.is-good { border-color: #bfe3dd; background: #f1fbf9; color: var(--c-success); }
+.cf-public .mk-vs-pill.is-late { border-color: #e6c6cc; background: #fdf4f4; color: #8f3b47; }
 
 .cf-public .mk-vs-bar { display: block; height: 5px; margin-top: 8px; border-radius: 4px; background: var(--c-muted); overflow: hidden; }
 .cf-public .mk-vs-bar i { display: block; height: 100%; border-radius: 4px; background: var(--c-primary); }
 .cf-public .mk-vs-bar i.is-warn { background: var(--c-gold); }
-.cf-public .mk-vs-bar i.is-late { background: #b3454f; }
+.cf-public .mk-vs-bar i.is-late { background: #a04552; }
 
 /* Calendar ---------------------------------------------------------------- */
 .cf-public .mk-vs-cal { display: grid; gap: 8px; }
-.cf-public .mk-vs-cal-head { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; color: #6d858d; font-size: 11.5px; font-weight: 700; text-align: center; }
+.cf-public .mk-vs-cal-head { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; color: #576d82; font-size: 11.5px; font-weight: 700; text-align: center; }
 .cf-public .mk-vs-cal-grid { display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(5, 34px); gap: 6px; }
 .cf-public .mk-vs-cal-col { display: grid; grid-row: 1 / -1; grid-auto-rows: 34px; gap: 6px; }
 .cf-public .mk-vs-cal-slot { display: block; border: 1px dashed var(--c-border); border-radius: 8px; }
 .cf-public .mk-vs-cal-block { border-radius: 8px; background: var(--c-primary); opacity: .9; transform-origin: top; }
-.cf-public .mk-vs-cal-block.tone-b { background: #159a9c; }
+.cf-public .mk-vs-cal-block.tone-b { background: #22a3c4; }
 .cf-public .mk-vs-cal-block.tone-c { background: var(--c-gold); }
 
 /* Patient ----------------------------------------------------------------- */
 .cf-public .mk-vs-patient { display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 12px; border: 1px solid var(--c-border); border-radius: var(--r-card); background: #fff; padding: 14px; }
 .cf-public .mk-vs-avatar { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 50%; background: var(--c-primary); color: #fff; font-size: 14px; font-weight: 700; }
 .cf-public .mk-vs-patient b { display: block; color: var(--c-ink); font-size: 15px; }
-.cf-public .mk-vs-patient small { color: #6d858d; font-size: 12px; }
+.cf-public .mk-vs-patient small { color: #576d82; font-size: 12px; }
 .cf-public .mk-vs-tabrow { display: flex; flex-wrap: wrap; gap: 6px; }
-.cf-public .mk-vs-tabrow span { border: 1px solid var(--c-border); border-radius: var(--r-pill); background: #fff; padding: 6px 12px; color: #6d858d; font-size: 12px; font-weight: 600; }
+.cf-public .mk-vs-tabrow span { border: 1px solid var(--c-border); border-radius: var(--r-pill); background: #fff; padding: 6px 12px; color: #576d82; font-size: 12px; font-weight: 600; }
 .cf-public .mk-vs-tabrow span.is-on { border-color: var(--c-primary); background: var(--c-primary); color: #fff; }
 .cf-public .mk-vs-timeline { display: grid; gap: 2px; border: 1px solid var(--c-border); border-radius: var(--r-card); background: #fff; padding: 4px 14px; }
 .cf-public .mk-vs-tl-row { display: grid; grid-template-columns: 62px 1fr; gap: 12px; border-top: 1px solid var(--c-border); padding: 11px 0; }
 .cf-public .mk-vs-tl-row:first-child { border-top: 0; }
 .cf-public .mk-vs-tl-row em { color: var(--c-primary); font-size: 12px; font-style: normal; font-weight: 700; }
 .cf-public .mk-vs-tl-row b { display: block; color: var(--c-ink); font-size: 13.5px; }
-.cf-public .mk-vs-tl-row small { color: #6d858d; font-size: 12px; }
+.cf-public .mk-vs-tl-row small { color: #576d82; font-size: 12px; }
 
 /* Dental arch ------------------------------------------------------------- */
 .cf-public .mk-vs-arch { display: block; width: 100%; height: auto; border: 1px solid var(--c-border); border-radius: var(--r-card); background: #fff; padding: 8px; }
 .cf-public .mk-vs-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; }
-.cf-public .mk-vs-legend span { display: inline-flex; align-items: center; gap: 7px; color: #526c76; font-size: 12px; font-weight: 600; }
+.cf-public .mk-vs-legend span { display: inline-flex; align-items: center; gap: 7px; color: #4e6478; font-size: 12px; font-weight: 600; }
 .cf-public .mk-vs-legend i { width: 11px; height: 11px; border-radius: 3px; }
 .cf-public .mk-vs-note { border: 1px solid var(--c-border); border-left: 3px solid var(--c-primary); border-radius: var(--r-card); background: #fff; padding: 13px 15px; }
 .cf-public .mk-vs-note b { color: var(--c-primary); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; }
-.cf-public .mk-vs-note p { margin: 6px 0 0; color: #46626c; font-size: 13.5px; line-height: 1.6; }
+.cf-public .mk-vs-note p { margin: 6px 0 0; color: #475a6b; font-size: 13.5px; line-height: 1.6; }
 
 /* Invoice ----------------------------------------------------------------- */
 .cf-public .mk-vs-invoice-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--c-border); border-radius: var(--r-card); background: #fff; padding: 14px; }
 .cf-public .mk-vs-invoice-head b { display: block; color: var(--c-ink); font-size: 14.5px; }
-.cf-public .mk-vs-invoice-head small { color: #6d858d; font-size: 12px; }
+.cf-public .mk-vs-invoice-head small { color: #576d82; font-size: 12px; }
 .cf-public .mk-vs-stamp { border: 2px solid var(--c-success); border-radius: 8px; padding: 4px 12px; color: var(--c-success); font-size: 13px; font-style: normal; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .cf-public .mk-vs-lines { border: 1px solid var(--c-border); border-radius: var(--r-card); background: #fff; padding: 4px 14px; }
-.cf-public .mk-vs-line { display: flex; align-items: center; justify-content: space-between; gap: 14px; border-top: 1px solid var(--c-border); padding: 11px 0; color: #46626c; font-size: 13.5px; }
+.cf-public .mk-vs-line { display: flex; align-items: center; justify-content: space-between; gap: 14px; border-top: 1px solid var(--c-border); padding: 11px 0; color: #475a6b; font-size: 13.5px; }
 .cf-public .mk-vs-line:first-child { border-top: 0; }
 .cf-public .mk-vs-line em { color: var(--c-ink); font-style: normal; font-weight: 600; }
 .cf-public .mk-vs-line.is-total { color: var(--c-ink); font-weight: 700; }
@@ -753,10 +767,10 @@
 .cf-public .mk-vs-payrow svg { width: 14px; }
 
 /* Imaging ----------------------------------------------------------------- */
-.cf-public .mk-vs-xray { overflow: hidden; border-radius: var(--r-card); background: #071c23; }
+.cf-public .mk-vs-xray { overflow: hidden; border-radius: var(--r-card); background: #071823; }
 .cf-public .mk-vs-xray svg { display: block; width: 100%; height: auto; }
 .cf-public .mk-vs-thumbs { display: flex; flex-wrap: wrap; gap: 8px; }
-.cf-public .mk-vs-thumbs span { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--c-border); border-radius: var(--r-pill); background: #fff; padding: 7px 12px; color: #526c76; font-size: 12px; font-weight: 600; }
+.cf-public .mk-vs-thumbs span { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--c-border); border-radius: var(--r-pill); background: #fff; padding: 7px 12px; color: #4e6478; font-size: 12px; font-weight: 600; }
 .cf-public .mk-vs-thumbs span.is-on { border-color: var(--c-primary); color: var(--c-primary); }
 .cf-public .mk-vs-thumbs svg { width: 14px; }
 
@@ -764,7 +778,7 @@
 .cf-public .mk-vs-chart { display: grid; grid-auto-flow: column; align-items: end; gap: 10px; height: 150px; border: 1px solid var(--c-border); border-radius: var(--r-card); background: #fff; padding: 14px; }
 .cf-public .mk-vs-chart span { display: grid; align-content: end; justify-items: center; gap: 7px; height: 100%; }
 .cf-public .mk-vs-chart i { display: block; width: 100%; max-width: 34px; border-radius: 6px 6px 2px 2px; background: linear-gradient(180deg, #22d3ee, var(--c-primary)); }
-.cf-public .mk-vs-chart em { color: #6d858d; font-size: 11px; font-style: normal; font-weight: 600; }
+.cf-public .mk-vs-chart em { color: #576d82; font-size: 11px; font-style: normal; font-weight: 600; }
 
 /* ==========================================================================
    Pinned journey
