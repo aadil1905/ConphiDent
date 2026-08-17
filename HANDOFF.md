@@ -294,6 +294,34 @@ whether patient data leaves the country — none of which are mine to make for a
 clinic. `ERROR_WEBHOOK_URL` gets the signal out of the black hole and leaves
 that choice open.
 
+### 10. The public site — two decisions taken, one job queued
+
+**Screenshots: asked, tried, declined.** The standing rule was that fresh
+captures were impossible without a login. On 2026-08-17 there *was* a login, so
+it was actually tested. Access is not the blocker; the data is. The clinical
+workspace renders an empty state until a dentition is confirmed, so the one
+screen that would sell the product photographs as an instruction. The dashboard
+carries treatment plans named `asd` and `vbn`. Only the patient record and the
+invoice look presentable. A sanitiser that swaps names, mobiles and the clinic
+address was written and works, and is deliberately not committed.
+
+Fixing it needs a demo tenant seeded with realistic data — a write to the shared
+Supabase. **Aadil declined.** The illustrated `ProductVisuals` stand. Do not
+re-propose screenshots without new seed data.
+
+**Register: switched to modern SaaS.** Asked twice, answered on 2026-08-17.
+`design-system/conphident/MASTER.md` still documents the heritage system and
+must be rewritten as part of the migration rather than left contradicting the
+site. Its contrast proofs are the starting point for the new palette, not the
+target.
+
+**Queued: the modern SaaS migration.** Deliberately not begun. It rewrites
+colour, type, radius and shadow across nine live pages, and a half-migrated
+design system on a healthy production site is worse than an un-migrated one.
+It wants a session with room to hold the whole system at once. Everything
+shipped so far is register-neutral — defect fixes, accessibility, SEO, depth —
+so none of it has to be redone.
+
 ---
 
 ## Next, in priority order
