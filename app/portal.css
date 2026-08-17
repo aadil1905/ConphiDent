@@ -54,18 +54,22 @@
   /* Set directly rather than through --font-sans: globals.css declares its
      fonts inside @theme inline, so Tailwind inlines the literal stack and a
      scoped custom-property override would never reach the utility. */
-  font-family: var(--font-body), "Source Sans 3", system-ui, sans-serif;
+  font-family: var(--font-body), Inter, system-ui, sans-serif;
 }
 
-/* Headings carry the serif, with the light tracking a serif wants. */
+/* Headings carry the display face. The fallback here was "Source Serif 4",
+   Georgia, serif and the tracking -.012em — both left over from the pairing
+   retired on 2026-08-17, so a failed webfont load dropped the portal into the
+   old register's serif, and the tracking was the value a serif wants rather
+   than a grotesque. Matched to the workspace, which runs the same size range. */
 .cf-portal h1,
 .cf-portal h2,
 .cf-portal h3,
 .cf-portal h4 {
   color: var(--heading);
-  font-family: var(--font-display), "Source Serif 4", Georgia, serif;
+  font-family: var(--font-display), "Plus Jakarta Sans", system-ui, sans-serif;
   font-weight: 600;
-  letter-spacing: -.012em;
+  letter-spacing: -.02em;
 }
 
 /* The ruled small-caps label from the public site, so section furniture

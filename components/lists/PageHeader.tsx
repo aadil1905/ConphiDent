@@ -15,7 +15,11 @@ export default function PageHeader({
   return (
     <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 print:hidden">
       <div className="min-w-0">
-        <h1 className="text-[length:var(--text-page)] leading-[var(--text-page-lh)] font-semibold tracking-[-0.01em] text-heading">
+        {/* -0.02em, matching the h1–h4 rule in globals.css. This was -0.01em, a
+            utility, so it outranked that rule and every page title in the
+            workspace kept the tracking the retired serif wanted rather than the
+            one Plus Jakarta Sans wants at 30px. */}
+        <h1 className="text-[length:var(--text-page)] leading-[var(--text-page-lh)] font-semibold tracking-[-0.02em] text-heading">
           {title}
         </h1>
         {sub && (

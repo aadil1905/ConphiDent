@@ -369,6 +369,24 @@
   }
 }
 
+/* The number on a stat tile carries the display face, the way the site's does.
+   `--text-metric` is consumed on nine dashboard pages — Today, Insights,
+   Billing, an invoice, Treatment plans, Laboratory, Operations, Launch and
+   WhatsApp settings — and every one renders it as a <p> or <span>, so the
+   biggest, most-looked-at figure on each screen inherited body Inter while
+   marketing.css sets its own equivalent (`.mk-vs-stat b`) in Plus Jakarta Sans.
+   That is most of why the two surfaces read differently even now that they
+   share a pairing: the workspace was barely showing the display face at all.
+
+   Targeted by attribute because the tiles use Tailwind arbitrary values rather
+   than a shared class, so the token name appears verbatim in `class`. One rule
+   instead of an edit in nine files, and any tile added later is covered.
+   Outside `@layer base` so it is not outranked by the utilities beside it. */
+.clinic-theme [class*="--text-metric"] {
+  font-family: var(--font-display), "Plus Jakarta Sans", system-ui, sans-serif;
+  letter-spacing: -.022em;
+}
+
 ::selection { background: color-mix(in oklab, var(--primary) 22%, white); }
 
 /* Anything printed is paper: no shell chrome, no tinted ground, no shadows. */
