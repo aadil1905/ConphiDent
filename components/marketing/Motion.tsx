@@ -197,7 +197,25 @@ export function Lift({
   );
 }
 
-/** Counts up to `to` once the element is on screen. */
+/**
+ * Counts up to `to` once the element is on screen.
+ *
+ * Two things here are load-bearing, and both were live bugs.
+ *
+ * **It must not wait for a scroll.** The hero's figures use this, and gating
+ * purely on `useInView` left them reading "0 visits today, 0 new patients, ₹0
+ * collected" until the visitor happened to scroll — the first frame of the site
+ * advertised an empty product. Anything already inside the viewport when it
+ * mounts starts immediately, so the observer only ever has to catch the
+ * counters further down the page.
+ *
+ * **It must settle on the real number when motion is reduced.** `useReducedMotion`
+ * resolves after the first render, so seeding state with `reduced ? to : 0` ran
+ * before the answer was known: a visitor with reduced motion got a permanent
+ * zero, because the effect below then returned early forever. The displayed
+ * figure is derived from `reduced` on every render instead of stored, so there
+ * is no render in which it can be wrong.
+ */
 export function Counter({
   to,
   suffix = "",
@@ -212,26 +230,38 @@ export function Counter({
   const reduced = useReducedMotion();
   const ref = useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true, margin: "0px 0px -15% 0px" });
-  const [value, setValue] = useState(reduced ? to : 0);
+  const [counted, setCounted] = useState(0);
 
   useEffect(() => {
-    if (reduced || !inView) return;
+    if (reduced) return;
+    const node = ref.current;
+    if (!node) return;
+    // Measured here rather than held in state: an element already on screen at
+    // mount must start now, and asking the DOM costs one read against a
+    // cascading render.
+    const box = node.getBoundingClientRect();
+    const onScreenNow = box.top < window.innerHeight && box.bottom > 0;
+    if (!inView && !onScreenNow) return;
     let frame = 0;
     const started = performance.now();
     const tick = (now: number) => {
       const progress = Math.min(1, (now - started) / duration);
       // Ease-out so the number settles rather than stopping dead.
-      setValue(Math.round(to * (1 - (1 - progress) ** 3)));
+      setCounted(Math.round(to * (1 - (1 - progress) ** 3)));
       if (progress < 1) frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
   }, [inView, reduced, to, duration]);
 
+  // Derived, not stored: with motion reduced the figure is simply the figure,
+  // and there is no render in which it is zero.
+  const shown = reduced ? to : counted;
+
   return (
     <span ref={ref}>
       {prefix}
-      {value.toLocaleString("en-IN")}
+      {shown.toLocaleString("en-IN")}
       {suffix}
     </span>
   );

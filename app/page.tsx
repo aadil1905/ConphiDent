@@ -13,10 +13,63 @@ import WhatsAppThread from "@/components/marketing/WhatsAppThread";
 import { tenantFromRequestHost } from "@/lib/platform";
 
 export const metadata: Metadata = {
-  title: "Dental clinic management software",
+  // Spelled out in full rather than relying on the root layout's "%s |
+  // ConphiDent" template: a title template applies to child segments, never to
+  // the segment that declares it, and `app/page.tsx` sits in the same segment
+  // as `app/layout.tsx`. The homepage was therefore the one page on the site
+  // whose <title> carried no brand at all.
+  title: "Dental clinic management software | ConphiDent",
   description:
     "ConphiDent is the connected operating system for modern dental clinics — WhatsApp automation, appointments, patient records, dental charting, prescriptions, billing, laboratory, imaging, inventory and reporting in one workspace.",
   alternates: { canonical: "/" },
+};
+
+/**
+ * Structured data.
+ *
+ * Deliberately thin: `aggregateRating`, `review` and `offers` are the fields
+ * that earn rich results, and every one of them would have to be invented —
+ * there are no verified ratings, reviews or published prices. Google penalises
+ * fabricated review markup, and the inventory records that no testimonials or
+ * statistics exist. What is here is checkable against the site itself.
+ */
+const structuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://www.conphident.live/#organization",
+      name: "ConphiDent",
+      url: "https://www.conphident.live/",
+      logo: "https://www.conphident.live/conphident-logo-transparent.png",
+      description: "Clinic management software for dental practices.",
+      areaServed: "IN",
+    },
+    {
+      "@type": "SoftwareApplication",
+      name: "ConphiDent",
+      applicationCategory: "BusinessApplication",
+      applicationSubCategory: "Dental practice management software",
+      operatingSystem: "Web browser",
+      url: "https://www.conphident.live/",
+      publisher: { "@id": "https://www.conphident.live/#organization" },
+      description:
+        "ConphiDent connects WhatsApp, appointments, patient records, dental charting, prescriptions, billing, laboratory, imaging, inventory and reporting on one patient record.",
+      inLanguage: ["en", "hi", "mr"],
+      featureList: [
+        "WhatsApp automation and shared inbox",
+        "Appointment scheduling with conflict checks",
+        "Patient records and shareable intake links",
+        "Tooth-level dental charting",
+        "Treatment plans and prescriptions",
+        "Invoicing and payment recording",
+        "Laboratory case tracking",
+        "Imaging and side-by-side comparison",
+        "Inventory and purchase orders",
+        "Reporting and exports",
+      ],
+    },
+  ],
 };
 
 /** The thirteen modules in FEATURE_REGISTRY, named the way the app names them. */
@@ -59,6 +112,11 @@ export default async function Home() {
 
   return (
     <PublicShell>
+      <script
+        type="application/ld+json"
+        // The object is authored above and contains no user input.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       <section className="mk-hero">
         <Aurora />
         <div className="cf-wrap">

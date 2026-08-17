@@ -211,7 +211,11 @@
 }
 .cf-public .mk-desktop-nav a:hover { background: var(--c-muted); color: var(--c-ink); }
 .cf-public .mk-desktop-nav a[aria-current="page"] { color: var(--c-primary); }
+/* `white-space: nowrap` is the guarantee, not the breakpoint below it. A header
+   CTA that wraps mid-phrase reads as a broken page no matter how it happened. */
 .cf-public .cf-nav-actions { display: flex; align-items: center; gap: 12px; }
+.cf-public .cf-nav-actions a,
+.cf-public .mk-desktop-nav a { white-space: nowrap; }
 .cf-public .mk-menu-button, .cf-public .mk-mobile-nav { display: none; }
 
 /* --- Aurora atmosphere (decorative only) --------------------------------- */
@@ -748,19 +752,25 @@
 /* ==========================================================================
    Responsive
    ========================================================================== */
-@media (max-width: 1000px) {
+@media (max-width: 1100px) {
   .cf-public .mk-desktop-nav { gap: 2px; }
   .cf-public .mk-desktop-nav a { padding: 9px 10px; font-size: 14px; }
+  .cf-public .cf-nav .cf-wrap { gap: 20px; }
   .cf-public .mk-panel, .cf-public .mk-journey-stage { grid-template-columns: 1fr; gap: 36px; }
   .cf-public .mk-bento { grid-template-columns: repeat(4, 1fr); }
   .cf-public .mk-bento > article.span-6 { grid-column: span 4; }
   .cf-public .mk-grid-3 { grid-template-columns: repeat(2, 1fr); }
 }
 
-@media (max-width: 780px) {
-  .cf-public .cf-wrap, .cf-public .cf-wrap-narrow { width: min(100% - 32px, 1200px); }
+/* The desktop row needs about 1200px to sit on one line: brand 156 + five links
+   + two CTAs. It used to hand over to the menu button at 780px, so every width
+   from 780 to 1200 — most tablets and every small laptop — drew a header with
+   "Book a demo" broken across three lines.
+   Only the navigation swaps here. The layout rules below stay on the phone
+   breakpoint: collapsing the bento and switching off the pinned journey story
+   at 1160px would hand a tablet the phone layout. */
+@media (max-width: 1160px) {
   .cf-public .cf-nav .cf-wrap { grid-template-columns: 1fr auto; height: 68px; gap: 12px; }
-  .cf-public .mk-brand, .cf-public .cf-logo { width: 138px; }
   .cf-public .mk-desktop-nav, .cf-public .cf-nav-actions { display: none; }
   .cf-public .mk-menu-button {
     display: grid;
@@ -800,6 +810,11 @@
   }
   .cf-public .mk-mobile-nav a:hover { background: var(--c-muted); }
   .cf-public .mk-mobile-nav .mk-button { margin-top: 6px; }
+}
+
+@media (max-width: 780px) {
+  .cf-public .cf-wrap, .cf-public .cf-wrap-narrow { width: min(100% - 32px, 1200px); }
+  .cf-public .mk-brand, .cf-public .cf-logo { width: 138px; }
   .cf-public .mk-bento { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .cf-public .mk-bento > article,
   .cf-public .mk-bento > article.span-3,
