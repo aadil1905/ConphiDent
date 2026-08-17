@@ -1,6 +1,5 @@
-import { Prisma } from "@prisma/client";
 
-import { prisma } from "@/lib/prisma";
+import { prisma, type Db } from "@/lib/prisma";
 import {
   assertBookableClinicSlot,
   InvalidScheduleInputError,
@@ -10,7 +9,7 @@ import {
 } from "@/lib/scheduling-core";
 
 type SchedulingReader = Pick<
-  Prisma.TransactionClient,
+  Db,
   "clinicLocation" | "clinicProvider" | "clinicChair"
 >;
 
@@ -53,6 +52,8 @@ export async function bookableSlotsByWeekday(clinicId: number, db: SchedulingRea
     // Mirrors the branch this picks when a booking names no location.
     where: { clinicId, active: true, isPrimary: true },
     select: {
+      timezone: true,
+      clinic: { select: { timezone: true } },
       hours: {
         orderBy: { sortOrder: "asc" },
         select: { dayOfWeek: true, openTime: true, closeTime: true, slotMinutes: true, isClosed: true },
@@ -60,8 +61,14 @@ export async function bookableSlotsByWeekday(clinicId: number, db: SchedulingRea
     },
   });
 
+  // The picker must reason in the same zone the write validates in, otherwise
+  // a UTC server offers the clinic's yesterday and every slot on it is refused.
+  const timezone = location?.timezone || location?.clinic.timezone || "Asia/Kolkata";
   const byWeekday = new Map<number, string[]>();
-  if (!location) return byWeekday;
+  // A day marked closed is a decision; a day with no rows is a gap. The
+  // booking screen words the two differently, so both are reported.
+  const closedWeekdays = new Set<number>();
+  if (!location) return { byWeekday, closedWeekdays, timezone };
 
   const windows = new Map<number, typeof location.hours>();
   for (const row of location.hours) {
@@ -69,8 +76,13 @@ export async function bookableSlotsByWeekday(clinicId: number, db: SchedulingRea
   }
 
   for (const [dayOfWeek, rows] of windows) {
-    if (rows.every((row) => row.isClosed) || rows.some((row) => row.isClosed)) {
-      // Closed, or a half-configured day the write would refuse anyway.
+    if (rows.every((row) => row.isClosed)) {
+      closedWeekdays.add(dayOfWeek);
+      byWeekday.set(dayOfWeek, []);
+      continue;
+    }
+    if (rows.some((row) => row.isClosed)) {
+      // A half-configured day the write would refuse anyway.
       byWeekday.set(dayOfWeek, []);
       continue;
     }
@@ -82,7 +94,7 @@ export async function bookableSlotsByWeekday(clinicId: number, db: SchedulingRea
       byWeekday.set(dayOfWeek, []);
     }
   }
-  return byWeekday;
+  return { byWeekday, closedWeekdays, timezone };
 }
 
 /**
@@ -194,12 +206,19 @@ export async function validateAppointmentResources(
   }
 
   const treatment = input.treatment?.trim().toLocaleLowerCase("en-IN");
+  // The booking screen offers two kinds of visit, not a list of treatments —
+  // and this same API reads "New consultation" afterwards to decide whether
+  // intake is outstanding. They are the product's own vocabulary, so checking
+  // them against the service list rejected every booking the form's defaults
+  // could produce.
+  const visitKinds = new Set(["new consultation", "follow-up"]);
   const assignedServices = location.services.map(({ service }) => service);
   const allowedServices = assignedServices.length
     ? assignedServices
     : location.clinic.services;
   if (
     treatment
+    && !visitKinds.has(treatment)
     && allowedServices.length
     && !allowedServices.some((service) => (
       service.name.trim().toLocaleLowerCase("en-IN") === treatment

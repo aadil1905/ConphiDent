@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { prisma, type Db } from "@/lib/prisma";
 import {
   inspectLocationAvailability,
   type LocationAvailabilityStatus,
@@ -367,7 +367,7 @@ function validateMutationIdentity(data: WhatsAppAppointmentMutation) {
 }
 
 function activeLocation(
-  tx: Prisma.TransactionClient,
+  tx: Db,
   clinicId: number,
   locationId: number,
 ) {
@@ -382,7 +382,7 @@ function activeLocation(
 }
 
 async function assertResourcesAvailable(
-  tx: Prisma.TransactionClient,
+  tx: Db,
   input: {
     clinicId: number;
     locationId: number;
@@ -421,7 +421,7 @@ async function assertResourcesAvailable(
 }
 
 async function markBookingState(
-  tx: Prisma.TransactionClient,
+  tx: Db,
   data: WhatsAppAppointmentMutation,
   step: string,
   reason: string,
@@ -442,7 +442,7 @@ async function markBookingState(
 }
 
 async function serializableWithRetry<T>(
-  work: (tx: Prisma.TransactionClient) => Promise<T>,
+  work: (tx: Db) => Promise<T>,
 ) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {

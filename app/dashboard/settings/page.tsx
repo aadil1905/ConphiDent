@@ -53,9 +53,9 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-card border border-border bg-card p-4.5 shadow-[var(--shadow)]">
-      <h2 className="text-base font-semibold text-heading">{title}</h2>
-      {sub && <p className="mt-1 text-[13px] text-text-muted">{sub}</p>}
+    <section className="rounded-card border border-border bg-card p-5.5 shadow-[var(--shadow)]">
+      <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">{title}</h2>
+      {sub && <p className="mt-1 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">{sub}</p>}
       <div className="mt-4">{children}</div>
     </section>
   );
@@ -63,10 +63,10 @@ function Card({
 
 function LinkCard({ title, sub, href, label }: { title: string; sub: string; href: string; label: string }) {
   return (
-    <section className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-border bg-card p-4.5 shadow-[var(--shadow)]">
+    <section className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-border bg-card p-5.5 shadow-[var(--shadow)]">
       <div className="min-w-0">
-        <h2 className="text-base font-semibold text-heading">{title}</h2>
-        <p className="mt-1 text-[13px] text-text-muted">{sub}</p>
+        <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">{title}</h2>
+        <p className="mt-1 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">{sub}</p>
       </div>
       <Link
         href={href}
@@ -79,7 +79,14 @@ function LinkCard({ title, sub, href, label }: { title: string; sub: string; hre
 }
 
 const field =
-  "min-h-11 w-full rounded-control border border-border bg-white px-3 text-sm font-normal text-foreground";
+  "min-h-11 w-full rounded-control border border-border bg-card px-3 text-sm font-normal text-foreground";
+
+/** What a refused save actually means, in the words of the thing refused. */
+const REFUSALS: Record<string, string> = {
+  staff:
+    "That login could not be created. Check the email is not already in use, and use a password of at least 12 characters with upper and lower case letters plus a number.",
+  self: "Nothing changed. You cannot switch off your own login from here — it would lock you out of the clinic.",
+};
 
 export default async function SettingsPage({
   searchParams,
@@ -111,13 +118,12 @@ export default async function SettingsPage({
       title="Settings"
       sub="Everything about how the clinic runs, in one place. Only you can see this page, and every change is logged."
     >
-      {params.error && (
+      {REFUSALS[params.error ?? ""] && (
         <p
           role="alert"
           className="rounded-control border border-danger-border bg-danger-bg px-3.5 py-3 text-[13px] text-danger"
         >
-          That login could not be created. Check the email is not already in use, and use a password of at
-          least 12 characters with upper and lower case letters plus a number.
+          {REFUSALS[params.error ?? ""]}
         </p>
       )}
 
@@ -244,7 +250,7 @@ export default async function SettingsPage({
                         {ROLE_WORDS.get(member.role) ?? humanLabel(member.role)}
                       </span>
                     </p>
-                    <p className="text-[13px] text-text-muted">
+                    <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                       {member.email} ·{" "}
                       <span className={member.active ? "text-success" : "text-danger"}>
                         {member.id === user.id
@@ -254,7 +260,7 @@ export default async function SettingsPage({
                             : "cannot sign in"}
                       </span>
                     </p>
-                    <p className="text-[13px] text-text-muted">
+                    <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                       {member.lastLoginAt ? (
                         <>
                           Last signed in{" "}
@@ -307,12 +313,6 @@ export default async function SettingsPage({
             href="/dashboard/settings/billing"
             label="Open"
           />
-          <LinkCard
-            title="Automations"
-            sub="Reminders and follow-ups that go out on their own, and what they say."
-            href="/dashboard/automation"
-            label="Open"
-          />
         </>
       )}
 
@@ -336,7 +336,7 @@ export default async function SettingsPage({
             sub="A private list of clinic and login changes, kept so you can always see who did what."
           >
             {auditLogs.length === 0 ? (
-              <p className="rounded-control bg-muted p-3.5 text-[13px] text-text-muted">
+              <p className="rounded-control bg-muted p-3.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                 Nothing yet. Changes to the clinic or to logins will show up here.
               </p>
             ) : (
@@ -350,7 +350,7 @@ export default async function SettingsPage({
                       <p className="text-sm font-semibold text-heading">
                         {ACTION_WORDS[entry.action] ?? humanLabel(entry.action)}
                       </p>
-                      <p className="text-[13px] text-text-muted">
+                      <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                         {entry.detail ?? "No detail written down"} · {entry.user?.fullName ?? "the system"}
                       </p>
                     </div>

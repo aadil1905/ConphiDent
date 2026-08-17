@@ -98,7 +98,7 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
           )}
 
           <RailCard title="Before you issue it">
-            <p className="text-[13px] text-text-muted">
+            <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
               Once issued, the wording and figures are fixed — an invoice cannot be edited. If it is
               wrong you void it and raise a new one, and both stay on the record.
             </p>

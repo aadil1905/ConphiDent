@@ -117,21 +117,6 @@ export async function deleteFollowUpAction(formData: FormData) {
   revalidatePath("/dashboard/huddle");
 }
 
-export async function deleteClinicalRecordAction(formData: FormData) {
-  const user = await requirePermission("correctClinical");
-  const id = getId(formData);
-  const reason = confirmedReason(formData, "Marked entered in error");
-  if (!id || !reason) return;
-
-  const record = await prisma.clinicalRecord.findFirst({ where: { id, clinicId: user.clinicId, enteredInErrorAt: null }, select: { id: true, patientId: true } });
-  if (!record) return;
-  await prisma.$transaction([
-    prisma.clinicalRecord.update({ where: { id: record.id }, data: { status: "ENTERED_IN_ERROR", enteredInErrorAt: new Date(), enteredInErrorReason: reason } }),
-    prisma.auditLog.create({ data: { clinicId: user.clinicId, userId: user.id, patientId: record.patientId, actorRole: user.role, action: "CLINICAL_RECORD_ENTERED_IN_ERROR", entityType: "CLINICAL_RECORD", entityId: String(record.id), reason } }),
-  ]);
-  revalidatePath("/dashboard/clinical-records");
-}
-
 export async function deleteTreatmentPlanAction(formData: FormData) {
   const user = await requirePermission("manageClinical");
   const id = getId(formData);

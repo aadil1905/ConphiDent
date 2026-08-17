@@ -64,7 +64,7 @@ function Viewer({ study, canAnnotate, close }: { study: ImagingGalleryStudy; can
 
   const asset = study.asset;
   return (
-    <div role="dialog" aria-modal="true" aria-label={`${study.modalityLabel} viewer`} className="fixed inset-0 z-[95] flex flex-col bg-[#0b1c2c] text-white">
+    <div role="dialog" aria-modal="true" aria-label={`${study.modalityLabel} viewer`} className="fixed inset-0 z-[95] flex flex-col bg-[#0b1f27] text-white">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
         <div>
           <p className="text-[15px] font-semibold">{study.modalityLabel}</p>
@@ -78,7 +78,7 @@ function Viewer({ study, canAnnotate, close }: { study: ImagingGalleryStudy; can
               <button type="button" onClick={() => setZoom((value) => Math.max(0.5, value - 0.25))} aria-label="Zoom out" className={darkButton}><Minus className="size-4" /></button>
               <span className="w-14 text-center text-xs tabular-nums">{Math.round(zoom * 100)}%</span>
               <button type="button" onClick={() => setZoom((value) => Math.min(4, value + 0.25))} aria-label="Zoom in" className={darkButton}><Plus className="size-4" /></button>
-              <button type="button" onClick={() => setZoom(1)} className="min-h-10 cursor-pointer rounded-control border border-white/25 px-3 text-xs font-semibold text-white hover:bg-white/10">Fit</button>
+              <button type="button" onClick={() => setZoom(1)} className="min-h-11 cursor-pointer rounded-control border border-white/25 px-3 text-xs font-semibold text-white hover:bg-white/10">Fit</button>
             </>
           ) : null}
           <button type="button" autoFocus onClick={close} aria-label="Close" className={darkButton}><X className="size-5" /></button>
@@ -111,7 +111,7 @@ function Viewer({ study, canAnnotate, close }: { study: ImagingGalleryStudy; can
                   role="img"
                   aria-label={`${item.toothCode ? `Tooth ${item.toothCode}: ` : ""}${item.label}`}
                   title={`${item.toothCode ? `Tooth ${item.toothCode}: ` : ""}${item.label}`}
-                  className="absolute grid size-6 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-pill border-2 border-white bg-[#c4a46c] text-[10px] font-bold text-[#123b5d]"
+                  className="absolute grid size-6 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-pill border-2 border-white bg-[var(--gold-on-ink)] text-[10px] font-bold text-heading"
                   style={{ left: `${item.x}%`, top: `${item.y}%` }}
                 >
                   {item.toothCode || "•"}
@@ -128,7 +128,7 @@ function Viewer({ study, canAnnotate, close }: { study: ImagingGalleryStudy; can
                 <p className="mt-3 text-[15px] font-semibold">
                   {loadFailed ? "That secure link timed out." : "This file needs a viewer we do not have."}
                 </p>
-                <p className="mx-auto mt-1 max-w-md text-[13px] text-white/70">
+                <p className="mx-auto mt-1 max-w-md text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-white/70">
                   The original is kept exactly as it came in. We do not pretend every format opens the same way.
                 </p>
                 {loadFailed ? (
@@ -145,8 +145,8 @@ function Viewer({ study, canAnnotate, close }: { study: ImagingGalleryStudy; can
           )}
         </div>
 
-        <aside className="overflow-y-auto border-l border-white/10 bg-[#0f2941] p-5">
-          <p className="rounded-control border border-[#c4a46c]/40 bg-[#c4a46c]/10 px-3 py-2.5 text-[13px] text-[#f2e3c5]">
+        <aside className="overflow-y-auto border-l border-white/10 bg-[#12303a] p-5">
+          <p className="rounded-control border border-[var(--gold-on-ink)]/40 bg-[var(--gold-on-ink)]/10 px-3 py-2.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-[var(--gold-on-ink)]">
             Not for diagnosis unless this screen and viewer have been checked here first.
           </p>
           <dl className="mt-4 grid gap-3 text-[13px]">
@@ -194,8 +194,8 @@ function Viewer({ study, canAnnotate, close }: { study: ImagingGalleryStudy; can
                   <input type="hidden" name="assetId" value={asset.id} />
                   <input type="hidden" name="x" value={point.x} />
                   <input type="hidden" name="y" value={point.y} />
-                  <input name="toothCode" inputMode="numeric" maxLength={2} placeholder="Tooth number (optional)" className="min-h-11 w-full rounded-control border border-white/25 bg-[#0b1c2c] px-3 text-[13px] text-white" />
-                  <textarea name="label" required minLength={2} maxLength={500} rows={2} placeholder="What you can see there" className="mt-2 w-full rounded-control border border-white/25 bg-[#0b1c2c] p-3 text-[13px] text-white" />
+                  <input name="toothCode" inputMode="numeric" maxLength={2} placeholder="Tooth number (optional)" className="min-h-11 w-full rounded-control border border-white/25 bg-[#0b1f27] px-3 text-[13px] text-white" />
+                  <textarea name="label" required minLength={2} maxLength={500} rows={2} placeholder="What you can see there" className="mt-2 w-full rounded-control border border-white/25 bg-[#0b1f27] p-3 text-[13px] text-white" />
                 </ImagingActionForm>
               ) : null}
             </div>
@@ -238,7 +238,7 @@ export default function ImagingGallery({
 
   if (!studies.length) {
     return (
-      <div className="rounded-card border border-dashed border-border-strong bg-card px-4.5 py-8 text-center text-[13px] text-text-muted">
+      <div className="rounded-card border border-dashed border-border-strong bg-card px-5.5 py-8 text-center text-[13px] text-text-muted">
         {emptyMessage}
       </div>
     );
@@ -267,7 +267,7 @@ export default function ImagingGallery({
                   <button
                     type="button"
                     onClick={() => setSelectedId(study.id)}
-                    className="group relative block aspect-[4/3] w-full cursor-pointer overflow-hidden bg-[#0b1c2c] text-left"
+                    className="group relative block aspect-[4/3] w-full cursor-pointer overflow-hidden bg-[#0b1f27] text-left"
                   >
                     {study.asset?.thumbnailUrl || study.asset?.renderable ? (
                       <img
@@ -311,7 +311,7 @@ export default function ImagingGallery({
                         ) : null}
                       </div>
                     </div>
-                    <p className="mt-2.5 truncate text-[13px] text-foreground">
+                    <p className="mt-2.5 truncate text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-foreground">
                       {study.patient?.fullName || study.description || "Nobody's name on it yet"}
                     </p>
                     <p className="mt-0.5 text-xs text-text-muted">

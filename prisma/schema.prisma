@@ -60,7 +60,6 @@ model Patient {
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
   appointments            Appointment[]
-  clinicalRecords         ClinicalRecord[]
   treatmentPlans          TreatmentPlan[]
   invoices                Invoice[]
   prescriptions           Prescription[]
@@ -175,52 +174,6 @@ model Payment {
   @@index([encounterId])
 }
 
-model ClinicalRecord {
-  id                   Int              @id @default(autoincrement())
-  patientId            Int
-  clinicId             Int
-  encounterId          Int?
-  providerId           Int?
-  authorId             Int?
-  visitDate            DateTime         @default(now())
-  chiefComplaint       String
-  diagnosis            String?
-  clinicalNotes        String?
-  medicalHistory       String?
-  drugAllergies        String?
-  medications          String?
-  otherHistory         String?
-  bloodPressure        String?
-  weightKg             String?
-  dentalHistory        String?
-  treatmentDone        String?
-  estimateAmount       Int?
-  consentGiven         Boolean          @default(false)
-  consentNotes         String?
-  patientSignature     String?
-  guardianSignature    String?
-  consentSignedAt      DateTime?
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
-  status               String           @default("DRAFT")
-  source               String           @default("MANUAL")
-  version              Int              @default(1)
-  signedAt             DateTime?
-  enteredInErrorAt     DateTime?
-  enteredInErrorReason String?
-  supersedesId         Int?             @unique
-  patient              Patient          @relation(fields: [patientId], references: [id], onDelete: Restrict)
-  clinic               Clinic           @relation(fields: [clinicId], references: [id], onDelete: Restrict)
-  encounter            Encounter?       @relation(fields: [encounterId], references: [id], onDelete: SetNull)
-  provider             ClinicProvider?  @relation(fields: [providerId], references: [id], onDelete: SetNull)
-  author               User?            @relation("ClinicalRecordAuthor", fields: [authorId], references: [id], onDelete: SetNull)
-  supersedes           ClinicalRecord?  @relation("ClinicalRecordVersions", fields: [supersedesId], references: [id], onDelete: SetNull)
-  corrections          ClinicalRecord[] @relation("ClinicalRecordVersions")
-
-  @@index([patientId, visitDate])
-  @@index([clinicId, status, visitDate])
-  @@index([encounterId, status])
-}
 
 model DentalChartEntry {
   id          Int        @id @default(autoincrement())
@@ -322,7 +275,6 @@ model Prescription {
   encounterId                   Int?
   providerId                    Int?
   authorId                      Int?
-  clinicalRecordId              Int?
   prescribedOn                  DateTime           @default(now())
   diagnosis                     String?
   instructions                  String?
@@ -430,7 +382,6 @@ model Encounter {
   location             ClinicLocation?        @relation(fields: [locationId], references: [id], onDelete: SetNull)
   chair                ClinicChair?           @relation(fields: [chairId], references: [id], onDelete: SetNull)
   createdBy            User?                  @relation("EncounterCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  clinicalRecords      ClinicalRecord[]
   legacyChartEntries   DentalChartEntry[]
   treatmentPlans       TreatmentPlan[]
   prescriptions        Prescription[]
@@ -932,7 +883,6 @@ model Clinic {
   patientTeeth                   PatientTooth[]
   dentalFindings                 DentalFinding[]
   timelineEvents                 PatientTimelineEvent[]
-  clinicalRecords                ClinicalRecord[]
   legacyChartEntries             DentalChartEntry[]
   treatmentPlans                 TreatmentPlan[]
   prescriptions                  Prescription[]
@@ -970,6 +920,34 @@ model DemoRequest {
   @@index([email])
 }
 
+/// A clinic that started onboarding itself on the setup portal. This is a
+/// public intake record only: it deliberately provisions nothing. A Clinic and
+/// its tenant models become authoritative only once an operator converts the
+/// signup, so a public form can never create a live workspace on its own.
+model ClinicSignup {
+  id              String    @id @default(cuid())
+  clinicName      String
+  contactName     String
+  role            String
+  email           String
+  phone           String
+  city            String
+  dentistCount    String
+  chairCount      String
+  currentSoftware String?
+  whatsappNumber  String?
+  priorities      String?
+  notes           String?
+  status          String    @default("NEW")
+  clinicId        Int?
+  reviewedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status, createdAt])
+  @@index([email])
+}
+
 model ClinicProvider {
   id                     Int                      @id @default(autoincrement())
   clinicId               Int
@@ -979,7 +957,6 @@ model ClinicProvider {
   clinic                 Clinic                   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   locations              ClinicLocationProvider[]
   encounters             Encounter[]
-  clinicalRecords        ClinicalRecord[]
   treatmentPlans         TreatmentPlan[]
   prescriptions          Prescription[]
   labCases               LabCase[]
@@ -1035,7 +1012,6 @@ model User {
   createdEncounters          Encounter[]              @relation("EncounterCreator")
   confirmedDentitions        DentitionAssessment[]    @relation("DentitionConfirmer")
   authoredDentalFindings     DentalFinding[]          @relation("DentalFindingAuthor")
-  authoredClinicalRecords    ClinicalRecord[]         @relation("ClinicalRecordAuthor")
   authoredLegacyChartEntries DentalChartEntry[]       @relation("LegacyChartAuthor")
   authoredTreatmentPlans     TreatmentPlan[]          @relation("TreatmentPlanAuthor")
   authoredPrescriptions      Prescription[]           @relation("PrescriptionAuthor")

@@ -2,10 +2,20 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
+/**
+ * Source is normalised to LF before matching.
+ *
+ * `core.autocrlf` is true, so a Windows working copy has CRLF endings, and any
+ * pattern that spans lines then silently fails to match. That looked exactly
+ * like the code having drifted away from the test, which is part of why these
+ * files sat unrun. Normalised, the patterns mean what they say on any platform.
+ */
+const lf = (value) => value.replace(/\r\n/g, "\n");
+
 const root = new URL("../", import.meta.url);
-const booking = await readFile(new URL("lib/booking.ts", root), "utf8");
-const appointment = await readFile(new URL("lib/appointment.ts", root), "utf8");
-const inbox = await readFile(new URL("lib/whatsapp-webhook-inbox.ts", root), "utf8");
+const booking = lf(await readFile(new URL("lib/booking.ts", root), "utf8"));
+const appointment = lf(await readFile(new URL("lib/appointment.ts", root), "utf8"));
+const inbox = lf(await readFile(new URL("lib/whatsapp-webhook-inbox.ts", root), "utf8"));
 
 test("booking state is saved before its outbound prompt", () => {
   assert.match(booking, /await updateBooking\(userId, data\);\s*await reply\(\);/);

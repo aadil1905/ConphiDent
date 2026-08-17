@@ -6,7 +6,7 @@ import { requirePermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { exactStamp, humanTime } from "@/lib/format";
 import { pageWindow, parseListQuery, type RawSearchParams } from "@/lib/list-params";
-import DataList, { ListCell, ListRow } from "@/components/lists/DataList";
+import DataList, { ListCell, ListLink, ListRow } from "@/components/lists/DataList";
 import ListSearch from "@/components/lists/ListSearch";
 import FilterChips from "@/components/lists/FilterChips";
 import EmptyState from "@/components/lists/EmptyState";
@@ -98,7 +98,7 @@ export default async function PrescriptionsPage({
   ]);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Prescriptions"
         sub={
@@ -188,12 +188,17 @@ export default async function PrescriptionsPage({
           const draft = script.status === "DRAFT";
           return (
             <ListRow key={script.id} needsAttention={draft}>
-              <ListCell>
-                <span title={exactStamp(script.prescribedOn)} className="tabular-nums">
-                  {humanTime(script.prescribedOn, now)}
-                </span>
+              <ListCell primary>
+                <ListLink
+                  href={draft ? `${BASE}/${script.id}/edit` : `${BASE}/${script.id}/print`}
+                  className="tabular-nums text-foreground"
+                >
+                  <span title={exactStamp(script.prescribedOn)}>
+                    {humanTime(script.prescribedOn, now)}
+                  </span>
+                </ListLink>
               </ListCell>
-              <ListCell>
+              <ListCell interactive>
                 <Link
                   href={`/dashboard/patients/${script.patientId}?tab=Clinical`}
                   className="font-semibold text-primary hover:underline"
@@ -220,7 +225,7 @@ export default async function PrescriptionsPage({
                   {draft ? "Unsigned" : "Signed"}
                 </span>
               </ListCell>
-              <ListCell align="right">
+              <ListCell align="right" interactive>
                 <Link
                   href={draft ? `${BASE}/${script.id}/edit` : `${BASE}/${script.id}/print`}
                   className={`inline-flex min-h-11 items-center justify-center rounded-control px-3.5 text-[13px] font-semibold whitespace-nowrap ${

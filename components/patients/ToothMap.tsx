@@ -72,10 +72,10 @@ function Tooth({
       title={`Tooth ${number} · ${label}`}
       className={`flex flex-col items-center gap-0.5 rounded-[0.4rem] border px-0.5 py-1 ${
         state === "work"
-          ? "border-[rgba(165,34,34,0.4)] bg-background"
+          ? "border-danger-mark/40 bg-background"
           : state === "treated"
             ? "border-border bg-background"
-            : "border-border bg-white"
+            : "border-border bg-card"
       }`}
     >
       {flipped ? glyph : <span className="text-[10px] tabular-nums text-text-muted">{number}</span>}
@@ -112,7 +112,7 @@ export default function ToothMap({ conditions }: { conditions: Record<string, st
           Treated
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-[2px] border border-border-strong bg-white" aria-hidden />
+          <span className="h-2.5 w-2.5 rounded-[2px] border border-border-strong bg-card" aria-hidden />
           Healthy
         </span>
       </div>

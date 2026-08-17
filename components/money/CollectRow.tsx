@@ -152,7 +152,7 @@ export default function CollectRow({
           aria-label={`Take a payment on ${invoiceNumber}`}
           className="absolute right-0 top-[calc(100%+6px)] z-30 flex w-[280px] flex-col gap-2.5 rounded-[0.8rem] border border-border-strong bg-card p-3.5 shadow-[var(--shadow-overlay)] motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-150"
         >
-          <p className="text-[13px] font-semibold text-heading">Take a payment · {invoiceNumber}</p>
+          <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] font-semibold text-heading">Take a payment · {invoiceNumber}</p>
           <label className="flex flex-col gap-1.5">
             <span className="text-xs text-text-muted">
               Amount — {rupees(outstanding)} still owing of {rupees(total)}
@@ -172,7 +172,7 @@ export default function CollectRow({
                 type="button"
                 onClick={() => setMethod(option)}
                 aria-pressed={method === option}
-                className={`min-h-10 cursor-pointer rounded-pill border px-3 text-[13px] font-semibold text-heading ${
+                className={`min-h-11 cursor-pointer rounded-pill border px-3 text-[13px] font-semibold text-heading ${
                   method === option ? "border-primary bg-secondary" : "border-border-strong bg-card"
                 }`}
               >
@@ -239,19 +239,19 @@ export default function CollectRow({
         <div
           role="presentation"
           onClick={() => setConfirmVoid(false)}
-          className="fixed inset-0 z-[95] flex items-center justify-center bg-[rgba(18,59,93,0.35)] p-4 backdrop-blur-[4px]"
+          className="fixed inset-0 z-[95] flex items-center justify-center bg-[var(--overlay)] p-4 backdrop-blur-[4px]"
         >
           <div
             role="alertdialog"
             aria-modal="true"
             aria-labelledby={`void-${invoiceId}`}
             onClick={(event) => event.stopPropagation()}
-            className="flex w-full max-w-[460px] flex-col gap-3 rounded-card border border-border-strong bg-card p-4.5 shadow-[var(--shadow-overlay)]"
+            className="flex w-full max-w-[460px] flex-col gap-3 rounded-card border border-border-strong bg-card p-5.5 shadow-[var(--shadow-overlay)]"
           >
             <h2 id={`void-${invoiceId}`} className="text-[17px] font-semibold text-heading">
               Void {invoiceNumber} for {rupees(total)}?
             </h2>
-            <p className="text-[13px] text-text-muted">
+            <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
               {paid > 0
                 ? `${patientName} keeps the ${rupees(paid)} already paid as credit, and the invoice stops counting towards collections. This cannot be undone.`
                 : `${patientName}'s invoice stops counting towards collections. This cannot be undone — a credit note is the reversible option.`}

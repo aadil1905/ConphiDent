@@ -64,21 +64,21 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
   ];
 
   return (
-    <div className="flex flex-col gap-5 pb-10">
+    <div className="flex flex-col gap-6 pb-10">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <Link href="/dashboard/laboratory" className="text-xs font-semibold text-primary hover:underline">
             ← Laboratory
           </Link>
           <div className="flex flex-wrap items-baseline gap-x-2.5">
-            <h1 className="text-[22px] leading-tight font-bold text-heading">
+            <h1 className="text-[length:var(--text-page)] leading-[var(--text-page-lh)] font-semibold tracking-[-0.01em] text-heading">
               {item.caseType} for {item.patient.fullName.split(" ")[0]}
             </h1>
             <span className="inline-flex items-center rounded-pill bg-secondary px-2.5 py-0.5 text-xs font-semibold text-heading">
               {plain(item.status)}
             </span>
           </div>
-          <p className="mt-1 text-[13px] text-text-muted">
+          <p className="mt-1 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
             {item.orderNumber || `LAB-${item.id}`} · version {item.version} · {item.laboratory?.name || item.labName} ·{" "}
             {item.teeth ? `FDI ${item.teeth}` : item.anatomicalScope}
           </p>
@@ -90,16 +90,16 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
       </header>
 
       {appointmentRisk ? (
-        <p className="rounded-card border border-danger-border border-l-[3px] border-l-danger-mark bg-danger-bg px-4 py-3 text-[13px] font-semibold text-danger">
+        <p className="rounded-card border border-danger-border border-l-[3px] border-l-danger-mark bg-danger-bg px-4 py-3 text-[length:var(--text-body)] leading-[var(--text-body-lh)] font-semibold text-danger">
           This case is running late for the fitting visit. Sort it with the lab before you move the patient.
         </p>
       ) : null}
 
       <div className="grid items-start gap-5">
         <div className="flex min-w-0 flex-col gap-5">
-          <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
-            <h2 className="text-base font-semibold text-heading">What the lab is making</h2>
-            <p className="mt-0.5 text-[13px] text-text-muted">
+          <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
+            <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">What the lab is making</h2>
+            <p className="mt-0.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
               You see the patient&rsquo;s name here. The lab only ever sees {item.patientSafeIdentifier}.
             </p>
             <dl className="mt-3.5 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
@@ -124,9 +124,9 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
             ) : null}
           </section>
 
-          <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
-            <h2 className="text-base font-semibold text-heading">Sending it to the lab</h2>
-            <p className="mt-0.5 text-[13px] text-text-muted">
+          <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
+            <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Sending it to the lab</h2>
+            <p className="mt-0.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
               They get a private page that expires in 30 days and can be pulled back. Preparing, sending,
               opening and accepting are each recorded.
             </p>
@@ -147,13 +147,13 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
                 </label>
               </LabActionForm>
             ) : (
-              <p className="mt-3.5 rounded-chip bg-muted px-3 py-2 text-[13px] text-text-muted">
+              <p className="mt-3.5 rounded-chip bg-muted px-3 py-2 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                 Approve the authorisation first, then you can give the lab access.
               </p>
             )}
             <div className="mt-3.5">
               {item.deliveryAttempts.length === 0 ? (
-                <p className="text-[13px] text-text-muted">Nothing has been sent yet.</p>
+                <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">Nothing has been sent yet.</p>
               ) : (
                 item.deliveryAttempts.map((attempt) => (
                   <div key={attempt.id} className="flex items-center justify-between gap-3 border-t border-border/70 py-2.5 text-[13px] first:border-t-0">
@@ -172,12 +172,12 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
             </div>
           </section>
 
-          <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
-            <h2 className="text-base font-semibold text-heading">Talking to the lab</h2>
-            <p className="mt-0.5 text-[13px] text-text-muted">Everything said about this case stays here, both ways.</p>
+          <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
+            <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Talking to the lab</h2>
+            <p className="mt-0.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">Everything said about this case stays here, both ways.</p>
             <div className="mt-3.5 flex max-h-80 flex-col gap-2.5 overflow-y-auto">
               {item.messages.length === 0 ? (
-                <p className="text-[13px] text-text-muted">Nothing said yet.</p>
+                <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">Nothing said yet.</p>
               ) : (
                 item.messages.map((message) => (
                   <div key={message.id} className={`rounded-control px-3 py-2.5 text-[13px] ${message.authorType === "LAB" ? "bg-secondary-hover" : "bg-muted"}`}>
@@ -197,9 +197,9 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
             </LabActionForm>
           </section>
 
-          <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
-            <h2 className="text-base font-semibold text-heading">Files on this case</h2>
-            <p className="mt-0.5 text-[13px] text-text-muted">
+          <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
+            <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Files on this case</h2>
+            <p className="mt-0.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
               Photos, PDFs and scans (STL, OBJ, PLY). Each one is checked and stored privately.
             </p>
             <div className="mt-3.5">
@@ -207,7 +207,7 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
             </div>
             <div className="mt-3.5">
               {item.caseAttachments.length === 0 ? (
-                <p className="text-[13px] text-text-muted">No files yet.</p>
+                <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">No files yet.</p>
               ) : (
                 item.caseAttachments.map((attachment) => (
                   <a
@@ -228,9 +228,9 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
             </div>
           </section>
 
-          <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
-            <h2 className="text-base font-semibold text-heading">X-rays the lab can see</h2>
-            <p className="mt-0.5 text-[13px] text-text-muted">
+          <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
+            <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">X-rays the lab can see</h2>
+            <p className="mt-0.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
               Linked, never copied — the lab reaches them briefly and only through this case.
             </p>
             {availableImaging.length ? (
@@ -259,7 +259,7 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
             ) : null}
             <div className="mt-3.5">
               {item.imagingLinks.length === 0 ? (
-                <p className="text-[13px] text-text-muted">Nothing linked.</p>
+                <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">Nothing linked.</p>
               ) : (
                 item.imagingLinks.map((link) => {
                   const asset = link.imagingStudy.assets[0];
@@ -284,9 +284,9 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
           </section>
 
           {mayRework ? (
-            <section className="rounded-card border border-danger-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
-              <h2 className="text-base font-semibold text-heading">Send it back for a remake</h2>
-              <p className="mt-0.5 text-[13px] text-text-muted">
+            <section className="rounded-card border border-danger-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
+              <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Send it back for a remake</h2>
+              <p className="mt-0.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                 A new draft starts, and this case stays exactly as it is — reason, whose fault, cost and
                 every file carry across.
               </p>
@@ -322,8 +322,8 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
             </section>
           ) : null}
 
-          <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
-            <h2 className="text-base font-semibold text-heading">Everything that has happened</h2>
+          <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
+            <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Everything that has happened</h2>
             <div className="mt-3.5 grid gap-2.5 lg:grid-cols-2">
               {item.events.map((event) => (
                 <div key={event.id} className="rounded-control bg-muted px-3 py-2.5 text-[13px]">
@@ -356,7 +356,7 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
           </section>
         </div>
 
-        <aside className="flex flex-col gap-5">
+        <aside className="flex flex-col gap-6">
           <div className={`rounded-card border px-4 py-3.5 ${issues.length ? "border-warning-border bg-warning-bg" : "border-success-border bg-success-bg"}`}>
             <h2 className="text-[13px] font-bold text-heading">
               {issues.length ? "Before this can be approved" : "Ready to approve"}
@@ -366,7 +366,7 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
                 {issues.map((issue) => <li key={issue}>{issue}</li>)}
               </ul>
             ) : (
-              <p className="mt-1 text-[13px] text-success">Everything the lab needs is on the case.</p>
+              <p className="mt-1 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-success">Everything the lab needs is on the case.</p>
             )}
             {["DRAFT", "REWORK"].includes(item.status) && mayApprove ? (
               <LabActionForm action={approveLabCaseAction} label="Approve it" pendingLabel="Approving…" className="mt-3.5 flex flex-col gap-3">

@@ -59,7 +59,7 @@ export default function HandoffControl({
           type="button"
           onClick={() => pick(item)}
           aria-pressed={current === item.key}
-          className={`min-h-10 cursor-pointer rounded-control border px-2.5 text-xs font-semibold whitespace-nowrap text-heading ${
+          className={`min-h-11 cursor-pointer rounded-control border px-2.5 text-xs font-semibold whitespace-nowrap text-heading ${
             current === item.key ? "border-primary bg-primary-soft" : "border-border-strong bg-card hover:bg-muted"
           }`}
         >

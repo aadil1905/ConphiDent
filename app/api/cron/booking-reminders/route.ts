@@ -1,3 +1,4 @@
+import { crossTenant } from "@/lib/tenant-guard";
 import { NextRequest, NextResponse } from "next/server";
 import { sendAbandonedBookingReminders } from "@/lib/booking";
 
@@ -11,7 +12,7 @@ export async function GET(req: NextRequest) {
 
   const startedAt = Date.now();
   try {
-    const remindersSent = await sendAbandonedBookingReminders();
+    const remindersSent = await crossTenant(() => sendAbandonedBookingReminders());
     console.info(JSON.stringify({ event: "cron.completed", job: "booking-reminders", remindersSent, durationMs: Date.now() - startedAt }));
     return NextResponse.json({ success: true, remindersSent });
   } catch (error) {

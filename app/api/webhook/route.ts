@@ -1,3 +1,4 @@
+import { reportError } from "@/lib/monitoring";
 import { createHmac, timingSafeEqual } from "crypto";
 import { after, NextRequest, NextResponse } from "next/server";
 import { resolveWhatsAppWebhookClinic } from "@/lib/whatsapp-connection";
@@ -119,7 +120,7 @@ export async function POST(req: NextRequest) {
       unroutable,
     });
   } catch (error) {
-    console.error("WhatsApp webhook ingress failed:", error);
+    await reportError(error, { where: "api/webhook.ingress" });
     return NextResponse.json(
       { success: false, error: "Unable to persist webhook." },
       { status: 500 },

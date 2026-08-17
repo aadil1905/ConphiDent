@@ -11,7 +11,7 @@ export default async function PrescriberProfilePage({ searchParams }: { searchPa
   const user = await requireFeature("clinical");
   const { saved, error } = await searchParams;
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
+    <div className="flex w-full flex-col gap-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <PageIntro
           title="How you sign"
@@ -33,9 +33,9 @@ export default async function PrescriberProfilePage({ searchParams }: { searchPa
         </p>
       ) : null}
 
-      <form action={updatePrescriberProfileAction} className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
-        <h2 className="text-base font-semibold text-heading">Issuer details</h2>
-        <p className="mt-0.5 text-[13px] text-text-muted">
+      <form action={updatePrescriberProfileAction} className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
+        <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Issuer details</h2>
+        <p className="mt-0.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
           Needed only when signing or correcting a script. Managing sets does not need a registration number.
         </p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">

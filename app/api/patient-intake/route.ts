@@ -1,3 +1,4 @@
+import { reportError } from "@/lib/monitoring";
 import { randomBytes } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -117,7 +118,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.issues[0]?.message || "Please check the patient details." }, { status: 400 });
     }
     if (error instanceof PatientWhatsAppPolicyError) return NextResponse.json({ error: error.message }, { status: error.status });
-    console.error("Create patient intake failed", error);
+    await reportError(error, { where: "api/patient-intake.create" });
     return NextResponse.json({ error: "The intake request could not be created." }, { status: 500 });
   }
 }
@@ -159,14 +160,6 @@ export async function PATCH(request: NextRequest) {
     }
 
     await prisma.$transaction([
-      prisma.clinicalRecord.updateMany({
-        where: { clinicId: user.clinicId, patientId: intake.patientId, source: "PATIENT_INTAKE", status: "DRAFT", enteredInErrorAt: null },
-        data: {
-          treatmentDone: input.treatmentDone || null,
-          estimateAmount: input.estimateAmount === "" ? null : input.estimateAmount,
-          clinicalNotes: "Secure WhatsApp patient-intake form reviewed by clinic staff.",
-        },
-      }),
       prisma.patientIntakeRequest.update({
         where: { id: intake.id },
         data: {
@@ -184,7 +177,7 @@ export async function PATCH(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues[0]?.message || "Please check the estimate." }, { status: 400 });
     }
-    console.error("Finalize intake failed", error);
+    await reportError(error, { where: "api/patient-intake.finalize" });
     return NextResponse.json({ error: "The intake could not be finalized." }, { status: 500 });
   }
 }

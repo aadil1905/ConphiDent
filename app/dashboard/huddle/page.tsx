@@ -22,8 +22,8 @@ type Risk = {
 function StatTile({ label, value, note }: { label: string; value: string; note: string }) {
   return (
     <div className="rounded-control border border-border px-3.5 py-3">
-      <p className="text-[11px] font-semibold tracking-[0.08em] text-text-muted uppercase">{label}</p>
-      <p className="text-[22px] leading-tight font-bold tabular-nums text-heading">{value}</p>
+      <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">{label}</p>
+      <p className="text-[length:var(--text-page)] leading-[var(--text-page-lh)] font-semibold tracking-[-0.01em] text-heading tabular-nums">{value}</p>
       <p className="text-xs text-text-muted">{note}</p>
     </div>
   );
@@ -222,14 +222,14 @@ export default async function HuddleBriefPage() {
         </div>
       </header>
 
-      <section className="break-inside-avoid rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)] print:rounded-none print:border-0 print:border-b print:border-black/25 print:px-0 print:py-2 print:shadow-none">
+      <section className="break-inside-avoid rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)] print:rounded-none print:border-0 print:border-b print:border-black/25 print:px-0 print:py-2 print:shadow-none">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <div className="min-w-0">
             <p className="hidden text-[11px] font-black tracking-[0.14em] text-text-muted uppercase print:block">
               {user.clinic.brandName?.trim() || user.clinic.name}
             </p>
-            <h1 className="text-[22px] leading-tight font-bold text-heading">{today}</h1>
-            <p className="mt-1 text-[13px] text-text-muted">
+            <h1 className="text-[length:var(--text-page)] leading-[var(--text-page-lh)] font-semibold tracking-[-0.01em] text-heading">{today}</h1>
+            <p className="mt-1 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
               {risks.length === 0
                 ? "Read this out before the first patient sits down. Nothing looks likely to break today."
                 : `Read this out before the first patient sits down. ${risks.length} ${
@@ -268,20 +268,20 @@ export default async function HuddleBriefPage() {
 
       {risks.length > 0 && (
         <section className="break-inside-avoid overflow-hidden rounded-card border border-danger-border bg-card shadow-[var(--shadow)] print:rounded-none print:border-0 print:border-b print:border-black/25 print:shadow-none">
-          <div className="px-4.5 pt-4 pb-2.5">
-            <h2 className="text-base font-semibold text-danger">Could break today</h2>
-            <p className="mt-1 text-[13px] text-text-muted">
+          <div className="px-5.5 pt-4 pb-2.5">
+            <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-danger">Could break today</h2>
+            <p className="mt-1 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
               Say who owns each one before the first patient sits down.
             </p>
           </div>
           {risks.map((risk) => (
             <div
               key={risk.key}
-              className="grid items-center gap-3 border-t border-border border-l-[3px] border-l-danger-mark px-4.5 py-3 sm:grid-cols-[minmax(0,1fr)_150px]"
+              className="grid items-center gap-3 border-t border-border border-l-[3px] border-l-danger-mark px-5.5 py-3 sm:grid-cols-[minmax(0,1fr)_150px]"
             >
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-heading">{risk.title}</p>
-                <p className="text-[13px] text-text-muted">{risk.detail}</p>
+                <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">{risk.detail}</p>
               </div>
               <Link
                 href={risk.href}
@@ -295,9 +295,9 @@ export default async function HuddleBriefPage() {
       )}
 
       <section className="break-inside-avoid overflow-hidden rounded-card border border-border bg-card shadow-[var(--shadow)] print:rounded-none print:border-0 print:border-b print:border-black/25 print:shadow-none">
-        <div className="px-4.5 pt-4 pb-2.5">
-          <h2 className="text-base font-semibold text-heading">Who is coming, and what they need</h2>
-          <p className="mt-1 text-[13px] text-text-muted">
+        <div className="px-5.5 pt-4 pb-2.5">
+          <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Who is coming, and what they need</h2>
+          <p className="mt-1 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
             {visits.length} booked
             {unconfirmedCount ? ` · ${unconfirmedCount} not confirmed` : ""}
             {rows.some((row) => row.flag || row.lateCase) ? " · flagged patients marked" : ""}
@@ -305,7 +305,7 @@ export default async function HuddleBriefPage() {
         </div>
 
         {visits.length === 0 ? (
-          <p className="px-4.5 pb-5 text-[13px] text-text-muted">
+          <p className="px-5.5 pb-5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
             Nothing booked today. A good morning to ring the people waiting on a call back.
           </p>
         ) : (
@@ -317,7 +317,7 @@ export default async function HuddleBriefPage() {
                     <th
                       key={head}
                       scope="col"
-                      className={`border-y border-border px-4.5 py-2.5 text-[11px] font-semibold tracking-[0.08em] whitespace-nowrap text-text-muted uppercase ${
+                      className={`border-y border-border px-5.5 py-2.5 text-[11px] font-semibold tracking-[0.14em] whitespace-nowrap text-text-muted uppercase ${
                         index === 4 ? "text-right" : "text-left"
                       }`}
                     >
@@ -334,10 +334,10 @@ export default async function HuddleBriefPage() {
                       row.lateCase || row.flag ? "border-l-[3px] border-l-danger-mark" : ""
                     }`}
                   >
-                    <td className="px-4.5 py-2.5 align-top font-semibold tabular-nums whitespace-nowrap text-heading">
+                    <td className="px-5.5 py-2.5 align-top font-semibold tabular-nums whitespace-nowrap text-heading">
                       {row.visit.appointmentTime || clockTime(row.visit.appointmentDate)}
                     </td>
-                    <td className="px-4.5 py-2.5 align-top">
+                    <td className="px-5.5 py-2.5 align-top">
                       <span className="block font-semibold text-foreground">{row.visit.patientName}</span>
                       {row.lateCase && (
                         <span className="block text-[11px] font-semibold text-danger">
@@ -355,13 +355,13 @@ export default async function HuddleBriefPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-4.5 py-2.5 align-top text-text-muted">{row.visit.treatment}</td>
-                    <td className="px-4.5 py-2.5 align-top text-text-muted">
+                    <td className="px-5.5 py-2.5 align-top text-text-muted">{row.visit.treatment}</td>
+                    <td className="px-5.5 py-2.5 align-top text-text-muted">
                       {[row.visit.chair?.name, row.visit.provider?.name].filter(Boolean).join(" · ") ||
                         "Not set"}
                     </td>
                     <td
-                      className={`px-4.5 py-2.5 text-right align-top tabular-nums ${
+                      className={`px-5.5 py-2.5 text-right align-top tabular-nums ${
                         row.balance > 0 ? "font-semibold text-danger" : "text-text-muted"
                       }`}
                     >
@@ -378,8 +378,8 @@ export default async function HuddleBriefPage() {
       <HuddleCalls calls={calls} team={teamMembers} />
 
       {runningLow.length > 0 && (
-        <section className="break-inside-avoid rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)] print:rounded-none print:border-0 print:border-b print:border-black/25 print:px-0 print:py-2 print:shadow-none">
-          <h2 className="mb-2 text-base font-semibold text-heading">
+        <section className="break-inside-avoid rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)] print:rounded-none print:border-0 print:border-b print:border-black/25 print:px-0 print:py-2 print:shadow-none">
+          <h2 className="mb-2 text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">
             Stock that will not last the day
           </h2>
           <div className="flex flex-col">
@@ -390,7 +390,7 @@ export default async function HuddleBriefPage() {
               >
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-heading">{item.name}</p>
-                  <p className="text-[13px] text-text-muted">
+                  <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                     {item.quantity}
                     {item.unit ? ` ${item.unit}` : ""} left · you reorder at {item.reorderLevel}
                   </p>

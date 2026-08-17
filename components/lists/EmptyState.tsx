@@ -17,10 +17,12 @@ export default function EmptyState({
   action?: { label: string; href: string };
 }) {
   return (
-    <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
-      <Icon className="h-7 w-7 text-text-muted" strokeWidth={1.6} aria-hidden />
-      <p className="text-[15px] font-semibold text-heading">{title}</p>
-      <p className="max-w-[32rem] text-[13px] text-text-muted">{body}</p>
+    <div className="flex flex-col items-center gap-2.5 px-4 py-12 text-center">
+      <span aria-hidden className="grid size-12 place-items-center rounded-card bg-muted text-text-muted">
+        <Icon className="h-6 w-6" strokeWidth={1.7} />
+      </span>
+      <p className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">{title}</p>
+      <p className="max-w-[42ch] text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">{body}</p>
       {action && (
         <Link
           href={action.href}

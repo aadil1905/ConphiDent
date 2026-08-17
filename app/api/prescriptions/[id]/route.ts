@@ -26,10 +26,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (!existing) return NextResponse.json({ error: "Prescription not found." }, { status: 404 });
     if (existing.status !== "ISSUED") return NextResponse.json({ error: "Only the current issued prescription can be corrected." }, { status: 409 });
     if (data.patientId !== existing.patientId) return NextResponse.json({ error: "An issued prescription cannot be moved to another patient." }, { status: 400 });
-    const patient = await prisma.patient.findFirst({ where: { id: existing.patientId, clinicId: user.clinicId, archivedAt: null }, select: { id: true, dateOfBirth: true, gender: true, medicalNotes: true, clinicalRecords: { where: { enteredInErrorAt: null, status: "FINAL" }, select: { drugAllergies: true }, orderBy: [{ visitDate: "desc" }, { updatedAt: "desc" }, { id: "desc" }], take: 20 } } });
+    const patient = await prisma.patient.findFirst({ where: { id: existing.patientId, clinicId: user.clinicId, archivedAt: null }, select: { id: true, dateOfBirth: true, gender: true, medicalNotes: true, intakeRequests: { where: { drugAllergies: { not: null } }, select: { drugAllergies: true, status: true }, orderBy: [{ completedAt: "desc" }, { id: "desc" }], take: 20 } } });
     if (!patient) return NextResponse.json({ error: "Patient not found." }, { status: 404 });
     const appointment = await findVisitForDate(user.clinicId, patient.id, data.prescribedOn);
-    const allergies = allergySummaryFrom(patient.clinicalRecords, patient.medicalNotes);
+    const allergies = allergySummaryFrom(patient.intakeRequests, patient.medicalNotes);
     const age = patientAge(patient.dateOfBirth, localDate(data.prescribedOn));
     const warnings = prescriptionWarnings({ items: data.medicationItems, allergies, age });
     if (warnings.length && !data.allergyAcknowledged) return NextResponse.json({ error: "Review and acknowledge the prescription safety warnings before issuing.", warnings }, { status: 409 });
@@ -44,7 +44,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         encounterId: encounter.id,
         providerId: appointment?.providerId ?? null,
         authorId: user.id,
-        clinicalRecordId: existing.clinicalRecordId,
         prescribedOn: localDate(data.prescribedOn),
         diagnosis: data.diagnosis || null,
         instructions: data.instructions || null,

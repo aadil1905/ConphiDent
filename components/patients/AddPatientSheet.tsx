@@ -5,8 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, X } from "lucide-react";
 import { toast } from "sonner";
 import { addPatientAction, type AddPatientResult } from "@/app/dashboard/patients/actions";
+import { clearDraft, readDraft, saveDraft } from "@/lib/local-draft";
 
-const DRAFT_KEY = "conphident.add-patient.draft";
+// The urgent-flag field is deliberately absent from anything written to the
+// device — `saveDraft` strips it by name. See lib/local-draft.ts.
+const DRAFT_NAME = "add-patient";
 const FOCUSABLE = 'input, button:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 type Draft = { fullName: string; phone: string; age: string; flag: string; sendIntake: boolean };
@@ -35,14 +38,25 @@ function Sheet({
   router: ReturnType<typeof useRouter>;
 }) {
   const panel = useRef<HTMLDivElement>(null);
-  const [draft, setDraft] = useState<Draft>(() => {
-    try {
-      const raw = localStorage.getItem(DRAFT_KEY);
-      return raw ? { ...EMPTY, ...(JSON.parse(raw) as Partial<Draft>) } : EMPTY;
-    } catch {
-      return EMPTY;
-    }
-  });
+  // Starts empty, always. This used to seed itself from whatever draft the
+  // device held, so on a shared machine the next person to open the sheet was
+  // shown the previous patient's name, phone and urgent flag, unprompted. The
+  // draft is now offered rather than applied.
+  const [draft, setDraft] = useState<Draft>(EMPTY);
+  const [offered, setOffered] = useState<{ value: Partial<Draft>; savedAt: Date } | null>(null);
+  const [dismissed, setDismissed] = useState(false);
+
+  // Read on a scheduled tick rather than in the effect body. localStorage does
+  // not exist on the server, so reading it as initial state made the two
+  // renders disagree; and setting state straight from an effect is a render the
+  // sheet does not need. BookAVisit already does it this way.
+  useEffect(() => {
+    const tick = setTimeout(() => {
+      const saved = readDraft<Draft>(DRAFT_NAME);
+      if (saved?.value.fullName) setOffered(saved);
+    }, 0);
+    return () => clearTimeout(tick);
+  }, []);
   const [error, setError] = useState<{ message: string; field?: string } | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -74,11 +88,7 @@ function Sheet({
   const put = <K extends keyof Draft>(key: K, value: Draft[K]) => {
     const next = { ...draft, [key]: value };
     setDraft(next);
-    try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(next));
-    } catch {
-      // Losing a draft is better than losing the click.
-    }
+    saveDraft(DRAFT_NAME, next);
   };
 
   const save = async (thenBook: boolean) => {
@@ -99,7 +109,7 @@ function Sheet({
     }
 
     try {
-      localStorage.removeItem(DRAFT_KEY);
+      clearDraft(DRAFT_NAME);
     } catch {
       // Nothing to clean up.
     }
@@ -118,7 +128,7 @@ function Sheet({
     <div
       role="presentation"
       onClick={onClose}
-      className="fixed inset-0 z-[95] flex items-end justify-center bg-[rgba(18,59,93,0.35)] backdrop-blur-[4px] motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150 sm:items-center"
+      className="fixed inset-0 z-[95] flex items-end justify-center bg-[var(--overlay)] backdrop-blur-[4px] motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150 sm:items-center"
     >
       <div
         ref={panel}
@@ -126,14 +136,14 @@ function Sheet({
         aria-modal="true"
         aria-labelledby="add-patient-title"
         onClick={(event) => event.stopPropagation()}
-        className="m-4 flex w-full max-w-[560px] flex-col gap-3.5 rounded-card border border-border-strong bg-card p-4.5 shadow-[var(--shadow-overlay)] motion-safe:animate-in motion-safe:slide-in-from-bottom motion-safe:duration-200"
+        className="m-4 flex w-full max-w-[560px] flex-col gap-3.5 rounded-card border border-border-strong bg-card p-5.5 shadow-[var(--shadow-overlay)] motion-safe:animate-in motion-safe:slide-in-from-bottom motion-safe:duration-200"
       >
         <div className="flex items-baseline justify-between gap-3">
           <div>
             <h2 id="add-patient-title" className="text-lg font-semibold text-heading">
               Add a patient
             </h2>
-            <p className="mt-1 text-[13px] text-text-muted">
+            <p className="mt-1 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
               Four fields now — the rest can wait until they are in the chair.
             </p>
           </div>
@@ -141,11 +151,46 @@ function Sheet({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="grid min-h-10 w-10 cursor-pointer place-items-center rounded-control text-heading hover:bg-muted"
+            className="grid min-h-11 w-11 cursor-pointer place-items-center rounded-control text-heading hover:bg-muted"
           >
             <X className="h-[18px] w-[18px]" aria-hidden />
           </button>
         </div>
+
+        {/* Offered, never applied. The sheet used to fill itself from whatever
+            draft the device held, which on a shared machine meant the last
+            patient's details appeared for whoever opened it next. Naming the
+            patient and the time is what makes a wrong one obvious. */}
+        {offered && !dismissed && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-control border border-border bg-muted px-3.5 py-2.5">
+            <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
+              You started adding <span className="font-semibold text-heading">{offered.value.fullName}</span> at{" "}
+              {offered.savedAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.
+            </p>
+            <div className="flex flex-none gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setDraft({ ...EMPTY, ...offered.value });
+                  setDismissed(true);
+                }}
+                className="inline-flex min-h-11 cursor-pointer items-center rounded-control border border-border-strong bg-card px-3 text-[13px] font-semibold text-heading hover:bg-muted"
+              >
+                Pick it up
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  clearDraft(DRAFT_NAME);
+                  setDismissed(true);
+                }}
+                className="inline-flex min-h-11 cursor-pointer items-center rounded-control px-3 text-[13px] font-semibold text-text-muted hover:bg-muted"
+              >
+                Start fresh
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr))]">
           <label className="flex flex-col gap-1.5">
@@ -219,7 +264,7 @@ function Sheet({
             type="button"
             disabled={saving}
             onClick={() => void save(false)}
-            className="min-h-[46px] cursor-pointer rounded-control border border-primary bg-primary px-4.5 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-70"
+            className="min-h-[46px] cursor-pointer rounded-control border border-primary bg-primary px-5.5 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-70"
           >
             {saving ? "Saving…" : "Save patient"}
           </button>

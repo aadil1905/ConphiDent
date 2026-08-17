@@ -8,7 +8,7 @@ import { labPortalUrl, laboratoryAccessSecret } from "@/lib/laboratory-access";
 import { canTransitionLabCase, isLabCaseStatus, labOrderIssues, splitLabList } from "@/lib/laboratory-core";
 import { isStandardFdiCode } from "@/lib/dentition";
 import { requirePermission } from "@/lib/permissions";
-import { prisma } from "@/lib/prisma";
+import { prisma, type Db } from "@/lib/prisma";
 
 const listPath = "/dashboard/laboratory";
 export type LaboratoryActionState = { ok: boolean; message: string; caseId?: number; secureUrl?: string };
@@ -48,7 +48,7 @@ function html(value: string) {
   return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!);
 }
 
-async function refreshLaboratoryMetrics(tx: Prisma.TransactionClient, clinicId: number, labId: number | null) {
+async function refreshLaboratoryMetrics(tx: Db, clinicId: number, labId: number | null) {
   if (!labId) return;
   const cases = await tx.labCase.findMany({ where: { clinicId, labId, status: { notIn: ["DRAFT", "APPROVED", "CANCELLED"] } }, select: { parentCaseId: true, status: true, dueDate: true, receivedAt: true, deliveredAt: true } });
   if (!cases.length) return;

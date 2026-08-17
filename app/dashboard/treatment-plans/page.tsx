@@ -6,7 +6,7 @@ import { requirePermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { exactStamp, humanTime, rupees } from "@/lib/format";
 import { pageWindow, parseListQuery, type RawSearchParams } from "@/lib/list-params";
-import DataList, { ListCell, ListRow } from "@/components/lists/DataList";
+import DataList, { ListCell, ListLink, ListRow } from "@/components/lists/DataList";
 import ListSearch from "@/components/lists/ListSearch";
 import FilterChips from "@/components/lists/FilterChips";
 import EmptyState from "@/components/lists/EmptyState";
@@ -19,7 +19,7 @@ const BASE = "/dashboard/treatment-plans";
 const COLUMNS = [
   { key: "patient", label: "Patient" },
   { key: "plan", label: "Plan", sortKey: "plan" },
-  { key: "value", label: "Worth", sortKey: "value", align: "right" as const },
+  { key: "value", label: "Worth", sortKey: "value", align: "right" as const, secondary: true },
   { key: "progress", label: "How far along", secondary: true },
   { key: "status", label: "Where it stands" },
   { key: "next", label: "Next step", align: "right" as const },
@@ -51,8 +51,8 @@ function Tile({
 }) {
   return (
     <div className="rounded-card border border-border bg-card px-4 py-3.5 shadow-[var(--shadow)]">
-      <p className="text-[11px] font-semibold tracking-[0.08em] text-text-muted uppercase">{label}</p>
-      <p className={`text-2xl leading-tight font-bold tabular-nums ${tone}`}>{value}</p>
+      <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">{label}</p>
+      <p className={`text-[length:var(--text-metric)] leading-[var(--text-metric-lh)] font-bold tabular-nums ${tone}`}>{value}</p>
       <p className="text-xs text-text-muted">{note}</p>
     </div>
   );
@@ -149,7 +149,7 @@ export default async function TreatmentPlansPage({
   ]);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Treatment plans"
         sub="What you agreed with each patient, what it is worth, and how far along it is."
@@ -246,7 +246,7 @@ export default async function TreatmentPlansPage({
           const running = plan.status === "Accepted" || plan.status === "In Progress";
           return (
             <ListRow key={plan.id} needsAttention={chase}>
-              <ListCell>
+              <ListCell interactive>
                 <Link
                   href={`/dashboard/patients/${plan.patientId}?tab=Plans`}
                   className="font-semibold text-primary hover:underline"
@@ -254,15 +254,15 @@ export default async function TreatmentPlansPage({
                   {plan.patient.fullName}
                 </Link>
               </ListCell>
-              <ListCell>
-                <Link href={`${BASE}/${plan.id}/edit`} className="block text-foreground hover:underline">
+              <ListCell primary>
+                <ListLink href={`${BASE}/${plan.id}/edit`} className="block text-foreground hover:underline">
                   {plan.title}
-                </Link>
+                </ListLink>
                 <span title={exactStamp(plan.updatedAt)} className="block text-xs text-text-muted">
                   last touched {humanTime(plan.updatedAt, now)}
                 </span>
               </ListCell>
-              <ListCell align="right">
+              <ListCell align="right" secondary>
                 <span className="tabular-nums">{priced > 0 ? rupees(priced) : "not priced"}</span>
               </ListCell>
               <ListCell secondary>
@@ -290,7 +290,7 @@ export default async function TreatmentPlansPage({
                   {state.label}
                 </span>
               </ListCell>
-              <ListCell align="right">
+              <ListCell align="right" interactive>
                 <Link
                   href={
                     running

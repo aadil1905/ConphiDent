@@ -1,7 +1,7 @@
 import "server-only";
 
 import { randomUUID } from "crypto";
-import type { Prisma } from "@prisma/client";
+import type { Db } from "@/lib/prisma";
 import {
   assertInventoryBatchReceivable,
   canonicalBatchNumber,
@@ -25,7 +25,7 @@ export type StockMovementType =
   | "WASTE"
   | "CORRECTION";
 
-export async function receiveInventoryBatch(tx: Prisma.TransactionClient, input: {
+export async function receiveInventoryBatch(tx: Db, input: {
   clinicId: number;
   inventoryItemId: number;
   quantity: number;
@@ -71,7 +71,7 @@ export async function receiveInventoryBatch(tx: Prisma.TransactionClient, input:
   return { item: updated, batch };
 }
 
-export async function consumeInventoryFefo(tx: Prisma.TransactionClient, input: {
+export async function consumeInventoryFefo(tx: Db, input: {
   clinicId: number;
   inventoryItemId: number;
   quantity: number;
@@ -106,7 +106,7 @@ export async function consumeInventoryFefo(tx: Prisma.TransactionClient, input: 
   return { balance: runningBalance, correlationId };
 }
 
-export async function reconcileInventoryQuantity(tx: Prisma.TransactionClient, clinicId: number, inventoryItemId: number) {
+export async function reconcileInventoryQuantity(tx: Db, clinicId: number, inventoryItemId: number) {
   const aggregate = await tx.inventoryBatch.aggregate({ where: { clinicId, inventoryItemId, recalledAt: null, archivedAt: null }, _sum: { availableQuantity: true } });
   const quantity = aggregate._sum.availableQuantity || 0;
   await tx.inventoryItem.updateMany({ where: { id: inventoryItemId, clinicId }, data: { quantity } });

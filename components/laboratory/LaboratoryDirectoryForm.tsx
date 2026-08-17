@@ -3,10 +3,10 @@
 import { saveLaboratoryAction } from "@/app/dashboard/laboratory/actions";
 import { LabActionForm } from "@/components/laboratory/LabActionForm";
 
-const field = "min-h-10 w-full rounded-control border px-3 text-sm";
+const field = "min-h-11 w-full rounded-control border px-3 text-sm";
 
 export function LaboratoryDirectoryForm() {
-  return <LabActionForm action={saveLaboratoryAction} label="Save laboratory" pendingLabel="Saving laboratory..." className="mt-4 grid gap-3 sm:grid-cols-2" buttonClassName="min-h-10 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground sm:col-span-2 disabled:opacity-60">
+  return <LabActionForm action={saveLaboratoryAction} label="Save laboratory" pendingLabel="Saving laboratory..." className="mt-4 grid gap-3 sm:grid-cols-2" buttonClassName="min-h-11 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground sm:col-span-2 disabled:opacity-60">
     <label className="text-xs font-semibold">Display name<input required name="name" maxLength={200} className={`${field} mt-1`}/></label>
     <label className="text-xs font-semibold">Legal name<input name="legalName" maxLength={240} className={`${field} mt-1`}/></label>
     <label className="text-xs font-semibold">Contact person<input name="contactName" maxLength={160} className={`${field} mt-1`}/></label>

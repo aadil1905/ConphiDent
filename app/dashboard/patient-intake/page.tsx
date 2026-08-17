@@ -46,7 +46,7 @@ export default async function StaffIntakePage({
         </Link>
       }
       context={
-        <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
+        <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
           <h2 className="text-[13px] font-semibold text-heading">How it goes</h2>
           {/* Three steps read as one line across the width, rather than a tall
               column of instructions above the thing you came here to do. */}

@@ -3,6 +3,7 @@ import { PLATFORM_PERMISSIONS, hasPlatformPermission, platformRoleFor, requirePl
 import { PlatformSidebar } from "@/components/platform/PlatformSidebar";
 import { PlatformTopbar } from "@/components/platform/PlatformTopbar";
 import { PlatformInteractionFeedback } from "@/components/platform/PlatformInteractionFeedback";
+import { brandFontVariables } from "@/lib/fonts";
 
 export const metadata: Metadata = {
   title: "Control Center",
@@ -15,7 +16,10 @@ export default async function PlatformLayout({ children }: { children: React.Rea
   const permissions = PLATFORM_PERMISSIONS.filter((permission) => hasPlatformPermission(admin, permission));
 
   return (
-    <div className="platform-shell min-h-screen bg-background text-foreground">
+    // cf-portal re-themes the operator surface to the public site's palette and
+    // type, so setup.conphident.live reads as one product across the login
+    // boundary. platform-shell keeps owning the layout itself.
+    <div className={`platform-shell cf-portal ${brandFontVariables} min-h-screen text-foreground`}>
       <PlatformInteractionFeedback />
       <PlatformSidebar fullName={admin.fullName} role={role} permissions={permissions} />
       <div className="platform-shell__workspace">

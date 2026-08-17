@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { clockTime } from "@/lib/format";
 import PatientIntakeClient from "@/components/intake/PatientIntakeClient";
+import { brandFontVariables } from "@/lib/fonts";
 
 export const dynamic = "force-dynamic";
 
@@ -63,7 +64,7 @@ export default async function PublicIntakePage({ params }: { params: Promise<{ t
     : null;
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-sm leading-relaxed text-foreground">
+    <div className={`cf-portal ${brandFontVariables} flex min-h-screen flex-col text-sm leading-relaxed text-foreground`}>
       <header className="border-b border-border bg-white">
         <div className="mx-auto flex max-w-[60rem] items-center gap-3 px-[clamp(1rem,1.5vw,2rem)] py-5">
           <div className="grid h-12 w-12 flex-none place-items-center rounded-[0.75rem] bg-secondary text-xl font-bold text-heading">

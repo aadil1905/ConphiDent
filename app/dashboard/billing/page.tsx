@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { exactStamp, humanTime, overdueBy, rupees } from "@/lib/format";
 import { moneyMetrics, rangeFor } from "@/lib/metrics";
 import { pageWindow, parseListQuery, type RawSearchParams } from "@/lib/list-params";
-import DataList, { ListCell, ListRow } from "@/components/lists/DataList";
+import DataList, { ListCell, ListLink, ListRow } from "@/components/lists/DataList";
 import ListSearch from "@/components/lists/ListSearch";
 import FilterChips from "@/components/lists/FilterChips";
 import EmptyState from "@/components/lists/EmptyState";
@@ -24,9 +24,11 @@ const COLUMNS = [
   { key: "no", label: "Invoice", sortKey: "no" },
   { key: "patient", label: "Patient" },
   { key: "items", label: "For", secondary: true },
-  { key: "amount", label: "Total", sortKey: "amount", align: "right" as const },
+  // Below sm these two go: "Still due" already answers what "Total" and
+  // "Status" answer together, and an overdue row carries the red edge stroke.
+  { key: "amount", label: "Total", sortKey: "amount", align: "right" as const, secondary: true },
   { key: "due", label: "Still due", align: "right" as const },
-  { key: "status", label: "Status" },
+  { key: "status", label: "Status", secondary: true },
   { key: "collect", label: "Collect", align: "right" as const, width: "200px" },
 ];
 
@@ -44,6 +46,16 @@ export default async function MoneyPage({
   const overdueCutoff = new Date(now.getTime() - OVERDUE_DAYS * 24 * 60 * 60 * 1000);
   const show = query.filters.show ?? "";
   const canVoid = can(user.role, "manageBilling");
+  // `deleteInvoiceAction` refuses to void an invoice that has posted payments
+  // and sends the person back here with `?error=`. Nothing read it, so the void
+  // dialog simply closed and the invoice stayed — the refusal was correct and
+  // completely silent. Whatever is added to that action has to be answered here.
+  const REFUSALS: Record<string, string> = {
+    "reverse-payments-before-void":
+      "That bill still has payments posted against it. Reverse them first — voiding it now would leave money recorded against a bill that no longer exists.",
+  };
+  const errorKey = Array.isArray(params.error) ? params.error[0] : params.error;
+  const refusal = (errorKey && REFUSALS[errorKey]) || null;
 
   const search: Prisma.InvoiceWhereInput = query.q
     ? {
@@ -129,7 +141,7 @@ export default async function MoneyPage({
   ];
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Money"
         sub="Every figure here comes from the shared metrics module, so Insights always agrees."
@@ -143,16 +155,25 @@ export default async function MoneyPage({
         }
       />
 
+      {refusal && (
+        <p
+          role="alert"
+          className="rounded-card border border-danger-border bg-danger-bg px-5.5 py-3 text-[length:var(--text-body)] leading-[var(--text-body-lh)] font-semibold text-danger"
+        >
+          {refusal}
+        </p>
+      )}
+
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr))]">
         {tiles.map((tile) => (
           <div
             key={tile.label}
             className="rounded-card border border-border bg-card px-4 py-3.5 shadow-[var(--shadow)]"
           >
-            <p className="text-[11px] font-semibold tracking-[0.06em] text-text-muted uppercase">
+            <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
               {tile.label}
             </p>
-            <p className={`text-2xl font-bold tabular-nums ${tile.tone}`}>{tile.value}</p>
+            <p className={`text-[length:var(--text-metric)] leading-[var(--text-metric-lh)] font-bold tabular-nums ${tile.tone}`}>{tile.value}</p>
             <p className="text-xs text-text-muted">{tile.note}</p>
           </div>
         ))}
@@ -210,15 +231,15 @@ export default async function MoneyPage({
 
           return (
             <ListRow key={invoice.id} needsAttention={status === "Overdue"}>
-              <ListCell>
-                <Link
+              <ListCell primary>
+                <ListLink
                   href={`/dashboard/billing/${invoice.id}`}
                   className="font-semibold tabular-nums text-primary hover:underline"
                 >
                   {invoice.invoiceNumber}
-                </Link>
+                </ListLink>
               </ListCell>
-              <ListCell>
+              <ListCell interactive>
                 <Link
                   href={`/dashboard/patients/${invoice.patientId}`}
                   className="truncate text-primary hover:underline"
@@ -234,7 +255,7 @@ export default async function MoneyPage({
                   {humanTime(invoice.issueDate, now)}
                 </span>
               </ListCell>
-              <ListCell align="right">
+              <ListCell align="right" secondary>
                 <span className="tabular-nums">{rupees(invoice.totalAmount)}</span>
               </ListCell>
               <ListCell align="right">
@@ -244,7 +265,7 @@ export default async function MoneyPage({
                   <span className="text-text-muted">—</span>
                 )}
               </ListCell>
-              <ListCell>
+              <ListCell secondary>
                 <span
                   className={`inline-flex items-center rounded-pill px-2.5 py-1 text-xs font-semibold ${
                     status === "Settled"
@@ -257,7 +278,7 @@ export default async function MoneyPage({
                   {status === "Overdue" && late ? `Overdue, ${late}` : status}
                 </span>
               </ListCell>
-              <ListCell align="right">
+              <ListCell align="right" interactive>
                 <CollectRow
                   invoiceId={invoice.id}
                   invoiceNumber={invoice.invoiceNumber}

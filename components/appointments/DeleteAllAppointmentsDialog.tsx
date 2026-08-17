@@ -55,7 +55,7 @@ export default function DeleteAllAppointmentsDialog({
         variant="outline"
         disabled={appointmentCount === 0}
         onClick={() => setOpen(true)}
-        className="min-h-11 gap-2 border-warning-border bg-card px-4 font-semibold text-warning shadow-sm hover:bg-warning-bg"
+        className="min-h-11 gap-2 border-warning-border bg-card px-4 font-semibold text-warning shadow-[var(--shadow)] hover:bg-warning-bg"
       >
         <Archive className="size-4" />
         Archive All

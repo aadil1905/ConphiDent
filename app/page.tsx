@@ -1,39 +1,253 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, Check, CheckCircle2, Layers3, MessageCircle, ShieldCheck, Sparkles, UsersRound, Workflow, X } from "lucide-react";
-import MarketingMotion from "@/components/marketing/MarketingMotion";
-import PlatformExplorer from "@/components/marketing/PlatformExplorer";
-import ProductTour from "@/components/marketing/ProductTour";
-import PublicShell from "@/components/marketing/PublicShell";
-import { tenantFromRequestHost } from "@/lib/platform";
 import { redirect } from "next/navigation";
+import {
+  Activity, ArrowRight, BarChart3, CalendarDays, Check, CheckCircle2, FlaskConical,
+  IndianRupee, MessagesSquare, Package, Scan, ShieldCheck, Sprout, UsersRound, X,
+} from "lucide-react";
+import { Aurora, Lift, Parallax, Reveal, Stagger, StaggerChild, WordReveal } from "@/components/marketing/Motion";
+import PlatformExplorer from "@/components/marketing/PlatformExplorer";
+import { ProductVisual } from "@/components/marketing/ProductVisuals";
+import PublicShell, { SETUP_URL } from "@/components/marketing/PublicShell";
+import WhatsAppThread from "@/components/marketing/WhatsAppThread";
+import { tenantFromRequestHost } from "@/lib/platform";
 
-export const metadata: Metadata = { title: "Dental clinic management software", description: "ConphiDent is the connected operating system for modern dental clinics—linking patients, appointments, clinical care, billing, WhatsApp, laboratory work, inventory and follow-up.", alternates: { canonical: "/" } };
+export const metadata: Metadata = {
+  title: "Dental clinic management software",
+  description:
+    "ConphiDent is the connected operating system for modern dental clinics — WhatsApp automation, appointments, patient records, dental charting, prescriptions, billing, laboratory, imaging, inventory and reporting in one workspace.",
+  alternates: { canonical: "/" },
+};
 
-const connections = ["Personal details", "Medical history", "Dental chart", "Appointments", "Treatment plan", "Invoices", "Payments", "WhatsApp", "Lab cases", "Follow-up tasks"];
+/** The thirteen modules in FEATURE_REGISTRY, named the way the app names them. */
+const modules = [
+  { icon: UsersRound, title: "Patients & intake", copy: "Profiles, medical history, allergies and a shareable intake link that fills the record before the visit.", span: "span-3" },
+  { icon: CalendarDays, title: "Appointments", copy: "A diary that carries the patient, the treatment, the provider and the chair — with conflict checks on booking.", span: "span-3" },
+  { icon: Activity, title: "Clinical workspace", copy: "Tooth-level charting on a full odontogram, visit-linked clinical notes, treatment plans and prescriptions with allergy warnings.", span: "span-4" },
+  { icon: MessagesSquare, title: "WhatsApp", copy: "An automated receptionist, a shared inbox and a scheduled outbox you can audit.", span: "span-2" },
+  { icon: IndianRupee, title: "Billing", copy: "Patient-linked invoices, payment recording, receipts and outstanding balances.", span: "span-2" },
+  { icon: Sprout, title: "CRM & follow-ups", copy: "One queue over enquiries and callbacks, with owners, close reasons and undo.", span: "span-2" },
+  { icon: FlaskConical, title: "Laboratory", copy: "Cases out with the lab: material, shade, due date, priority, status timeline and rework.", span: "span-2" },
+  { icon: Scan, title: "Imaging", copy: "Patient-linked radiographs, upload and review, and side-by-side comparison.", span: "span-3" },
+  { icon: Package, title: "Inventory & operations", copy: "Stock items, movement, expiry and low-stock awareness, purchase orders and vendors.", span: "span-3" },
+  { icon: BarChart3, title: "Reports & analytics", copy: "Appointment, revenue, lead and follow-up reporting built from connected records, plus operational exports.", span: "span-4" },
+  { icon: ShieldCheck, title: "AI Coach", copy: "AI-assisted workflow support grounded in your own approved clinic information.", span: "span-2" },
+];
+
+const without = [
+  "Enquiries scattered across personal WhatsApp accounts",
+  "A paper diary the rest of the clinic cannot see",
+  "Clinical notes that never reach the bill",
+  "Follow-ups nobody owns",
+  "Lab cases tracked on a whiteboard",
+  "Month-end guesswork instead of numbers",
+];
+
+const with_ = [
+  "One inbox, with every enquiry owned and answerable",
+  "A shared diary with conflict checks",
+  "Charting, plans and invoices on one record",
+  "A follow-up queue with owners and close reasons",
+  "Lab cases with due dates and status",
+  "Reporting built from the work you already did",
+];
 
 export default async function Home() {
   // A recognised clinic subdomain is a private workspace entry point, not a
   // second copy of the ConphiDent marketing site.
   if (await tenantFromRequestHost()) redirect("/login");
 
-  return <PublicShell><MarketingMotion/>
-    <section className="mk-hero"><div className="cf-wrap"><div className="mk-hero-copy" data-reveal><p className="mk-kicker"><span/> The connected operating system for modern dental clinics</p><h1>Every part of your dental clinic, <em>finally working together.</em></h1><p>ConphiDent connects patients, appointments, clinical care, billing, WhatsApp, laboratory work, inventory, and follow-up in one intelligent workspace.</p><div className="mk-actions"><Link href="/demo" className="mk-button">Book a personalised demo <ArrowRight/></Link><Link href="/product" className="mk-text-link">Explore the platform <ArrowRight/></Link></div><div className="mk-trust-line"><span><CheckCircle2/> Real product previews</span><span><CheckCircle2/> Built for dental clinic workflows</span><span><CheckCircle2/> Fictional demo data</span></div></div><figure className="mk-hero-frame" data-reveal><div className="mk-window-bar"><i/><i/><i/><span>ConphiDent · Clinic Command Centre</span></div><Image src="/product/dashboard/dashboard-demo.png" alt="ConphiDent clinic command centre showing the real dashboard with fictional demonstration data" width={950} height={540} sizes="(max-width: 900px) 94vw, 78vw" priority/><figcaption><Sparkles/> One connected view of today’s clinic work.</figcaption></figure></div></section>
+  return (
+    <PublicShell>
+      <section className="mk-hero">
+        <Aurora />
+        <div className="cf-wrap">
+          <div className="mk-hero-copy">
+            <Reveal>
+              <p className="mk-kicker">The operating system for modern dental clinics</p>
+            </Reveal>
+            <WordReveal className="t-display" text="Every part of your clinic, finally working together." />
+            <Reveal delay={0.15}>
+              <p className="t-lead">
+                ConphiDent connects WhatsApp, appointments, patient records, clinical charting,
+                billing, laboratory work, imaging, inventory and follow-up in one workspace —
+                so nothing about a patient lives in a second place.
+              </p>
+              <div className="mk-actions">
+                <a href={SETUP_URL} className="mk-button">Start onboarding <ArrowRight /></a>
+                <Link href="/demo" className="mk-button-ghost">Book a demo</Link>
+              </div>
+              <div className="mk-trust-line">
+                <span><CheckCircle2 /> Built for Indian dental practices</span>
+                <span><CheckCircle2 /> English, Hindi and Marathi on WhatsApp</span>
+                <span><CheckCircle2 /> Your clinic’s data stays your clinic’s</span>
+              </div>
+            </Reveal>
+          </div>
 
-    <section className="mk-intro"><div className="cf-wrap" data-reveal><p className="mk-kicker">From first contact to lasting care</p><h2>The clinic journey should feel like one continuous system.</h2><p>From the first WhatsApp enquiry to appointment, clinical care, treatment, payment, laboratory work, inventory, and follow-up—everything works together in one intelligent clinic workspace.</p><div className="mk-flow-line" aria-label="Patient journey"><span>Enquiry</span><ArrowRight/><span>Appointment</span><ArrowRight/><span>Consultation</span><ArrowRight/><span>Treatment</span><ArrowRight/><span>Payment</span><ArrowRight/><span>Follow-up</span></div></div></section>
+          <Parallax className="mk-hero-frame" distance={26}>
+            <ProductVisual kind="today" caption="Interface illustration · the day as the clinic opens it" />
+          </Parallax>
+        </div>
+      </section>
 
-    <ProductTour/>
-    <PlatformExplorer/>
+      <section className="mk-section">
+        <div className="cf-wrap">
+          <Reveal>
+            <div className="mk-section-heading is-centered">
+              <p className="mk-kicker">From first message to next visit</p>
+              <h2 className="t-h2">The clinic journey should be one continuous system.</h2>
+              <p className="t-lead">
+                A patient’s first WhatsApp message, their appointment, their chart, their bill,
+                their lab case and their follow-up are all the same story. ConphiDent keeps them
+                on the same record.
+              </p>
+            </div>
+          </Reveal>
+          <Reveal delay={0.1}>
+            <div className="mk-flow" aria-label="Patient journey">
+              {["Enquiry", "Appointment", "Consultation", "Charting", "Treatment", "Payment", "Lab", "Follow-up"].map((step) => (
+                <span key={step}>{step}</span>
+              ))}
+            </div>
+          </Reveal>
+        </div>
+      </section>
 
-    <section className="mk-record"><div className="cf-wrap mk-record-grid"><div data-reveal><p className="mk-kicker">One connected record</p><h2>The patient record is where the whole clinic comes together.</h2><p>Specialized tools solve one moment. ConphiDent connects the moments, so every role can understand what happened, what is open, and what should happen next.</p><Link href="/product" className="mk-text-link">See the connected platform <ArrowRight/></Link></div><div className="mk-record-map" data-reveal><div className="mk-record-core"><UsersRound/><b>Aarav Mehta</b><span>One connected record</span></div>{connections.map((item, index) => <div key={item} className={`mk-record-node node-${index + 1}`}><Check/>{item}</div>)}</div></div></section>
+      <section className="mk-section on-tint">
+        <div className="cf-wrap">
+          <Reveal>
+            <div className="mk-section-heading">
+              <p className="mk-kicker">Everything in one workspace</p>
+              <h2 className="t-h2">Eleven destinations. One patient record underneath.</h2>
+              <p className="t-lead">
+                These are the modules the product ships today — each one gated by your own
+                role permissions, each one writing to the same connected record.
+              </p>
+            </div>
+          </Reveal>
 
-    <section className="mk-comparison"><div className="cf-wrap"><div className="mk-section-heading" data-reveal><p className="mk-kicker">A calmer operating model</p><h2>Replace fragmented work with connected patient context.</h2></div><div className="mk-compare-grid"><article data-reveal><p className="mk-compare-label"><X/> Without ConphiDent</p>{["Scattered WhatsApp conversations","Manual appointment tracking","Disconnected treatment and billing records","Missed follow-ups","Unclear clinic performance","Manual lab coordination"].map(item => <div key={item}><X/>{item}</div>)}</article><article className="is-connected" data-reveal><p className="mk-compare-label"><Check/> With ConphiDent</p>{["Connected patient context","Centralized scheduling","Treatment, invoices and payments connected","Automated follow-up workflows","Live reports and analytics","Organized lab and inventory operations"].map(item => <div key={item}><Check/>{item}</div>)}</article></div></div></section>
+          <Stagger className="mk-bento">
+            {modules.map((item) => (
+              <Lift key={item.title} className={item.span}>
+                <span className="mk-tile-icon"><item.icon /></span>
+                <h3>{item.title}</h3>
+                <p>{item.copy}</p>
+              </Lift>
+            ))}
+          </Stagger>
+        </div>
+      </section>
 
-    <section className="mk-ai"><div className="cf-wrap mk-ai-grid"><div data-reveal><p className="mk-kicker">Practical intelligence</p><h2>Automation that supports the team—not unsupported clinical claims.</h2><p>ConphiDent uses AI-assisted workflow support where implemented, alongside automated patient communication, smart follow-up workflows and intelligent clinic summaries. Clinical judgement remains with qualified care teams.</p></div><div className="mk-ai-points" data-reveal><span><Workflow/><b>AI-assisted workflows</b><small>Help organize operational work and context.</small></span><span><MessageCircle/><b>Automated communication</b><small>Support reminders and timely patient follow-up.</small></span><span><Layers3/><b>Connected summaries</b><small>Bring clinic signals together for faster action.</small></span></div></div></section>
+      <section className="mk-section on-ink" id="whatsapp-preview">
+        <div className="cf-wrap mk-panel">
+          <Reveal>
+            <p className="mk-kicker">WhatsApp automation</p>
+            <h2 className="t-h2">Your clinic answers in seconds, at 11pm, in three languages.</h2>
+            <p className="t-lead" style={{ marginTop: 18 }}>
+              Every message to your clinic number arrives through Meta’s WhatsApp Cloud API,
+              is signature-verified, and gets answered from information you approved — your
+              services, your fees, your timings. Bookings go straight into the diary. Anything
+              sensitive stops and waits for a human.
+            </p>
+            <ul className="mk-ticklist">
+              {[
+                "Replies grounded only in your approved services and FAQs",
+                "English, Hindi and Marathi, chosen by the patient",
+                "Appointment booking, reminders and a scheduled outbox",
+                "Billing and clinical questions handed to your team, never guessed",
+              ].map((line) => (
+                <li key={line}><Check />{line}</li>
+              ))}
+            </ul>
+            <div className="mk-actions">
+              <Link href="/whatsapp" className="mk-button">See how the automation works <ArrowRight /></Link>
+            </div>
+          </Reveal>
 
-    <section className="mk-trust"><div className="cf-wrap"><div className="mk-section-heading" data-reveal><p className="mk-kicker">Built for real clinic workflows</p><h2>Credibility comes from responsible product design.</h2></div><div className="mk-trust-grid">{[["Secure clinic accounts","Authentication protects access to clinic workspaces."],["Role-aware access","Implemented permissions help control what team members can do."],["Tenant-isolated data","Clinic context is resolved and scoped across core workflows."],["Activity records","Implemented audit records support operational traceability."],["Onboarding and support","Demo and onboarding flows help teams understand fit before rollout."],["Transparent demonstration","Public product previews use sanitized, fictional data."]].map(([title, copy]) => <article key={title} data-reveal><ShieldCheck/><h3>{title}</h3><p>{copy}</p></article>)}</div><div className="mk-legal-links"><Link href="/privacy">Privacy policy</Link><Link href="/terms">Terms of service</Link><span>Demo data disclosure</span></div></div></section>
+          <Reveal delay={0.12}>
+            <WhatsAppThread />
+          </Reveal>
+        </div>
+      </section>
 
-    <section className="mk-final"><div className="cf-wrap" data-reveal><p className="mk-kicker">A walkthrough built around your clinic</p><h2>See how ConphiDent fits your clinic.</h2><p>Tell us what your team wants to improve. We’ll focus the demonstration on the relevant patient, clinical, financial, communication, and operations workflows.</p><div className="mk-actions"><Link href="/demo#demo-request" className="mk-button">Book a personalised demo <CalendarDays/></Link><Link href="/product" className="mk-text-link">Explore the platform <ArrowRight/></Link></div></div></section>
-  </PublicShell>;
+      <PlatformExplorer />
+
+      <section className="mk-section">
+        <div className="cf-wrap">
+          <Reveal>
+            <div className="mk-section-heading is-centered">
+              <p className="mk-kicker">A calmer operating model</p>
+              <h2 className="t-h2">What changes on the first day.</h2>
+            </div>
+          </Reveal>
+          <Stagger className="mk-compare">
+            <StaggerChild as="article">
+              <p className="mk-compare-label"><X /> Without ConphiDent</p>
+              {without.map((line) => <div key={line}><X />{line}</div>)}
+            </StaggerChild>
+            <StaggerChild as="article" className="is-good">
+              <p className="mk-compare-label"><Check /> With ConphiDent</p>
+              {with_.map((line) => <div key={line}><Check />{line}</div>)}
+            </StaggerChild>
+          </Stagger>
+        </div>
+      </section>
+
+      <section className="mk-section on-tint">
+        <div className="cf-wrap">
+          <Reveal>
+            <div className="mk-section-heading">
+              <p className="mk-kicker">Built for real clinics</p>
+              <h2 className="t-h2">Nine roles. Twenty-two permissions. One clinic’s data.</h2>
+              <p className="t-lead">
+                A receptionist should not open a clinical note. A dentist should not have to ask
+                for the diary. ConphiDent ships role-based access, per-clinic data isolation and
+                activity records as part of the product, not as an upgrade.
+              </p>
+            </div>
+          </Reveal>
+          <Stagger className="mk-grid-3">
+            {[
+              ["Role-based access", "Owner, administrator, dentist, receptionist, billing, assistant, inventory, auditor and lab — each with its own permissions."],
+              ["Per-clinic isolation", "Every record is scoped to the clinic that owns it, across every workflow in the product."],
+              ["Activity records", "Audit records support operational traceability for sensitive actions."],
+              ["Signed WhatsApp ingress", "Webhook requests are HMAC signature-verified before anything is persisted."],
+              ["Encrypted credentials", "WhatsApp connection credentials are stored encrypted, per clinic."],
+              ["Your data, exportable", "Operational exports let you take your data out whenever you want it."],
+            ].map(([title, copy]) => (
+              <Lift key={title}>
+                <ShieldCheck />
+                <h3>{title}</h3>
+                <p>{copy}</p>
+              </Lift>
+            ))}
+          </Stagger>
+          <Reveal delay={0.1}>
+            <div className="mk-actions">
+              <Link href="/security" className="mk-text-link">Read how security works <ArrowRight /></Link>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      <section className="mk-final">
+        <Aurora />
+        <div className="cf-wrap">
+          <Reveal>
+            <p className="mk-kicker">Get your clinic running on it</p>
+            <h2 className="t-h2">Onboarding takes a conversation, not a project.</h2>
+            <p className="t-lead">
+              Start onboarding and we’ll set up your workspace, add your treatments and fees,
+              connect your WhatsApp number, and train your team before you go live.
+            </p>
+            <div className="mk-actions">
+              <a href={SETUP_URL} className="mk-button">Start onboarding <ArrowRight /></a>
+              <Link href="/demo" className="mk-button-ghost">Book a demo first</Link>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+    </PublicShell>
+  );
 }

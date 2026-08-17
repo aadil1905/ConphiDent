@@ -28,8 +28,8 @@ export default async function AutomationsPage() {
   return (
     <main className="mx-auto max-w-6xl space-y-6 pb-12">
       <header>
-        <Link href="/setup" className="text-sm font-semibold text-sky-700">← Control centre</Link>
-        <p className="mt-4 text-sm font-bold uppercase tracking-[.16em] text-sky-700">Operations</p>
+        <Link href="/setup" className="text-sm font-semibold text-primary hover:underline">← Control centre</Link>
+        <p className="platform-eyebrow mt-4">Operations</p>
         <h1 className="mt-1 text-3xl font-bold">Automation control centre</h1>
         <p className="mt-2 text-muted-foreground">Pause or resume each clinic&apos;s patient-facing WhatsApp reception and booking runtime.</p>
       </header>

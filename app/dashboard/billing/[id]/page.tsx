@@ -13,6 +13,13 @@ import { exactStamp, humanLabel, humanTime, overdueBy, rupees } from "@/lib/form
 import SendInvoiceWhatsAppButton from "@/components/billing/SendInvoiceWhatsAppButton";
 import CollectRow from "@/components/money/CollectRow";
 import { reversePaymentAction } from "./actions";
+import BackLink from "@/components/navigation/BackLink";
+
+/** What a refused reversal actually means, in the words of the thing refused. */
+const REFUSALS: Record<string, string> = {
+  reason: "Nothing was reversed. The reason has to say what happened — a few words at least, because it is what the audit trail will carry.",
+  gone: "Nothing was reversed. That payment had already been reversed, or the invoice has since been voided. Reload to see where it stands.",
+};
 
 /** A quiet colour per kind of event, always paired with the words beside it. */
 const EVENT_DOT: Record<string, string> = {
@@ -27,11 +34,11 @@ export default async function InvoiceDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ fromPatient?: string; visit?: string }>;
+  searchParams: Promise<{ fromPatient?: string; visit?: string; error?: string }>;
 }) {
   const user = await requireFeature("billing");
   const { id } = await params;
-  const { fromPatient, visit } = await searchParams;
+  const { fromPatient, visit, error } = await searchParams;
   const invoiceId = Number(id);
   if (!Number.isInteger(invoiceId)) notFound();
 
@@ -54,7 +61,7 @@ export default async function InvoiceDetailPage({
   // Everything that has happened to this invoice, and what the patient owes
   // across their whole file — both read from the same places the rest of the
   // workspace reads them.
-  const [trail, patientInvoices, plansPending, visitNote] = await Promise.all([
+  const [trail, patientInvoices, plansPending] = await Promise.all([
     prisma.auditLog.findMany({
       where: {
         clinicId: user.clinicId,
@@ -92,13 +99,6 @@ export default async function InvoiceDetailPage({
       },
       _sum: { estimatedCost: true },
     }),
-    invoice.encounterId
-      ? prisma.clinicalRecord.findFirst({
-          where: { clinicId: user.clinicId, encounterId: invoice.encounterId, enteredInErrorAt: null },
-          orderBy: { visitDate: "desc" },
-          select: { id: true },
-        })
-      : null,
   ]);
 
   const lifetimePaid = patientInvoices.reduce(
@@ -129,16 +129,18 @@ export default async function InvoiceDetailPage({
     : "/dashboard/billing";
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
+    // No inner width cap: the shell already limits content, and a second
+    // max-w-* just strands empty margins either side of the document.
+    <div className="flex w-full flex-col gap-5">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <Link href={backHref} className="text-xs font-semibold text-primary hover:underline">
+          <BackLink fallback={backHref} className="text-xs font-semibold text-primary hover:underline">
             ← {fromPatient ? "Back to the patient" : "Back to Money"}
-          </Link>
-          <h1 className="mt-1 text-[22px] leading-tight font-bold tabular-nums text-heading">
+          </BackLink>
+          <h1 className="mt-1 text-[length:var(--text-page)] leading-[var(--text-page-lh)] font-semibold tracking-[-0.01em] text-heading tabular-nums">
             {document.documentNumber}
           </h1>
-          <p className="mt-1 text-[13px] text-text-muted">
+          <p className="mt-1 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
             {document.type.replaceAll("_", " ").toLowerCase()} for{" "}
             <Link
               href={`/dashboard/patients/${invoice.patientId}`}
@@ -173,144 +175,191 @@ export default async function InvoiceDetailPage({
         </div>
       </header>
 
+      {REFUSALS[error ?? ""] && (
+        <p
+          role="alert"
+          className="rounded-control border border-danger-border bg-danger-bg px-3.5 py-3 text-[13px] text-danger"
+        >
+          {REFUSALS[error ?? ""]}
+        </p>
+      )}
+
       <div className="grid items-start gap-5">
         <div className="flex min-w-0 flex-col gap-5">
-        <section className="overflow-hidden rounded-card border-2 border-heading bg-white p-4 text-heading sm:p-6">
-          <div className="grid gap-5 border-b-2 border-heading pb-4 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center">
-            <div className="text-left text-xs leading-relaxed font-semibold">
-              <p className="font-bold">{clinicName.toUpperCase()}</p>
-              <p>{document.type.replaceAll("_", " ")}</p>
-            </div>
-            <div className="flex items-center justify-start gap-3 text-left sm:justify-center sm:text-center">
+        {/* The document itself, styled like the paper it becomes: a letterhead,
+            a ruled meta band, a hairline items table and a totals column. The
+            old carbon-receipt framing ("Received with thanks from", inked
+            blanks, a red number) read as a shop bill, not a clinic's invoice. */}
+        <section className="overflow-hidden rounded-card border border-border bg-card text-heading shadow-[var(--shadow)]">
+          <div className="flex flex-wrap items-start justify-between gap-5 p-6 pb-5 sm:p-8 sm:pb-6">
+            <div className="flex min-w-0 items-center gap-4">
               {document.logoUrl ? (
-                <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-card border border-border bg-white p-1">
+                <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-card border border-border bg-[var(--logo-plate)] p-1">
                   <Image
                     src={document.logoUrl}
                     alt=""
-                    width={64}
-                    height={64}
+                    width={56}
+                    height={56}
                     unoptimized
                     className="size-full object-contain"
                   />
                 </div>
               ) : (
-                <div className="grid size-14 place-items-center rounded-card bg-primary text-xl font-black text-white">
+                <div className="grid size-12 shrink-0 place-items-center rounded-card bg-heading font-[family-name:var(--font-display)] text-xl font-semibold text-white">
                   {clinicName.slice(0, 1).toUpperCase()}
                 </div>
               )}
               <div className="min-w-0">
-                <p className="text-xl leading-none font-bold sm:text-2xl">{clinicName}</p>
-                <p className="mt-1 text-[9px] font-semibold tracking-wide uppercase">
-                  Patient care &amp; clinical services
+                <p className="font-[family-name:var(--font-display)] text-[22px] leading-tight font-semibold">
+                  {clinicName}
                 </p>
+                {document.legalName && document.legalName !== clinicName && (
+                  <p className="mt-0.5 text-[11px] text-text-muted">{document.legalName}</p>
+                )}
               </div>
             </div>
-            <div className="text-left text-xs leading-relaxed font-medium sm:text-right">
-              <p>{document.address || "Clinic address available on request"}</p>
-              <p>{document.phone || document.email || ""}</p>
+            <div className="min-w-0 text-left text-[11.5px] leading-relaxed text-text-muted sm:text-right">
+              <p className="max-w-[34ch]">{document.address || "Clinic address available on request"}</p>
+              <p>{[document.phone, document.email].filter(Boolean).join(" · ")}</p>
+              {document.gstin && <p>GSTIN {document.gstin}</p>}
+              {document.registrationNumber && <p>Reg. {document.registrationNumber}</p>}
             </div>
           </div>
 
-          <div className="grid items-center gap-2 border-b border-heading py-3 text-sm font-semibold sm:grid-cols-2">
-            <p>
-              No: <span className="ml-2 text-xl font-bold text-danger">{document.documentNumber}</span>
-            </p>
-            <p className="sm:text-right">
-              Date: <span className="ml-2">{document.issuedAt.toLocaleDateString("en-IN")}</span>
-            </p>
-          </div>
-
-          <div className="space-y-3 border-b border-heading py-3 text-sm">
-            <p>
-              Received with thanks from:{" "}
-              <span className="ml-2 border-b border-heading px-1 font-semibold">
-                {document.patient.fullName}
-              </span>
-            </p>
-            <p>
-              The sum of Rs.:{" "}
-              <span className="ml-2 border-b border-heading px-1 font-semibold tabular-nums">
-                {document.totalAmount.toLocaleString("en-IN")}
-              </span>
-            </p>
-          </div>
-
-          <div className="mt-3 overflow-hidden border border-heading text-sm">
-            <div className="grid grid-cols-[minmax(0,1fr)_7rem] border-b border-heading bg-muted font-bold sm:grid-cols-[minmax(0,1fr)_33%]">
-              <p className="px-3 py-2 text-base">TREATMENT</p>
-              <p className="border-l border-heading px-3 py-2 text-right">Amount</p>
+          <div className="grid gap-x-6 gap-y-3 border-y border-border bg-muted/60 px-6 py-4 sm:grid-cols-4 sm:px-8">
+            <div>
+              <p className="text-[10px] font-semibold tracking-[0.14em] text-[var(--gold)] uppercase">
+                {document.type.replaceAll("_", " ")}
+              </p>
+              <p className="mt-1 text-[15px] font-semibold tabular-nums">{document.documentNumber}</p>
             </div>
-            {(document.lineItems.length
-              ? document.lineItems
-              : [
-                  {
-                    id: 0,
-                    description: "Dental treatment and clinical services",
-                    lineTotal: document.totalAmount,
-                    quantity: 1,
-                  },
-                ]
-            ).map((item) => (
-              <div
-                key={item.id}
-                className="grid min-h-8 grid-cols-[minmax(0,1fr)_7rem] border-b border-heading last:border-b-0 sm:grid-cols-[minmax(0,1fr)_33%]"
-              >
-                <p className="flex min-w-0 items-baseline justify-between gap-3 px-3 py-2">
-                  <span className="font-semibold">{item.description}</span>
-                  <span className="shrink-0 text-xs text-text-muted">x {item.quantity}</span>
-                </p>
-                <p className="border-l border-heading px-3 py-2 text-right tabular-nums">
-                  Rs. {item.lineTotal.toLocaleString("en-IN")}
-                </p>
-              </div>
-            ))}
-            <div className="grid grid-cols-[minmax(0,1fr)_7rem] border-t border-heading font-bold sm:grid-cols-[minmax(0,1fr)_33%]">
-              <p className="px-3 py-2 text-right">Total</p>
-              <p className="border-l border-heading px-3 py-2 text-right tabular-nums">
-                Rs. {document.totalAmount.toLocaleString("en-IN")}
+            <div>
+              <p className="text-[10px] font-semibold tracking-[0.14em] text-text-muted uppercase">Billed to</p>
+              <p className="mt-1 text-[14px] font-semibold">{document.patient.fullName}</p>
+              {document.patient.phone && (
+                <p className="text-[11.5px] text-text-muted tabular-nums">{document.patient.phone}</p>
+              )}
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold tracking-[0.14em] text-text-muted uppercase">Issued</p>
+              <p className="mt-1 text-[14px] font-semibold tabular-nums">
+                {document.issuedAt.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold tracking-[0.14em] text-text-muted uppercase">
+                {document.outstandingAmount > 0 ? "Balance due" : "Status"}
+              </p>
+              <p className={`mt-1 text-[14px] font-semibold tabular-nums ${document.outstandingAmount > 0 ? "text-danger" : "text-success"}`}>
+                {document.outstandingAmount > 0
+                  ? `₹${document.outstandingAmount.toLocaleString("en-IN")}`
+                  : "Paid in full"}
               </p>
             </div>
           </div>
 
-          {invoice.treatmentPlan && (
-            <p className="mt-2 text-xs">
-              <span className="font-bold">Selected treatment:</span> {invoice.treatmentPlan.title}
-              {teeth ? ` (Teeth: ${teeth})` : ""}
-            </p>
-          )}
+          <div className="px-6 pt-5 sm:px-8">
+            <table className="w-full text-[13.5px]">
+              <thead>
+                <tr className="border-b border-border-strong text-left text-[10.5px] font-semibold tracking-[0.1em] text-text-muted uppercase">
+                  <th className="pb-2.5 font-semibold">Treatment</th>
+                  <th className="w-14 pb-2.5 text-right font-semibold">Qty</th>
+                  <th className="w-28 pb-2.5 text-right font-semibold">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(document.lineItems.length
+                  ? document.lineItems
+                  : [
+                      {
+                        id: 0,
+                        description: "Dental treatment and clinical services",
+                        lineTotal: document.totalAmount,
+                        quantity: 1,
+                      },
+                    ]
+                ).map((item) => (
+                  <tr key={item.id} className="border-b border-border">
+                    <td className="py-3 pr-4 font-medium">{item.description}</td>
+                    <td className="py-3 text-right text-text-muted tabular-nums">{item.quantity}</td>
+                    <td className="py-3 text-right font-semibold tabular-nums">
+                      ₹{item.lineTotal.toLocaleString("en-IN")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
 
-          {document.notes && (
-            <div className="mt-3 border-t border-heading pt-3 text-sm">
-              <span className="font-bold">Notes: </span>
-              <span className="whitespace-pre-wrap">{document.notes}</span>
+            <div className="ml-auto mt-4 w-full max-w-[18rem] text-[13.5px]">
+              {document.discountAmount > 0 && (
+                <>
+                  <div className="flex justify-between py-1 text-text-muted">
+                    <span>Subtotal</span>
+                    <span className="tabular-nums">₹{document.subtotalAmount.toLocaleString("en-IN")}</span>
+                  </div>
+                  <div className="flex justify-between py-1 text-text-muted">
+                    <span>Discount</span>
+                    <span className="tabular-nums">−₹{document.discountAmount.toLocaleString("en-IN")}</span>
+                  </div>
+                </>
+              )}
+              {document.taxAmount > 0 && (
+                <div className="flex justify-between py-1 text-text-muted">
+                  <span>GST</span>
+                  <span className="tabular-nums">₹{document.taxAmount.toLocaleString("en-IN")}</span>
+                </div>
+              )}
+              <div className="mt-1 flex items-baseline justify-between border-t border-heading pt-2.5">
+                <span className="font-[family-name:var(--font-display)] text-[15px] font-semibold">Total</span>
+                <span className="font-[family-name:var(--font-display)] text-[20px] font-semibold tabular-nums">
+                  ₹{document.totalAmount.toLocaleString("en-IN")}
+                </span>
+              </div>
+              {document.paidAmount > 0 && (
+                <div className="flex justify-between py-1 text-[12.5px] text-success">
+                  <span>Received so far</span>
+                  <span className="tabular-nums">₹{document.paidAmount.toLocaleString("en-IN")}</span>
+                </div>
+              )}
             </div>
-          )}
+          </div>
+
+          <div className="space-y-2.5 px-6 pt-4 pb-6 text-[12px] leading-relaxed text-text-muted sm:px-8">
+            {invoice.treatmentPlan && (
+              <p>
+                <span className="font-semibold text-heading">Treatment plan:</span>{" "}
+                {invoice.treatmentPlan.title}
+                {teeth ? ` (teeth ${teeth})` : ""}
+              </p>
+            )}
+            {document.notes && (
+              <p className="whitespace-pre-wrap">
+                <span className="font-semibold text-heading">Notes:</span> {document.notes}
+              </p>
+            )}
+            {document.paymentDetails && (
+              <p className="whitespace-pre-wrap">
+                <span className="font-semibold text-heading">How to pay:</span> {document.paymentDetails}
+              </p>
+            )}
+            <p className="border-t border-border pt-3 text-[11px]">
+              {document.footer || `Thank you for trusting ${clinicName} with your care.`}
+            </p>
+          </div>
         </section>
 
-        {visitNote && (
-          <p className="text-[13px] text-text-muted">
-            This bill belongs to a visit you wrote up.{" "}
-            <Link
-              href={`/dashboard/clinical-records/${visitNote.id}`}
-              className="font-semibold text-primary hover:underline"
-            >
-              Open the clinical note
-            </Link>
-          </p>
-        )}
-
         <section className="overflow-hidden rounded-card border border-border bg-card shadow-[var(--shadow)]">
-          <div className="flex flex-wrap items-baseline justify-between gap-3 px-4.5 pt-4 pb-2.5">
-            <h2 className="text-base font-semibold text-heading">Payments so far</h2>
+          <div className="flex flex-wrap items-baseline justify-between gap-3 px-5.5 pt-4 pb-2.5">
+            <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Payments so far</h2>
             <span className="text-xs text-text-muted">
               {rupees(paid)} of {rupees(invoice.totalAmount)} collected
             </span>
           </div>
           {invoice.payments.length === 0 ? (
-            <div className="flex flex-col items-center gap-1.5 border-t border-border px-4.5 pt-7 pb-9 text-center">
+            <div className="flex flex-col items-center gap-1.5 border-t border-border px-5.5 pt-7 pb-9 text-center">
               <CreditCard className="h-6 w-6 text-text-muted" strokeWidth={1.7} aria-hidden />
               <p className="text-sm font-semibold text-heading">Nothing collected yet</p>
-              <p className="text-[13px] text-text-muted">
+              <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                 Take the payment on the right, or send {invoice.patient.fullName.split(" ")[0]} the
                 invoice on WhatsApp so they can pay from home.
               </p>
@@ -321,7 +370,7 @@ export default async function InvoiceDetailPage({
               return (
                 <div
                   key={payment.id}
-                  className={`grid items-center gap-3 border-t border-border px-4.5 py-3 sm:grid-cols-[minmax(0,1fr)_140px] ${
+                  className={`grid items-center gap-3 border-t border-border px-5.5 py-3 sm:grid-cols-[minmax(0,1fr)_140px] ${
                     live ? "border-l-[3px] border-l-primary" : "border-l-[3px] border-l-transparent"
                   }`}
                 >
@@ -354,18 +403,26 @@ export default async function InvoiceDetailPage({
                       {rupees(payment.amount)}
                     </span>
                     {live && can(user.role, "manageBilling") && (
-                      <form action={reversePaymentAction} className="flex w-full flex-wrap gap-2">
+                      <form
+                        action={reversePaymentAction}
+                        data-confirmation-managed="true"
+                        className="flex w-full flex-wrap gap-2"
+                      >
                         <input type="hidden" name="paymentId" value={payment.id} />
                         <input type="hidden" name="invoiceId" value={invoice.id} />
+                        {/* Stamped here rather than by the global confirmation
+                            helper: this form asks its own question, and the
+                            action must not depend on a DOM observer running. */}
+                        <input type="hidden" name="confirmed" value="1" />
                         <input
                           required
                           minLength={8}
-                          name="reason"
+                          name="reversalReason"
                           placeholder="Why is it going back?"
                           aria-label={`Why the ${rupees(payment.amount)} payment is going back`}
-                          className="h-10 min-w-0 flex-1 rounded-control border border-border bg-card px-2 text-xs"
+                          className="h-11 min-w-0 flex-1 rounded-control border border-border bg-card px-2 text-xs"
                         />
-                        <button className="h-10 cursor-pointer rounded-control border border-danger-border px-3 text-xs font-semibold text-danger hover:bg-danger-bg">
+                        <button className="h-11 cursor-pointer rounded-control border border-danger-border px-3 text-xs font-semibold text-danger hover:bg-danger-bg">
                           Put it back
                         </button>
                       </form>
@@ -378,28 +435,28 @@ export default async function InvoiceDetailPage({
         </section>
 
         <section className="overflow-hidden rounded-card border border-border bg-card shadow-[var(--shadow)]">
-          <div className="px-4.5 pt-4 pb-2.5">
-            <h2 className="text-base font-semibold text-heading">History</h2>
-            <p className="mt-1 text-[13px] text-text-muted">
+          <div className="px-5.5 pt-4 pb-2.5">
+            <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">History</h2>
+            <p className="mt-1 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
               Everything that happened to this invoice, newest first.
             </p>
           </div>
           {trail.length === 0 ? (
-            <p className="border-t border-border px-4.5 py-6 text-center text-[13px] text-text-muted">
+            <p className="border-t border-border px-5.5 py-6 text-center text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
               Nothing logged against this invoice yet.
             </p>
           ) : (
             trail.map((entry) => (
               <div
                 key={entry.id}
-                className="grid grid-cols-[18px_minmax(0,1fr)_auto] items-start gap-3 border-t border-border px-4.5 py-2.5"
+                className="grid grid-cols-[18px_minmax(0,1fr)_auto] items-start gap-3 border-t border-border px-5.5 py-2.5"
               >
                 <span
                   className={`mt-1.5 h-2 w-2 rounded-pill ${EVENT_DOT[entry.action] ?? "bg-primary"}`}
                   aria-hidden
                 />
                 <div className="min-w-0">
-                  <p className="text-[13px] text-foreground">
+                  <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-foreground">
                     {entry.detail || humanLabel(entry.action)}
                   </p>
                   <p className="text-xs text-text-muted">
@@ -419,14 +476,14 @@ export default async function InvoiceDetailPage({
         </section>
         </div>
 
-        <aside className="flex flex-col gap-5">
+        <aside className="flex flex-col gap-6">
           <div className="flex flex-col gap-3 rounded-card border border-border bg-card p-4 shadow-[var(--shadow)]">
             <div>
-              <p className="text-[11px] font-semibold tracking-[0.06em] text-text-muted uppercase">
+              <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
                 Still owing
               </p>
               <p
-                className={`text-2xl font-bold tabular-nums ${outstanding > 0 ? "text-danger" : "text-success"}`}
+                className={`text-[length:var(--text-metric)] leading-[var(--text-metric-lh)] font-bold tabular-nums ${outstanding > 0 ? "text-danger" : "text-success"}`}
               >
                 {outstanding > 0 ? rupees(outstanding) : "Nothing"}
               </p>
@@ -447,14 +504,14 @@ export default async function InvoiceDetailPage({
                 canVoid={can(user.role, "manageBilling")}
               />
             ) : (
-              <p className="rounded-control border border-warning-border bg-warning-bg p-3 text-[13px] text-warning">
+              <p className="rounded-control border border-warning-border bg-warning-bg p-3 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-warning">
                 This is an estimate, so it cannot take a payment. Raise a tax or non-tax invoice first.
               </p>
             )}
           </div>
 
           <div className="flex flex-col gap-2 rounded-card border border-border bg-card p-4 shadow-[var(--shadow)]">
-            <p className="text-[13px] font-semibold text-heading">
+            <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] font-semibold text-heading">
               {invoice.patient.fullName.split(" ")[0]}&rsquo;s account
             </p>
             <div className="flex justify-between gap-3 text-[13px]">
@@ -485,7 +542,7 @@ export default async function InvoiceDetailPage({
 
           {can(user.role, "manageBilling") && (
             <div className="flex flex-col gap-2 rounded-card border border-border bg-card p-4 shadow-[var(--shadow)]">
-              <p className="text-[13px] font-semibold text-heading">Corrections</p>
+              <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] font-semibold text-heading">Corrections</p>
               <p className="text-xs text-text-muted">
                 A raised invoice cannot be edited — the number and the amount are what the patient was
                 given. Void it and raise a new one instead. Voiding cannot be undone.

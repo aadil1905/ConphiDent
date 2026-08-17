@@ -121,8 +121,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
     },
     failedMessages > 0 && {
       label: `${failedMessages} WhatsApp ${plural(failedMessages, "message", "messages")} did not go out`,
-      detail: "See what went wrong, then send it again.",
-      href: "/dashboard/whatsapp-operations",
+      detail: "Open the inbox and try that thread again.",
+      href: "/dashboard/conversations",
       tone: "warning" as const,
     },
     unmatchedImaging > 0 && {

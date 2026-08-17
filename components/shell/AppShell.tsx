@@ -30,13 +30,6 @@ function freshnessLabel(seconds: number) {
   return `Updated ${minutes} minute${minutes === 1 ? "" : "s"} ago`;
 }
 
-function partOfDay() {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
-}
-
 const readIsMac = () => /Mac|iPhone|iPad/i.test(navigator.userAgent);
 
 /**
@@ -61,8 +54,6 @@ export default function AppShell({
   const [ageSeconds, setAgeSeconds] = useState(0);
 
   const onMac = useClientValue(readIsMac, false);
-  const greeting = useClientValue(partOfDay, "Hello");
-  const firstName = user.fullName.split(" ")[0];
 
   // Liveness: the inbox, the notification count and the Today queue stay honest
   // without anyone reaching for refresh.
@@ -94,7 +85,10 @@ export default function AppShell({
   }, []);
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
+    // `clinic-theme` is the scope the workspace palette is declared against —
+    // it is what makes the dark tokens in globals.css apply here and nowhere
+    // else. The marketing site and the Control Center declare their own.
+    <div className="clinic-theme flex min-h-screen flex-col bg-background text-foreground">
       <NavDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
@@ -107,7 +101,6 @@ export default function AppShell({
       />
 
       <TopBar
-        greeting={`${greeting}, ${firstName}`}
         freshness={freshnessLabel(ageSeconds)}
         paletteHint={onMac ? "⌘K" : "Ctrl K"}
         alerts={alerts}
@@ -118,7 +111,7 @@ export default function AppShell({
         onOpenPalette={() => setPaletteOpen(true)}
       />
 
-      <main className="flex flex-1 flex-col py-[clamp(1rem,1.5vw,2rem)]">
+      <main className="flex flex-1 flex-col pt-[clamp(1.5rem,2.2vw,2.5rem)] pb-[clamp(2rem,3vw,3.5rem)]">
         <div className="mx-auto w-full min-w-0 max-w-[107.5rem] px-[clamp(1rem,1.5vw,2rem)]">
           {children}
         </div>

@@ -110,7 +110,10 @@ export async function toggleStaffAction(formData: FormData) {
   const userId = Number(formData.get("userId"));
   const active = String(formData.get("active")) === "true";
 
-  if (!Number.isInteger(userId) || userId === owner.id) return;
+  if (!Number.isInteger(userId)) return;
+  // Locking yourself out is the one thing this page must not let you do, and
+  // saying so beats a button that appears to do nothing.
+  if (userId === owner.id) redirect("/dashboard/settings?error=self");
 
   const result = await prisma.user.updateMany({
     where: { id: userId, clinicId: owner.clinicId, role: { not: "OWNER" } },

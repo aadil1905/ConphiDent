@@ -26,11 +26,11 @@ const summaryClass = "flex cursor-pointer list-none items-center gap-2 text-[13p
 
 export function ImagingReviewActions({ study, canMatch, canSign }: { study: ReviewStudy; canMatch: boolean; canSign: boolean }) {
   return (
-    <article className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
+    <article className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-heading">{study.modalityLabel}</p>
-          <p className="mt-0.5 text-[13px] text-text-muted">
+          <p className="mt-0.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
             {study.patient?.fullName || "No name on it"} · {study.acquisitionLabel}
           </p>
         </div>
@@ -111,12 +111,12 @@ export function ImagingReviewActions({ study, canMatch, canSign }: { study: Revi
 }
 
 export function ImagingComparisonForm() {
-  const [options, setOptions] = useState<{ studies: { id: string; label: string }[]; plans: { id: number; label: string }[]; procedures: { id: number; label: string }[] }>({ studies: [], plans: [], procedures: [] });
+  const [options, setOptions] = useState<{ studies: { id: string; label: string }[]; plans: { id: number; label: string }[]; procedures: { id: number; label: string }[]; legacyProcedures: { id: number; label: string }[] }>({ studies: [], plans: [], procedures: [], legacyProcedures: [] });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   async function load(patient: PatientOption | null) {
-    setOptions({ studies: [], plans: [], procedures: [] });
+    setOptions({ studies: [], plans: [], procedures: [], legacyProcedures: [] });
     setError("");
     if (!patient) return;
     setLoading(true);
@@ -124,7 +124,7 @@ export function ImagingComparisonForm() {
       const response = await fetch(`/api/imaging/comparison-options?patientId=${patient.id}`, { cache: "no-store" });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "That didn't load — try again.");
-      setOptions({ studies: payload.studies || [], plans: payload.plans || [], procedures: payload.procedures || [] });
+      setOptions({ studies: payload.studies || [], plans: payload.plans || [], procedures: payload.procedures || [], legacyProcedures: payload.legacyProcedures || [] });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "That didn't load — try again.");
     } finally {
@@ -141,7 +141,7 @@ export function ImagingComparisonForm() {
         <PatientSearchSelect name="comparisonPatientId" required onSelect={load} />
       </label>
       {loading ? (
-        <p className="flex items-center gap-2 text-[13px] text-text-muted">
+        <p className="flex items-center gap-2 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
           <LoaderCircle className="size-4 animate-spin" aria-hidden />Finding their X-rays…
         </p>
       ) : null}
@@ -171,7 +171,21 @@ export function ImagingComparisonForm() {
           <select name="completedFindingId" defaultValue="" className={select}>
             <option value="">Not linked to a treatment</option>
             {options.procedures.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+            {/* Treatment held only in the older chart. It is shown so the list is
+                not silently missing most of what this patient has had done, and
+                greyed because a comparison can only point at the newer record. */}
+            {options.legacyProcedures.length ? (
+              <optgroup label="Recorded before treatments could be linked">
+                {options.legacyProcedures.map((item) => <option key={item.id} value="" disabled>{item.label}</option>)}
+              </optgroup>
+            ) : null}
           </select>
+          {options.legacyProcedures.length ? (
+            <span className="text-xs font-normal text-text-muted">
+              The greyed entries are on the patient&rsquo;s chart but were recorded before treatments
+              could be linked to an X-ray. Name them in the note instead.
+            </span>
+          ) : null}
         </label>
       </div>
       <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">What changed

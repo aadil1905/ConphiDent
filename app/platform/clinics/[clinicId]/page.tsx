@@ -57,8 +57,8 @@ export default async function ClinicControlPage({ params }: { params: Promise<{ 
   return (
     <main className="mx-auto max-w-7xl space-y-6 pb-10">
       <header>
-        <Link href="/platform" className="text-sm font-semibold text-sky-700 hover:underline">← All clinics</Link>
-        <p className="mt-4 text-sm font-bold uppercase tracking-[.16em] text-sky-700">Clinic control</p>
+        <Link href="/platform" className="text-sm font-semibold text-primary hover:underline">← All clinics</Link>
+        <p className="platform-eyebrow mt-4">Clinic control</p>
         <h1 className="mt-1 text-3xl font-bold">{clinic.brandName || clinic.name}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Tenant #{clinic.id} · {clinic.slug || "No workspace key"} · {clinic.status}
@@ -72,7 +72,7 @@ export default async function ClinicControlPage({ params }: { params: Promise<{ 
               <p className="text-sm font-semibold text-muted-foreground">Setup readiness</p>
               <p className="text-3xl font-bold">{readiness.percent}%</p>
             </div>
-            <Settings2 className="size-7 text-sky-700" />
+            <Settings2 className="size-7 text-primary" />
           </div>
           <div className="mt-4 h-2 rounded-full bg-slate-100">
             <div className="h-full rounded-full bg-sky-700" style={{ width: `${readiness.percent}%` }} />
@@ -161,13 +161,13 @@ export default async function ClinicControlPage({ params }: { params: Promise<{ 
               <div key={provider.id} className="flex items-center justify-between rounded-lg border p-3">
                 <span className="text-sm font-semibold">
                   {provider.name}
-                  {!provider.active && <em className="ml-1 text-xs text-slate-500">inactive</em>}
+                  {!provider.active && <em className="ml-1 text-xs text-text-muted">inactive</em>}
                 </span>
                 <form action={setPlatformProviderActiveAction}>
                   <input type="hidden" name="clinicId" value={clinic.id} />
                   <input type="hidden" name="providerId" value={provider.id} />
                   <input type="hidden" name="active" value={String(!provider.active)} />
-                  <button className="text-sm font-semibold text-sky-700">
+                  <button className="text-sm font-semibold text-primary hover:underline">
                     {provider.active ? "Deactivate" : "Reactivate"}
                   </button>
                 </form>
@@ -194,13 +194,13 @@ export default async function ClinicControlPage({ params }: { params: Promise<{ 
               <div key={service.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
                 <span className="text-sm">
                   <b>{service.name}</b> · {service.durationMinutes} min
-                  {!service.active && <em className="ml-1 text-slate-500">inactive</em>}
+                  {!service.active && <em className="ml-1 text-text-muted">inactive</em>}
                 </span>
                 <form action={setPlatformServiceActiveAction}>
                   <input type="hidden" name="clinicId" value={clinic.id} />
                   <input type="hidden" name="serviceId" value={service.id} />
                   <input type="hidden" name="active" value={String(!service.active)} />
-                  <button className="text-sm font-semibold text-sky-700">
+                  <button className="text-sm font-semibold text-primary hover:underline">
                     {service.active ? "Deactivate" : "Reactivate"}
                   </button>
                 </form>
@@ -231,7 +231,7 @@ export default async function ClinicControlPage({ params }: { params: Promise<{ 
               <details key={location.id} className="rounded-xl border p-4" open={location.isPrimary}>
                 <summary className="cursor-pointer font-bold">
                   {location.name}
-                  {location.isPrimary && <span className="ml-2 text-xs text-sky-700">PRIMARY</span>}
+                  {location.isPrimary && <span className="ml-2 text-xs text-[var(--gold)]">PRIMARY</span>}
                   {!location.active && <span className="ml-2 text-xs text-red-700">INACTIVE</span>}
                 </summary>
                 <div className="mt-4 grid gap-5 xl:grid-cols-[minmax(220px,1fr)_minmax(480px,2fr)_minmax(220px,1fr)]">
@@ -372,7 +372,7 @@ export default async function ClinicControlPage({ params }: { params: Promise<{ 
                 <input type="hidden" name="featureKey" value={key} />
                 <input type="hidden" name="enabled" value={String(!enabled)} />
                 <span className="text-sm font-semibold">{feature.label}</span>
-                <button className={enabled ? "text-emerald-700" : "text-slate-500"}>{enabled ? "Enabled" : "Disabled"}</button>
+                <button className={enabled ? "text-emerald-700" : "text-text-muted"}>{enabled ? "Enabled" : "Disabled"}</button>
               </form>
             );
           })}

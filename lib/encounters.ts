@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import type { Db } from "@/lib/prisma";
 
 type EncounterInput = {
   clinicId: number;
@@ -17,7 +17,7 @@ type EncounterInput = {
  * Resolve one stable clinical episode. Call only after the patient and optional
  * appointment have been verified against the authenticated clinic.
  */
-export async function ensureEncounter(tx: Prisma.TransactionClient, input: EncounterInput) {
+export async function ensureEncounter(tx: Db, input: EncounterInput) {
   if (input.appointmentId) {
     const existing = await tx.encounter.findUnique({ where: { appointmentId: input.appointmentId } });
     if (existing) {

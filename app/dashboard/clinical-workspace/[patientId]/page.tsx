@@ -6,6 +6,9 @@ import DentalChartEditor from "@/components/clinical/DentalChartEditor";
 import type { DentitionStage } from "@/lib/dentition";
 import { can, requirePermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import BackLink from "@/components/navigation/BackLink";
+import SafetyBanner from "@/components/clinical/SafetyBanner";
+import { patientSafety } from "@/lib/patient-safety";
 
 function todayKey() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -86,7 +89,12 @@ export default async function PatientClinicalWorkspace({
           status: true,
         },
       },
-      clinicalRecords: { where: { enteredInErrorAt: null }, orderBy: { visitDate: "desc" }, take: 12 },
+      intakeRequests: {
+        where: { drugAllergies: { not: null } },
+        orderBy: [{ completedAt: "desc" }, { id: "desc" }],
+        take: 20,
+        select: { drugAllergies: true, status: true },
+      },
     },
   });
 
@@ -111,9 +119,6 @@ export default async function PatientClinicalWorkspace({
     (appointment) => dateKey(appointment.appointmentDate) === selectedVisitDate,
   );
   const selectedAppointment = appointmentsForSelectedDate[0] || null;
-  const recordsForSelectedDate = patient.clinicalRecords.filter(
-    (record) => dateKey(record.visitDate) === selectedVisitDate,
-  );
   const selectedRange = localDayRange(selectedVisitDate);
   const canSignWorkspace = can(user.role, "signClinical");
   // Only the role decides whether you can write, never the visit's status.
@@ -169,32 +174,26 @@ export default async function PatientClinicalWorkspace({
     .slice(0, 2)
     .join("")
     .toUpperCase();
-  const allergies = patient.clinicalRecords.find((record) => record.drugAllergies?.trim())?.drugAllergies?.trim() || null;
-  const careLine = [
-    allergies ? `Allergies: ${allergies}` : "No known allergies on file",
-    patient.medicalNotes?.trim() || null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const safety = patientSafety({ medicalNotes: patient.medicalNotes, intakeAnswers: patient.intakeRequests });
   const details = ageLine(patient.dateOfBirth, patient.gender);
   const isToday = selectedVisitDate === todayKey();
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <span className="grid size-11 flex-none place-items-center rounded-pill bg-secondary text-sm font-bold text-heading">
             {initials}
           </span>
           <div className="min-w-0">
-            <Link
-              href={fromPatient === "1" ? `/dashboard/patients/${patient.id}?visit=${selectedVisitDate}` : "/dashboard/clinical-workspace"}
+            <BackLink
+              fallback={fromPatient === "1" ? `/dashboard/patients/${patient.id}?visit=${selectedVisitDate}` : "/dashboard/clinical-workspace"}
               className="text-xs font-semibold text-primary hover:underline"
             >
               ← {fromPatient === "1" ? "Back to the patient" : "Clinical"}
-            </Link>
+            </BackLink>
             <div className="flex flex-wrap items-baseline gap-x-2.5">
-              <h1 className="text-[19px] leading-tight font-bold text-heading">{patient.fullName}</h1>
+              <h1 className="text-[length:var(--text-page)] leading-[var(--text-page-lh)] font-semibold tracking-[-0.01em] text-heading">{patient.fullName}</h1>
               <span className="text-[13px] text-text-muted">
                 {details ? `${details} · ` : ""}
                 {patient.phone}
@@ -225,7 +224,7 @@ export default async function PatientClinicalWorkspace({
             key={item}
             href={`/dashboard/clinical-workspace/${patient.id}?visitDate=${item}${fromPatient === "1" ? "&fromPatient=1" : ""}`}
             aria-current={selectedVisitDate === item ? "date" : undefined}
-            className={`inline-flex min-h-10 items-center rounded-pill border px-3.5 text-xs font-semibold tabular-nums whitespace-nowrap ${
+            className={`inline-flex min-h-11 items-center rounded-pill border px-3.5 text-xs font-semibold tabular-nums whitespace-nowrap ${
               selectedVisitDate === item
                 ? "border-primary bg-secondary text-heading"
                 : "border-border-strong bg-card text-heading hover:bg-muted"
@@ -245,10 +244,7 @@ export default async function PatientClinicalWorkspace({
         </span>
       </div>
 
-      <div className="rounded-card border border-danger-border bg-danger-bg px-4 py-3.5">
-        <p className="mb-0.5 text-[13px] font-bold text-danger">Read before treating</p>
-        <p className="text-[13px] text-danger">{careLine}</p>
-      </div>
+      <SafetyBanner safety={safety} recordHref={`/dashboard/patients/${patient.id}/edit`} />
 
       {canEditSelectedWorkspace ? (
         <DentalChartEditor
@@ -265,40 +261,14 @@ export default async function PatientClinicalWorkspace({
           clinicTimezone={clinic?.timezone || "Asia/Kolkata"}
         />
       ) : (
-        <section className="rounded-card border border-dashed border-border-strong bg-card px-4.5 py-8 text-center">
-          <h2 className="text-base font-semibold text-heading">Reading only, for you</h2>
-          <p className="mt-1.5 text-[13px] text-text-muted">
+        <section className="rounded-card border border-dashed border-border-strong bg-card px-5.5 py-8 text-center">
+          <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Reading only, for you</h2>
+          <p className="mt-1.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
             Your role can read the chart but not write on it. An owner, administrator or dentist can chart and sign.
           </p>
         </section>
       )}
 
-      <section className="rounded-card border border-border bg-card shadow-[var(--shadow)]">
-        <div className="flex flex-wrap items-baseline justify-between gap-3 px-4.5 pt-4 pb-3">
-          <h2 className="text-base font-semibold text-heading">Notes on this visit</h2>
-          <span className="text-xs text-text-muted">
-            {formatDate(new Date(`${selectedVisitDate}T00:00:00.000+05:30`))} · the same records Patient 360 shows
-          </span>
-        </div>
-        {recordsForSelectedDate.length === 0 ? (
-          <p className="px-4.5 pt-1 pb-6 text-[13px] text-text-muted">
-            No note on this visit yet. Chart above, or write the visit note from Clinical.
-          </p>
-        ) : (
-          recordsForSelectedDate.map((record) => (
-            <article key={record.id} className="border-t border-border/80 px-4.5 py-3.5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-semibold text-heading">{record.chiefComplaint}</p>
-                <p className="text-xs text-text-muted">{formatDate(record.visitDate)}</p>
-              </div>
-              <p className="mt-1 text-[13px] text-text-muted">{record.diagnosis || "No diagnosis written"}</p>
-              {record.clinicalNotes && (
-                <p className="mt-1.5 text-sm whitespace-pre-wrap text-foreground">{record.clinicalNotes}</p>
-              )}
-            </article>
-          ))
-        )}
-      </section>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -92,12 +93,16 @@ export function PlatformSidebar({ fullName, role, permissions }: { fullName: str
       inert={!open}
     >
       <div className="platform-sidebar__brand">
-        <Link href="/platform" className="flex min-w-0 items-center gap-3" onClick={() => setOpen(false)}>
-          <span className="grid size-14 shrink-0 place-items-center rounded-xl bg-primary text-xl font-black text-white shadow-sm">C</span>
-          <span className="platform-sidebar__brand-copy">
-            <span className="block text-[10px] font-bold uppercase tracking-[.18em] text-primary">Enterprise control</span>
-            <span className="block max-w-[190px] truncate text-xl font-black tracking-tight text-[var(--heading)]">ConphiDent Technologies</span>
-          </span>
+        <Link href="/platform" className="flex min-w-0 flex-col gap-2.5" onClick={() => setOpen(false)}>
+          <Image
+            src="/conphident-logo-transparent.png"
+            alt="ConphiDent"
+            width={1764}
+            height={864}
+            priority
+            className="h-7 w-auto"
+          />
+          <span className="platform-eyebrow">Control Centre</span>
         </Link>
         <button type="button" onClick={() => setOpen(false)} className="platform-sidebar__close" aria-label="Close Control Center navigation"><X className="size-5" aria-hidden="true" /></button>
       </div>

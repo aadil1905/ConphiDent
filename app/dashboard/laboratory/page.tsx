@@ -12,7 +12,7 @@ import { requirePermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { exactStamp, humanTime, overdueBy } from "@/lib/format";
 import { pageWindow, parseListQuery, type RawSearchParams } from "@/lib/list-params";
-import DataList, { ListCell, ListRow } from "@/components/lists/DataList";
+import DataList, { ListCell, ListLink, ListRow } from "@/components/lists/DataList";
 import ListSearch from "@/components/lists/ListSearch";
 import FilterChips from "@/components/lists/FilterChips";
 import EmptyState from "@/components/lists/EmptyState";
@@ -24,7 +24,9 @@ const CLOSED = ["COMPLETED", "CANCELLED"];
 const IN_FLIGHT = [...CLOSED, "READY", "DISPATCHED", "RECEIVED_BY_CLINIC", "FITTED"];
 
 const COLUMNS = [
-  { key: "order", label: "Case", sortKey: "order" },
+  // Below sm the number gives way to the three things a phone is used for
+  // here — whose case, when it is needed, where it has got to.
+  { key: "order", label: "Case", sortKey: "order", secondary: true },
   { key: "patient", label: "Patient" },
   { key: "lab", label: "Lab", secondary: true },
   { key: "due", label: "Needed by", sortKey: "due" },
@@ -129,7 +131,7 @@ export default async function LaboratoryPage({
   ]);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Lab work"
         sub={
@@ -157,10 +159,10 @@ export default async function LaboratoryPage({
             key={tile.label}
             className="rounded-card border border-border bg-card px-4 py-3.5 shadow-[var(--shadow)]"
           >
-            <p className="text-[11px] font-semibold tracking-[0.06em] text-text-muted uppercase">
+            <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
               {tile.label}
             </p>
-            <p className={`text-2xl font-bold tabular-nums ${tile.tone}`}>{tile.value}</p>
+            <p className={`text-[length:var(--text-metric)] leading-[var(--text-metric-lh)] font-bold tabular-nums ${tile.tone}`}>{tile.value}</p>
           </div>
         ))}
       </div>
@@ -227,7 +229,7 @@ export default async function LaboratoryPage({
           const stage = labCaseStage(item.status);
           return (
             <ListRow key={item.id} needsAttention={threatened}>
-              <ListCell>
+              <ListCell secondary interactive>
                 <Link
                   href={`/dashboard/laboratory/${item.id}`}
                   className="font-semibold tabular-nums text-primary hover:underline"
@@ -239,7 +241,7 @@ export default async function LaboratoryPage({
                   {item.priority === "URGENT" ? " · urgent" : ""}
                 </span>
               </ListCell>
-              <ListCell>
+              <ListCell interactive>
                 <Link
                   href={`/dashboard/patients/${item.patient.id}`}
                   className="text-primary hover:underline"
@@ -276,18 +278,18 @@ export default async function LaboratoryPage({
                       : LAB_STAGES[stage - 1]}
                 </span>
               </ListCell>
-              <ListCell align="right">
-                <Link href={`/dashboard/laboratory/${item.id}`} className="text-xs font-semibold text-primary">
+              <ListCell align="right" primary>
+                <ListLink href={`/dashboard/laboratory/${item.id}`} className="text-xs font-semibold text-primary">
                   Open
-                </Link>
+                </ListLink>
               </ListCell>
             </ListRow>
           );
         })}
       </DataList>
 
-      <section className="rounded-card border border-border bg-card p-4.5 shadow-[var(--shadow)]">
-        <h2 className="text-base font-semibold text-heading">The labs you work with</h2>
+      <section className="rounded-card border border-border bg-card p-5.5 shadow-[var(--shadow)]">
+        <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">The labs you work with</h2>
         <p className="mt-0.5 text-xs text-text-muted">
           How long they take and how often they make the promised day, measured from your own cases
           over the last 90 days — not from what the lab tells you.
@@ -335,7 +337,7 @@ export default async function LaboratoryPage({
                   <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(6rem,1fr))]">
                     {stats.map((stat) => (
                       <div key={stat.label}>
-                        <p className="text-[11px] font-semibold tracking-[0.06em] text-text-muted uppercase">
+                        <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
                           {stat.label}
                         </p>
                         <p className={`text-[17px] font-bold tabular-nums ${stat.tone}`}>{stat.value}</p>
@@ -384,7 +386,7 @@ export default async function LaboratoryPage({
             );
           })}
           {!laboratories.length && (
-            <p className="text-[13px] text-text-muted">No labs on your list yet.</p>
+            <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">No labs on your list yet.</p>
           )}
         </div>
 

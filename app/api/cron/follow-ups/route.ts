@@ -1,3 +1,4 @@
+import { crossTenant } from "@/lib/tenant-guard";
 import { NextRequest, NextResponse } from "next/server";
 import { generateFollowUpTasks } from "@/lib/follow-ups";
 import { prisma } from "@/lib/prisma";
@@ -12,7 +13,7 @@ export async function GET(req: NextRequest) {
   const startedAt = Date.now();
   try {
     const clinics = await prisma.clinic.findMany({ where: { status: "ACTIVE" }, select: { id: true } });
-    const results = await Promise.allSettled(clinics.map((clinic) => generateFollowUpTasks(clinic.id)));
+    const results = await crossTenant(() => Promise.allSettled(clinics.map((clinic) => generateFollowUpTasks(clinic.id))));
     const tasksCreated = results.reduce((total, result) => total + (result.status === "fulfilled" ? result.value : 0), 0);
     const failedClinics = results.flatMap((result, index) => result.status === "rejected" ? [clinics[index].id] : []);
     const payload = { event: failedClinics.length ? "cron.partial" : "cron.completed", job: "follow-ups", clinics: clinics.length, failedClinics, tasksCreated, durationMs: Date.now() - startedAt };

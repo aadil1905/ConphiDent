@@ -37,7 +37,7 @@ export default async function EditTreatmentPlanPage({ params }: { params: Promis
             </div>
           </RailCard>
           <RailCard title="When you save">
-            <p className="text-[13px] text-text-muted">
+            <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
               What you agreed before stays in the plan&rsquo;s history, so anyone can see what
               changed and when. The rows and prices here are the same ones that go onto the invoice.
             </p>

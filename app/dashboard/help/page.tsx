@@ -49,7 +49,7 @@ const ANSWERS = [
 
 export default function HelpPage() {
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
+    <div className="flex w-full flex-col gap-5">
       <PageHeader
         title="How things work here"
         sub="Short answers to the things people ask most often in the first week."
@@ -67,10 +67,10 @@ export default function HelpPage() {
         {ANSWERS.map((item) => (
           <section
             key={item.question}
-            className="rounded-card border border-border bg-card p-4.5 shadow-[var(--shadow)]"
+            className="rounded-card border border-border bg-card p-5.5 shadow-[var(--shadow)]"
           >
-            <h2 className="text-base font-semibold text-heading">{item.question}</h2>
-            <p className="mt-1.5 text-[13px] text-text-muted">{item.answer}</p>
+            <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">{item.question}</h2>
+            <p className="mt-1.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">{item.answer}</p>
             <Link
               href={item.href}
               className="mt-3 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold text-primary hover:underline"
@@ -82,7 +82,7 @@ export default function HelpPage() {
         ))}
       </div>
 
-      <p className="rounded-control border border-border bg-muted px-3.5 py-3 text-[13px] text-text-muted">
+      <p className="rounded-control border border-border bg-muted px-3.5 py-3 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
         Stuck on something not here? Whoever set the clinic up can reach support for you.
       </p>
     </div>

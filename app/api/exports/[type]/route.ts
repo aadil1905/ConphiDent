@@ -11,68 +11,11 @@ function download(csv: string, name: string) {
   return new NextResponse(`\uFEFF${csv}`, { headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="${name}"`, "Cache-Control": "no-store" } });
 }
 
-/** Only the ranges the Notes archive offers, resolved to a start date. */
-function rangeStart(range: string, now: Date) {
-  const day = 24 * 60 * 60 * 1000;
-  if (range === "90") return new Date(now.getTime() - 90 * day);
-  if (range === "year") return new Date(now.getFullYear(), 0, 1);
-  if (range === "all") return null;
-  return new Date(now.getTime() - 30 * day);
-}
-
 export async function GET(request: Request, context: { params: Promise<{ type: string }> }) {
   await requireFeature("reports");
   const user = await requirePermission("exportData");
   const { type } = await context.params;
   const stamp = new Date().toISOString().slice(0, 10);
-  if (type === "clinical-records") {
-    await requireFeature("clinical");
-    const url = new URL(request.url);
-    const q = (url.searchParams.get("q") || "").trim();
-    const show = url.searchParams.get("show") || "";
-    const provider = Number(url.searchParams.get("provider")) || null;
-    const from = rangeStart(url.searchParams.get("range") || "30", new Date());
-    const records = await prisma.clinicalRecord.findMany({
-      where: {
-        clinicId: user.clinicId,
-        enteredInErrorAt: null,
-        ...(q
-          ? {
-              OR: [
-                { patient: { fullName: { contains: q, mode: "insensitive" as const } } },
-                { chiefComplaint: { contains: q, mode: "insensitive" as const } },
-                { diagnosis: { contains: q, mode: "insensitive" as const } },
-                { clinicalNotes: { contains: q, mode: "insensitive" as const } },
-              ],
-            }
-          : {}),
-        ...(show === "draft" ? { status: "DRAFT" } : {}),
-        ...(show === "signed" ? { status: "SIGNED" } : {}),
-        ...(show === "intake" ? { source: "PATIENT_INTAKE" } : {}),
-        ...(provider ? { providerId: provider } : {}),
-        ...(from ? { visitDate: { gte: from } } : {}),
-      },
-      orderBy: { visitDate: "desc" },
-      include: { patient: { select: { fullName: true, phone: true } }, provider: { select: { name: true } } },
-    });
-    await recordAudit({ clinicId: user.clinicId, userId: user.id, action: "DATA_EXPORTED", entityType: "CLINICAL_RECORD", detail: `Exported ${records.length} clinical notes` });
-    return download(
-      toCsv(
-        ["Visit date", "Patient", "Phone", "Complaint", "Diagnosis", "Notes", "Written by", "Status"],
-        records.map((item) => [
-          item.visitDate.toLocaleDateString("en-IN"),
-          item.patient.fullName,
-          item.patient.phone,
-          item.chiefComplaint,
-          item.diagnosis,
-          item.clinicalNotes,
-          item.provider?.name,
-          item.status === "SIGNED" ? "Signed" : "Not signed",
-        ]),
-      ),
-      `conphident-notes-${stamp}.csv`,
-    );
-  }
   if (type === "appointments") {
     const records = await prisma.appointment.findMany({ where: { clinicId: user.clinicId }, orderBy: [{ appointmentDate: "desc" }, { appointmentTime: "asc" }] });
     await recordAudit({ clinicId: user.clinicId, userId: user.id, action: "DATA_EXPORTED", entityType: "APPOINTMENT", detail: `Exported ${records.length} appointment records` });

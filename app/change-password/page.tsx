@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { changePasswordAction } from "@/app/login/actions";
 import { getCurrentUser, PASSWORD_MIN_LENGTH } from "@/lib/auth";
 import { PLATFORM_NAME } from "@/lib/platform";
+import { brandFontVariables } from "@/lib/fonts";
 
 const field =
   "mt-2 h-12 w-full rounded-control border border-border bg-card px-4 text-[15px] text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-[var(--focus-ring)]";
@@ -17,12 +18,12 @@ export default async function RequiredPasswordChangePage({
   const params = await searchParams;
 
   return (
-    <main className="grid min-h-screen place-items-center bg-background p-5">
+    <main className={`cf-portal ${brandFontVariables} grid min-h-screen place-items-center p-5`}>
       <section className="w-full max-w-lg rounded-card border border-border bg-card p-8 shadow-[var(--shadow-overlay)]">
-        <p className="text-[11px] font-semibold tracking-[0.08em] text-primary uppercase">
+        <p className="portal-kicker">
           {PLATFORM_NAME}
         </p>
-        <h1 className="mt-2.5 text-[26px] leading-tight font-bold text-heading">
+        <h1 className="mt-2.5 text-[26px] leading-tight font-semibold text-heading">
           Choose your own password
         </h1>
         <p className="mt-2 text-[13px] leading-6 text-text-muted">

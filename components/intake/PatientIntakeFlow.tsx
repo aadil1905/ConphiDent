@@ -135,6 +135,11 @@ export default function PatientIntakeFlow({
           medicalHistory: conditions,
           drugAllergies: allergies,
           medications: medication,
+          // Structured, not just prose: the date of birth drives the dentition
+          // preselection on the dental chart, so it must land on the patient
+          // record as data.
+          dateOfBirth: dateOfBirth || "",
+          sex: sex || "",
           otherHistory: [
             `Told us their name is ${fullName.trim()}`,
             dateOfBirth && `Born ${dateOfBirth}`,
@@ -220,7 +225,7 @@ export default function PatientIntakeFlow({
           aria-valuemax={STEPS.length}
           aria-valuenow={step + 1}
           aria-label={`Step ${step + 1} of ${STEPS.length}`}
-          className="h-2 overflow-hidden rounded-pill bg-[#d7e7eb]"
+          className="h-2 overflow-hidden rounded-pill bg-muted"
         >
           <div
             className="h-full bg-primary transition-[width] duration-200 ease-out"

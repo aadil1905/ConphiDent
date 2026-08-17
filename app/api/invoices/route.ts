@@ -1,3 +1,4 @@
+import { reportError } from "@/lib/monitoring";
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { Prisma, type Invoice } from "@prisma/client";
@@ -37,7 +38,14 @@ export async function POST(request: Request) {
         invoice = await prisma.$transaction(async (tx) => {
           // Serialize document-number allocation per tenant. This keeps two
           // reception desks from issuing the same number concurrently.
-          await tx.$queryRaw`SELECT pg_advisory_xact_lock(${user.clinicId}, 20260813)`;
+          //
+          // Two details are load-bearing. The casts: the two-argument advisory
+          // lock only exists as (int4, int4) and the driver binds a JS number
+          // as bigint, so without them Postgres finds no matching function.
+          // And $executeRaw rather than $queryRaw: the lock function returns
+          // void, which $queryRaw cannot deserialize as a result column.
+          // Either mistake makes every billing document fail to create.
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(${user.clinicId}::int, 20260813::int)`;
           const clinic = await tx.clinic.findUnique({
             where: { id: user.clinicId },
             select: {
@@ -95,7 +103,7 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) return NextResponse.json({ error: "Please check the billing document details.", issues: error.flatten() }, { status: 400 });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return NextResponse.json({ error: "A unique document number could not be allocated. Retry once." }, { status: 409 });
-    console.error(error);
+    await reportError(error, { where: "api/invoices" });
     return NextResponse.json({ error: "Could not create billing document." }, { status: 500 });
   }
 }

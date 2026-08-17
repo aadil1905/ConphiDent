@@ -1,3 +1,4 @@
+import { allowCrossTenantForThisRequest } from "@/lib/tenant-guard";
 import "server-only";
 
 import { headers } from "next/headers";
@@ -128,6 +129,11 @@ export async function requirePlatformAdmin() {
   const user = await getCurrentUser();
   if (user?.mustChangePassword) redirect("/change-password");
   if (!user || !isPlatformAdmin(user)) redirect("/dashboard");
+  // Platform administration reads across every clinic, which is exactly what
+  // the tenant guard refuses by default. Lifted here — once, after the
+  // caller has been proven to be a platform admin, and only for this
+  // request. See lib/tenant-guard.ts.
+  allowCrossTenantForThisRequest();
   return user;
 }
 

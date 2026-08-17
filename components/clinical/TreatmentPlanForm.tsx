@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DENTITION_STAGE_LABELS, isFdiAllowedForStage, STANDARD_FDI_CODES, suggestDentitionStage, toothRowsForStage, type DentitionStage } from "@/lib/dentition";
 import { useConfirmSubmit } from "@/components/ui/confirm-submit";
+import Pending from "@/components/ui/pending";
+import { useUnsavedGuard } from "@/components/ui/unsaved-guard";
 
 type AppointmentVisit = {
   id: number;
@@ -66,6 +68,7 @@ export default function TreatmentPlanForm({
   editingPlan?: { id: number; patientId: number; visitDate: string | Date | null; title: string; status: string; serviceId: number | null; unitPrice: number | null; estimatedCost: number | null; notes: string | null; selectedTeeth: Array<{ toothNumber: string }>; items: Array<{ id: number; serviceId: number | null; name: string; price: number }> };
 }) {
   const router = useRouter();
+  const { formRef: unsavedFormRef, release: releaseUnsaved, dialog: unsavedDialog } = useUnsavedGuard();
   const [saving, setSaving] = useState(false);
   const [serviceId] = useState(editingPlan?.serviceId ? String(editingPlan.serviceId) : "");
   const [patientId, setPatientId] = useState(editingPlan ? String(editingPlan.patientId) : initialPatientId);
@@ -168,6 +171,7 @@ export default function TreatmentPlanForm({
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error);
+      releaseUnsaved();
       toast.success(editingPlan ? "Plan updated." : "Plan saved against that visit.");
       router.push(`/dashboard/patients/${body.patientId}?visit=${selectedVisitDate}`);
       router.refresh();
@@ -179,11 +183,12 @@ export default function TreatmentPlanForm({
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-5 rounded-card border border-border bg-card p-4.5 shadow-[var(--shadow)]">
+    <form ref={unsavedFormRef} onSubmit={submit} className="flex flex-col gap-6 rounded-card border border-border bg-card p-5.5 shadow-[var(--shadow)]">
+      {unsavedDialog}
       {dialog}
       <div className="grid gap-5 md:grid-cols-2">
         <label className="space-y-2 text-sm font-medium">
-          Patient
+          Patient<span aria-hidden className="font-normal text-danger-mark"> *</span>
           <select
             required
             name="patientId"
@@ -201,7 +206,7 @@ export default function TreatmentPlanForm({
         </label>
 
         <label className="space-y-2 text-sm font-medium">
-          Which visit this belongs to
+          Which visit this belongs to<span aria-hidden className="font-normal text-danger-mark"> *</span>
           <select
             required
             name="visitDate"
@@ -237,13 +242,13 @@ export default function TreatmentPlanForm({
       </div>
 
       <section className="space-y-3 rounded-card border border-border bg-muted p-4">
-        <div><p className="font-semibold text-heading">The work in this plan</p><p className="text-[13px] text-text-muted">Add every treatment you agreed. These same rows and prices go straight onto the invoice.</p></div>
-        {items.map((item, index) => <div key={index} className="grid gap-2 rounded-control border border-border bg-card p-3 sm:grid-cols-[1.2fr_1fr_130px_auto] sm:items-end"><label className="text-xs font-medium">Clinic service<select value={item.serviceId} onChange={(event) => { const service = services.find((entry) => entry.id === Number(event.target.value)); setItems((current) => current.map((entry, position) => position === index ? { serviceId: event.target.value, name: service?.name || entry.name, price: service?.price !== null && service?.price !== undefined ? String(service.price) : entry.price } : entry)); }} className="mt-1 min-h-10 w-full rounded-control border border-border bg-card px-2"><option value="">Something else</option>{services.filter((service) => service.active).map((service) => <option key={service.id} value={service.id}>{service.name}</option>)}</select></label><label className="text-xs font-medium">Treatment<label className="sr-only">Treatment name</label><Input required value={item.name} onChange={(event) => setItems((current) => current.map((entry, position) => position === index ? { ...entry, name: event.target.value } : entry))} className="mt-1" placeholder="Treatment name" /></label><label className="text-xs font-medium">Price (INR)<Input required type="number" min="0" value={item.price} onChange={(event) => setItems((current) => current.map((entry, position) => position === index ? { ...entry, price: event.target.value } : entry))} className="mt-1" /></label><Button type="button" variant="outline" disabled={items.length === 1} onClick={() => setItems((current) => current.filter((_, position) => position !== index))}>Remove</Button></div>)}
+        <div><p className="font-semibold text-heading">The work in this plan</p><p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">Add every treatment you agreed. These same rows and prices go straight onto the invoice.</p></div>
+        {items.map((item, index) => <div key={index} className="grid gap-2 rounded-control border border-border bg-card p-3 sm:grid-cols-[1.2fr_1fr_130px_auto] sm:items-end"><label className="text-xs font-medium">Clinic service<select value={item.serviceId} onChange={(event) => { const service = services.find((entry) => entry.id === Number(event.target.value)); setItems((current) => current.map((entry, position) => position === index ? { serviceId: event.target.value, name: service?.name || entry.name, price: service?.price !== null && service?.price !== undefined ? String(service.price) : entry.price } : entry)); }} className="mt-1 min-h-11 w-full rounded-control border border-border bg-card px-2"><option value="">Something else</option>{services.filter((service) => service.active).map((service) => <option key={service.id} value={service.id}>{service.name}</option>)}</select></label><label className="text-xs font-medium">Treatment<span aria-hidden className="font-normal text-danger-mark"> *</span><label className="sr-only">Treatment name</label><Input required value={item.name} onChange={(event) => setItems((current) => current.map((entry, position) => position === index ? { ...entry, name: event.target.value } : entry))} className="mt-1" placeholder="Treatment name" /></label><label className="text-xs font-medium">Price in ₹<span aria-hidden className="font-normal text-danger-mark"> *</span><Input required type="number" min="0" value={item.price} onChange={(event) => setItems((current) => current.map((entry, position) => position === index ? { ...entry, price: event.target.value } : entry))} className="mt-1" /></label><Button type="button" variant="outline" disabled={items.length === 1} onClick={() => setItems((current) => current.filter((_, position) => position !== index))}>Remove</Button></div>)}
         <div className="flex items-center justify-between"><Button type="button" variant="outline" onClick={() => setItems((current) => [...current, { serviceId: "", name: "", price: "" }])}>+ Add service</Button><p className="font-semibold">Plan total: ₹{items.reduce((sum, item) => sum + (Number(item.price) || 0), 0).toLocaleString("en-IN")}</p></div>
       </section>
 
       {patientId && (
-        <p className="rounded-card border border-border bg-muted p-4 text-[13px] text-text-muted">
+        <p className="rounded-card border border-border bg-muted p-4 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
           Anything you record now attaches to today&rsquo;s visit when you save.
         </p>
       )}
@@ -290,7 +295,7 @@ export default function TreatmentPlanForm({
 
       <div className="flex justify-end gap-3 border-t border-border pt-5">
         <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-        <Button type="submit" disabled={!canSave}>{saving ? "Saving…" : editingPlan ? "Save the change" : "Save the plan"}</Button>
+        <Button type="submit" disabled={!canSave} aria-busy={saving}>{saving ? <Pending label="Saving…" /> : editingPlan ? "Save the change" : "Save the plan"}</Button>
       </div>
     </form>
   );

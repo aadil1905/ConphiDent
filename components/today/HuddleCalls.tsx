@@ -105,13 +105,13 @@ export default function HuddleCalls({
 
   return (
     <section className="break-inside-avoid overflow-hidden rounded-card border border-border bg-card shadow-[var(--shadow)] print:break-inside-avoid print:border-border print:shadow-none">
-      <div className="flex flex-wrap items-baseline justify-between gap-3 px-4.5 pt-4 pb-2.5">
-        <h2 className="text-base font-semibold text-heading">Calls to make between patients</h2>
+      <div className="flex flex-wrap items-baseline justify-between gap-3 px-5.5 pt-4 pb-2.5">
+        <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Calls to make between patients</h2>
         <span className="text-xs text-text-muted">{summary}</span>
       </div>
 
       {calls.length === 0 ? (
-        <p className="px-4.5 pb-5 text-[13px] text-text-muted">
+        <p className="px-5.5 pb-5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
           Nobody is waiting on a call back this morning.
         </p>
       ) : (
@@ -121,7 +121,7 @@ export default function HuddleCalls({
           return (
             <div
               key={call.id}
-              className="grid grid-cols-[26px_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5 border-t border-border px-4.5 py-2.5 sm:grid-cols-[26px_minmax(0,1fr)_120px_170px]"
+              className="grid grid-cols-[26px_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5 border-t border-border px-5.5 py-2.5 sm:grid-cols-[26px_minmax(0,1fr)_120px_170px]"
             >
               <label className="flex min-h-11 cursor-pointer items-center justify-center print:hidden">
                 <span className="sr-only">Mark {call.who} as called</span>
@@ -140,7 +140,7 @@ export default function HuddleCalls({
                 >
                   {call.who}
                 </p>
-                <p className="text-[13px] text-text-muted">{call.why}</p>
+                <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">{call.why}</p>
               </div>
               <span
                 title={call.exact}

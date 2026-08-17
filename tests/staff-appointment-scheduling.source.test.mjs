@@ -8,7 +8,15 @@ import {
   scheduleWindowSlots,
 } from "../lib/scheduling-core.ts";
 
-const read = (file) => readFileSync(resolve(process.cwd(), file), "utf8");
+/**
+ * Source is normalised to LF before matching.
+ *
+ * `core.autocrlf` is true, so a Windows working copy has CRLF endings, and any
+ * pattern that spans lines then silently fails to match. That looked exactly
+ * like the code having drifted away from the test, which is part of why these
+ * files sat unrun. Normalised, the patterns mean what they say on any platform.
+ */
+const read = (file) => readFileSync(resolve(process.cwd(), file), "utf8").replace(/\r\n/g, "\n");
 const createRoute = read("app/api/appointments/route.ts");
 const updateRoute = read("app/api/appointments/[id]/route.ts");
 const scheduling = read("lib/appointment-scheduling.ts");
@@ -74,9 +82,18 @@ test("appointment pages enforce manageSchedule and preserve inactive current res
   for (const page of [newPage, editPage, detailPage]) {
     assert.match(page, /requirePermission\("manageSchedule"\)/);
   }
-  assert.match(newPage, /clinicLocation\.findMany\(\{[\s\S]*?clinicId: user\.clinicId, active: true/);
-  assert.match(newPage, /hours: \{ orderBy: \[\{ dayOfWeek: "asc" \}, \{ sortOrder: "asc" \}\] \}/);
-  assert.match(newPage, /services: \{ select: \{ serviceId: true \} \}/);
+  // Phase B replaced the raw form on this page with BookAVisit, and moved the
+  // branch-hours query behind `bookableSlotsByWeekday`. The intent held: the
+  // days offered still come from saved branch hours, reckoned in the clinic's
+  // own timezone rather than the server's.
+  assert.match(newPage, /bookableSlotsByWeekday\(user\.clinicId\)/);
+  assert.match(newPage, /clinicDateAtOffset\(timezone, 0\)/);
+  assert.match(newPage, /closedWeekdays/);
+  assert.match(scheduling, /export async function bookableSlotsByWeekday/);
+  // It reads the branch's own saved hours, from the same primary branch a
+  // booking naming no location would land on.
+  assert.match(scheduling, /clinicId, active: true, isPrimary: true/);
+  assert.match(scheduling, /hours: \{[\s\S]*?dayOfWeek: true, openTime: true, closeTime: true, slotMinutes: true, isClosed: true/);
   assert.match(editPage, /OR: \[[\s\S]*?\{ active: true \}[\s\S]*?appointment\.locationId/);
   assert.match(editPage, /appointment\.providerId \? \[\{ id: appointment\.providerId \}\]/);
   assert.match(editPage, /appointment\.chairId \? \[\{ id: appointment\.chairId \}\]/);
@@ -84,9 +101,13 @@ test("appointment pages enforce manageSchedule and preserve inactive current res
   assert.match(editPage, /serviceIds: location\.services\.map/);
 });
 
-test("newly created appointments are visible first in the staff list", () => {
-  assert.match(listPage, /sort = "newest"/);
-  assert.match(listPage, /sort in sortOptions \? sort : "newest"/);
+test("the staff list opens on the day in time order", () => {
+  // This replaced "newest first". The list is the day's diary now, so the
+  // useful default is chronological, and the sort lives in the shared list
+  // query rather than in a page-local string.
+  assert.match(listPage, /defaultSort: "when"/);
+  assert.match(listPage, /defaultDir: "asc"/);
+  assert.match(listPage, /sortKey: "when"/);
 });
 
 test("appointment UI derives future slots and branch-aligned resources from saved data", () => {
@@ -101,7 +122,13 @@ test("appointment UI derives future slots and branch-aligned resources from save
   assert.match(form, /selectedLocation\?\.providerIds\.includes\(provider\.id\)/);
   assert.match(form, /selectedLocation\?\.serviceIds/);
   assert.match(form, /assigned\.includes\(service\.id\)/);
-  assert.match(form, /No future configured slots for this date/);
+  // The opposite of what this once asserted, and deliberately so: the form used
+  // to dead-end with "No future configured slots for this date". A day with no
+  // configured slots now falls back to a free-text time so the visit still
+  // saves. Asserting the fallback keeps the dead-end from coming back.
+  assert.match(form, /selectableTimes\.length \? \(/);
+  assert.match(form, /<input\s+type="time"/);
+  assert.doesNotMatch(form, /No future configured slots for this date/);
   assert.match(form, /saved\.error \|\| "Failed to save appointment\."/);
 });
 

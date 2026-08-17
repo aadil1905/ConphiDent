@@ -3,12 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import type { AppointmentFormValues } from "@/lib/validations";
 import { appointmentSchema } from "@/lib/validations";
+import Pending from "@/components/ui/pending";
+import { useUnsavedGuard } from "@/components/ui/unsaved-guard";
 
 type AppointmentLocation = {
   id: number;
@@ -31,6 +32,12 @@ type AppointmentLocation = {
 type AppointmentFormProps = {
   defaultValues?: Partial<AppointmentFormValues>;
   appointmentId?: number;
+  /**
+   * The appointment as the page that rendered this form read it. Sent back on
+   * save so a second person's edit cannot quietly overwrite a first one that
+   * landed in between.
+   */
+  revision?: string;
   mode?: "create" | "edit";
   clinicTimezone?: string;
   locations?: AppointmentLocation[];
@@ -133,6 +140,7 @@ function configuredSlots(
 export default function AppointmentForm({
   defaultValues,
   appointmentId,
+  revision,
   mode = "create",
   clinicTimezone = "Asia/Kolkata",
   locations = [],
@@ -142,6 +150,7 @@ export default function AppointmentForm({
   returnTo,
 }: AppointmentFormProps) {
   const router = useRouter();
+  const { formRef: unsavedFormRef, release: releaseUnsaved, dialog: unsavedDialog } = useUnsavedGuard();
   const [loading, setLoading] = useState(false);
   const [knownPatient, setKnownPatient] = useState<string | null>(null);
 
@@ -266,13 +275,22 @@ export default function AppointmentForm({
       const response = await fetch(url, {
         method: mode === "create" ? "POST" : "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        // `expectedRevision` is the appointment as this page read it. The API
+        // refuses the save if somebody else has changed it since, rather than
+        // letting this form's copy of every field overwrite theirs.
+        body: JSON.stringify(mode === "edit" && revision ? { ...values, expectedRevision: revision } : values),
       });
       const saved = await response.json().catch(() => ({}));
       if (!response.ok) {
+        // A stale save is refused rather than merged, and deliberately does not
+        // refresh behind the user: the fields on screen are still their version,
+        // so quietly reloading the server data would leave them looking at the
+        // other person's appointment through their own form and save over it
+        // anyway. The message asks them to reload, which discards this copy.
         throw new Error(saved.error || "Failed to save appointment.");
       }
 
+      releaseUnsaved();
       toast.success(
         mode === "create"
           ? "Appointment created successfully."
@@ -307,26 +325,27 @@ export default function AppointmentForm({
   const errorClass = "text-[13px] font-normal text-danger";
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
-      <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
-        <h2 className="text-base font-semibold text-heading">Who is coming, and when</h2>
-        <p className="mt-0.5 text-[13px] text-text-muted">
+    <form ref={unsavedFormRef} onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
+      {unsavedDialog}
+      <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
+        <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Who is coming, and when</h2>
+        <p className="mt-0.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
           Nothing here blocks a booking — if a day has no set slots, you can still type a time.
         </p>
 
         <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <label className={labelClass}>Their name *
+          <label className={labelClass}>Their name<span aria-hidden className="font-normal text-danger-mark"> *</span>
             <input placeholder="Full name" className={field} {...register("patientName")} />
             {knownPatient ? <span className="text-xs font-normal text-success">We know them — details filled in.</span> : null}
             {errors.patientName ? <span className={errorClass}>{errors.patientName.message}</span> : null}
           </label>
 
-          <label className={labelClass}>Their phone *
+          <label className={labelClass}>Their phone<span aria-hidden className="font-normal text-danger-mark"> *</span>
             <input placeholder="Mobile number" className={field} {...register("phone")} />
             {errors.phone ? <span className={errorClass}>{errors.phone.message}</span> : null}
           </label>
 
-          <label className={labelClass}>Which branch *
+          <label className={labelClass}>Which branch<span aria-hidden className="font-normal text-danger-mark"> *</span>
             <select className={field} {...register("locationId", { setValueAs: (value) => value ? Number(value) : null })}>
               <option value="">Pick a branch</option>
               {locations.map((location) => (
@@ -338,14 +357,14 @@ export default function AppointmentForm({
             {errors.locationId ? <span className={errorClass}>{errors.locationId.message}</span> : null}
           </label>
 
-          <label className={labelClass}>Which day *
+          <label className={labelClass}>Which day<span aria-hidden className="font-normal text-danger-mark"> *</span>
             <input type="date" lang="en-CA" className={field} {...register("appointmentDate")} />
             {errors.appointmentDate ? <span className={errorClass}>{errors.appointmentDate.message}</span> : null}
           </label>
 
           {/* Booking never dead-ends: when no slots are set up for a day, the
               time becomes free text and the visit still saves. */}
-          <label className={labelClass}>What time *
+          <label className={labelClass}>What time<span aria-hidden className="font-normal text-danger-mark"> *</span>
             {selectableTimes.length ? (
               <select
                 className={field}
@@ -447,13 +466,11 @@ export default function AppointmentForm({
         <button
           type="submit"
           disabled={loading}
+          aria-busy={loading}
           className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-control border border-primary bg-primary px-5 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
         >
           {loading ? (
-            <>
-              <Loader2 className="size-4 animate-spin" aria-hidden />
-              {mode === "create" ? "Booking…" : "Saving…"}
-            </>
+            <Pending label={mode === "create" ? "Booking…" : "Saving…"} />
           ) : mode === "create" ? "Book it" : "Save the change"}
         </button>
       </div>

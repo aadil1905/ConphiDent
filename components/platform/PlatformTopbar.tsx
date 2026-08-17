@@ -73,7 +73,7 @@ export function PlatformTopbar({ fullName, role, environment, permissions }: { f
         >
           <span className="platform-topbar__avatar">{initials}</span>
           <span className="platform-topbar__identity"><b>{fullName}</b><small>{role.replaceAll("_", " ")}</small></span>
-          <ChevronDown className={`size-4 text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
+          <ChevronDown className={`size-4 text-text-muted transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
         </button>
         {open && <div id="platform-account-menu" className="platform-topbar__menu" role="menu">
           <p>Platform account</p>

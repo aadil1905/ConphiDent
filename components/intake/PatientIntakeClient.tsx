@@ -13,7 +13,7 @@ const PatientIntakeFlow = dynamic(() => import("./PatientIntakeFlow"), {
   loading: () => (
     // A skeleton shaped like the first page, not a spinner.
     <div className="flex flex-col gap-4" aria-hidden>
-      <div className="h-2 animate-pulse rounded-pill bg-[#d7e7eb]" />
+      <div className="h-2 animate-pulse rounded-pill bg-muted" />
       <div className="flex flex-col gap-4 rounded-card bg-card p-[clamp(1rem,4vw,1.5rem)] shadow-[var(--shadow)]">
         <div className="h-6 w-3/5 animate-pulse rounded bg-muted" />
         <div className="h-4 w-full animate-pulse rounded bg-muted" />

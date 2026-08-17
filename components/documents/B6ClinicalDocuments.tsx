@@ -100,6 +100,51 @@ const B6_PRINT_CSS = `
     .b6-page-table > tbody > tr:not(.b6-page-fill) { height: 0; }
     .b6-page-fill { height: 100%; }
   }
+  /* Paper is paper. This artifact renders inside the clinic shell, which now
+     follows the operating system into dark mode — a bill must not. Pinning the
+     tokens on the viewport keeps every nested var() (ink, hairlines, muted
+     captions, the amount-due colour) on the light palette in both modes, so
+     what a patient is handed is the same sheet either way. */
+  .b6-document-viewport {
+    color-scheme: light;
+    --background: #ffffff;
+    --card: #ffffff;
+    --popover: #ffffff;
+    --surface: #ffffff;
+    --heading: #10262e;
+    --foreground: #4a5b61;
+    --text: #4a5b61;
+    --text-muted: #5f7178;
+    --border: #dbdbdb;
+    --border-strong: #949494;
+    --input: #949494;
+    --workspace-card-border: #dbdbdb;
+    --muted: #f2f2f2;
+    --secondary: #f2f2f2;
+    --accent: #f2f2f2;
+    --surface-muted: #f2f2f2;
+    --primary: #0e6379;
+    --primary-hover: #0a4e60;
+    --primary-link: #0e6379;
+    --primary-soft: rgba(14, 99, 121, 0.07);
+    --ring: #0e6379;
+    --gold: #5f7178;
+    /* The tints, not just the ink. Pinning --success without --success-bg put
+       dark-green text on a near-black band on a white sheet — every semantic
+       pair has to move together or the pairing is what breaks. */
+    --success: #0f6b4f;
+    --success-bg: #eef6f2;
+    --success-border: rgba(15, 107, 79, 0.28);
+    --warning: #8a6a2f;
+    --warning-bg: #fdf7ea;
+    --warning-border: rgba(138, 106, 47, 0.3);
+    --danger: #8d1c1c;
+    --danger-bg: #fdf4f3;
+    --danger-border: rgba(141, 28, 28, 0.26);
+    --danger-mark: #a52222;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 6px 20px rgba(0, 0, 0, 0.06);
+    --shadow-overlay: 0 16px 40px rgba(0, 0, 0, 0.16);
+  }
   .b6-document-sheet { orphans: 3; widows: 3; }
   .b6-page-table { border-collapse: collapse; width: 100%; }
   .b6-page-table > tbody > tr > td { vertical-align: top; }
@@ -116,7 +161,7 @@ function DocumentFrame({ accentColor, children }: { accentColor?: string | null;
       <article
         data-document-format="B6-125x176mm"
         className="b6-document-sheet mx-auto flex min-h-[176mm] w-full max-w-[125mm] flex-col overflow-hidden rounded-[5mm] border border-border bg-white p-[8mm] text-[10px] leading-[1.42] text-heading shadow-2xl shadow-[var(--shadow-overlay)]"
-        style={{ borderTopColor: safeAccent(accentColor), borderTopWidth: "2.5mm" }}
+        style={{ borderTopColor: safeAccent(accentColor), borderTopWidth: "1.5mm" }}
       >
         {children}
       </article>
@@ -128,25 +173,28 @@ function DocumentHeader({ clinic, title, number }: { clinic: ClinicDocumentBrand
   const brand = clinic.brandName?.trim() || clinic.name;
   const contact = [clinic.address, [clinic.phone, clinic.email].filter(Boolean).join(" · ")].filter(Boolean);
   return (
-    <header className="b6-break-avoid grid grid-cols-[1fr_auto] gap-[5mm] border-b-2 border-heading pb-[4mm]">
+    // A letterhead, not a shop bill: serif name, quiet contact block, and the
+    // document's identity ruled off with a hairline rather than inked borders.
+    <header className="b6-break-avoid grid grid-cols-[1fr_auto] gap-[5mm] border-b border-heading pb-[3.5mm]">
       <div className="flex min-w-0 items-start gap-[3mm]">
         {clinic.logoUrl ? (
-          <div className="flex size-[15mm] shrink-0 items-center justify-center overflow-hidden rounded-[2mm] border border-border bg-white p-[1mm]">
+          <div className="flex size-[14mm] shrink-0 items-center justify-center overflow-hidden rounded-[1.5mm] border border-border bg-[var(--logo-plate)] p-[1mm]">
             <Image src={clinic.logoUrl} alt={`${brand} logo`} width={96} height={96} unoptimized className="max-h-full max-w-full object-contain" />
           </div>
         ) : (
-          <div className="grid size-[13mm] shrink-0 place-items-center rounded-[2mm] bg-heading text-[18px] font-black text-white">{brand.slice(0, 1).toUpperCase()}</div>
+          <div className="grid size-[12mm] shrink-0 place-items-center rounded-[1.5mm] bg-heading font-[family-name:var(--font-display)] text-[16px] font-semibold text-white">{brand.slice(0, 1).toUpperCase()}</div>
         )}
         <div className="min-w-0">
-          <h1 className="break-words font-serif text-[17px] font-black leading-tight text-heading">{brand}</h1>
-          {brand !== clinic.name ? <p className="mt-0.5 text-[8px] font-semibold uppercase tracking-wide text-text-muted">{clinic.name}</p> : null}
-          <div className="mt-1 max-w-[62mm] whitespace-pre-line text-[8px] leading-[1.35] text-text-muted">{contact.join("\n")}</div>
-          {clinic.registrationNumber ? <p className="mt-1 text-[8px] text-text-muted">Clinic registration: {clinic.registrationNumber}</p> : null}
+          <h1 className="break-words font-[family-name:var(--font-display)] text-[16px] font-semibold leading-tight text-heading">{brand}</h1>
+          {brand !== clinic.name ? <p className="mt-0.5 text-[7.5px] text-text-muted">{clinic.name}</p> : null}
+          <div className="mt-1 max-w-[62mm] whitespace-pre-line text-[8px] leading-[1.4] text-text-muted">{contact.join("\n")}</div>
+          {clinic.gstin ? <p className="mt-0.5 text-[8px] text-text-muted">GSTIN {clinic.gstin}</p> : null}
+          {clinic.registrationNumber ? <p className="text-[8px] text-text-muted">Reg. {clinic.registrationNumber}</p> : null}
         </div>
       </div>
       <div className="text-right">
-        <p className="text-[8px] font-black uppercase tracking-[.18em] text-primary">{title}</p>
-        <p className="mt-1 text-[13px] font-black text-heading">{number}</p>
+        <p className="text-[7.5px] font-semibold uppercase tracking-[.18em] text-text-muted">{title}</p>
+        <p className="mt-1 text-[12px] font-semibold tabular-nums text-heading">{number}</p>
       </div>
     </header>
   );
@@ -285,38 +333,41 @@ export function InvoiceDocument({ document }: { document: BillingDocument }) {
         columns={5}
         repeatingHeader={<>
           <tr className="b6-break-avoid"><td colSpan={5}>
-            <section className="grid grid-cols-2 gap-x-[5mm] gap-y-[2.5mm] border-b border-border-strong pb-[3.5mm]">
-              <Field label="Bill to" value={document.patient.fullName} />
+            <section className="grid grid-cols-2 gap-x-[5mm] gap-y-[2.5mm] border-b border-border-strong pb-[3mm]">
+              <Field label="Billed to" value={document.patient.fullName} />
               <Field label="Status" value={document.status.replace(/_/g, " ").toLowerCase().replace(/^./, (c) => c.toUpperCase())} />
               <Field label="Patient contact" value={[document.patient.phone, document.patient.email].filter(Boolean).join(" · ") || "Not recorded"} />
               <Field label="Issue / due date" value={`${date(document.issuedAt)}${document.dueAt ? ` / ${date(document.dueAt)}` : ""}`} />
-              {document.gstin ? <Field label="GSTIN" value={document.gstin} /> : null}
-              {document.registrationNumber ? <Field label="Clinic registration" value={document.registrationNumber} /> : null}
             </section>
           </td></tr>
-          <tr className="border-y border-heading bg-muted text-left text-[7px] font-black uppercase tracking-wide">
-            <th className="w-[7mm] px-[1.5mm] py-[2mm]">#</th>
-            <th className="px-[1.5mm] py-[2mm]">Description</th>
-            <th className="w-[11mm] px-[1.5mm] py-[2mm] text-right">Qty</th>
-            <th className="w-[20mm] px-[1.5mm] py-[2mm] text-right">Rate</th>
-            <th className="w-[21mm] px-[1.5mm] py-[2mm] text-right">Amount</th>
+          <tr className="border-b border-heading text-left text-[7px] font-semibold uppercase tracking-[.1em] text-text-muted">
+            <th className="w-[7mm] px-[1.5mm] py-[2mm] font-semibold">#</th>
+            <th className="px-[1.5mm] py-[2mm] font-semibold">Treatment</th>
+            <th className="w-[11mm] px-[1.5mm] py-[2mm] text-right font-semibold">Qty</th>
+            <th className="w-[20mm] px-[1.5mm] py-[2mm] text-right font-semibold">Rate</th>
+            <th className="w-[21mm] px-[1.5mm] py-[2mm] text-right font-semibold">Amount</th>
           </tr>
         </>}
       >
-        {lines.map((line, index) => <tr key={line.id} className="b6-break-avoid border-b border-border align-top text-[8px]"><td className="px-[1.5mm] py-[2mm] text-text-muted">{index + 1}</td><td className="break-words px-[1.5mm] py-[2mm] font-semibold">{line.description}</td><td className="px-[1.5mm] py-[2mm] text-right">{line.quantity}</td><td className="px-[1.5mm] py-[2mm] text-right">{money(line.unitPrice)}</td><td className="px-[1.5mm] py-[2mm] text-right font-bold">{money(line.lineTotal)}</td></tr>)}
+        {lines.map((line, index) => <tr key={line.id} className="b6-break-avoid border-b border-border align-top text-[8px]"><td className="px-[1.5mm] py-[2mm] text-text-muted tabular-nums">{index + 1}</td><td className="break-words px-[1.5mm] py-[2mm] font-medium">{line.description}</td><td className="px-[1.5mm] py-[2mm] text-right tabular-nums">{line.quantity}</td><td className="px-[1.5mm] py-[2mm] text-right tabular-nums">{money(line.unitPrice)}</td><td className="px-[1.5mm] py-[2mm] text-right font-semibold tabular-nums">{money(line.lineTotal)}</td></tr>)}
 
         <tr className="b6-break-avoid"><td colSpan={5} className="pt-[3mm]"><section className="ml-auto w-[65mm] space-y-1 text-[8px]">
-          <InvoiceTotal label="Subtotal" value={document.subtotalAmount} />
+          {document.discountAmount ? <InvoiceTotal label="Subtotal" value={document.subtotalAmount} /> : null}
           {document.discountAmount ? <InvoiceTotal label="Discount" value={-document.discountAmount} /> : null}
-          {document.taxAmount ? <InvoiceTotal label="Tax" value={document.taxAmount} /> : null}
-          <InvoiceTotal label="Total" value={document.totalAmount} strong />
-          {document.paidAmount ? <InvoiceTotal label="Paid" value={document.paidAmount} /> : null}
-          <div className="mt-[1.5mm] flex items-baseline justify-between gap-3 border-t-2 border-heading pt-[1.5mm]">
-            <span className="text-[8px] font-black uppercase tracking-wide text-heading">
-              {document.outstandingAmount > 0 ? "Still to pay" : "Paid in full"}
-            </span>
-            <strong className="text-[14px] font-black text-heading">{money(document.outstandingAmount)}</strong>
+          {document.taxAmount ? <InvoiceTotal label="GST" value={document.taxAmount} /> : null}
+          <div className="flex items-baseline justify-between gap-3 border-t border-heading pt-[1.5mm]">
+            <span className="font-[family-name:var(--font-display)] text-[9px] font-semibold text-heading">Total</span>
+            <strong className="font-[family-name:var(--font-display)] text-[13px] font-semibold tabular-nums text-heading">{money(document.totalAmount)}</strong>
           </div>
+          {document.paidAmount ? <InvoiceTotal label="Received so far" value={document.paidAmount} /> : null}
+          {document.outstandingAmount > 0 ? (
+            <div className="mt-[1mm] flex items-baseline justify-between gap-3 border-t border-border-strong pt-[1.5mm]">
+              <span className="text-[8px] font-semibold uppercase tracking-wide text-heading">Balance due</span>
+              <strong className="text-[11px] font-semibold tabular-nums text-heading">{money(document.outstandingAmount)}</strong>
+            </div>
+          ) : (
+            <p className="pt-[1mm] text-right text-[8px] font-semibold text-success">Paid in full — thank you.</p>
+          )}
         </section></td></tr>
 
         {document.payments.length ? <tr className="b6-break-avoid"><td colSpan={5} className="pt-[3mm]"><section className="rounded-[2mm] border border-success-border bg-success-bg p-[2.5mm]"><p className="text-[7px] font-black uppercase tracking-wide text-success">Payments received</p><div className="mt-1 space-y-0.5">{document.payments.map((payment, index) => <p key={`${payment.paidAt.toISOString()}-${index}`} className="flex justify-between gap-3"><span>{date(payment.paidAt)} · {payment.method}{payment.referenceNumber ? ` · Ref ${payment.referenceNumber}` : ""}</span><strong>{money(payment.amount)}</strong></p>)}</div></section></td></tr> : null}
@@ -328,8 +379,8 @@ export function InvoiceDocument({ document }: { document: BillingDocument }) {
   );
 }
 
-function InvoiceTotal({ label, value, strong = false }: { label: string; value: number; strong?: boolean }) {
-  return <div className={`flex justify-between gap-5 ${strong ? "border-t border-heading pt-1 text-[10px] font-black" : ""}`}><span>{label}</span><span>{money(value)}</span></div>;
+function InvoiceTotal({ label, value }: { label: string; value: number }) {
+  return <div className="flex justify-between gap-5 text-text-muted"><span>{label}</span><span className="tabular-nums">{money(value)}</span></div>;
 }
 
 function DocumentSection({ title, text }: { title: string; text: string }) {

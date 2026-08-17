@@ -111,7 +111,7 @@ export default function MedicineCombobox({
                 setOpen(false);
               }
             }}
-            className="min-h-11 w-full rounded-control border border-border bg-white pr-3 pl-9 text-sm text-foreground"
+            className="min-h-11 w-full rounded-control border border-border bg-card pr-3 pl-9 text-sm text-foreground"
           />
         </span>
         <span className="text-xs font-normal text-text-muted">

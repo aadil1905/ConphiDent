@@ -27,14 +27,14 @@ const FIELD_NAMES: Record<keyof BillingIdentityFields, string> = {
 const FOOTER_LIMIT = 500;
 const GSTIN_PATTERN = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]{3}$/;
 
-const card = "rounded-card border border-border bg-card p-4.5 shadow-[var(--shadow)]";
+const card = "rounded-card border border-border bg-card p-5.5 shadow-[var(--shadow)]";
 const input = "min-h-11 rounded-control border border-border bg-card px-3 text-sm text-foreground";
 const badInput = "min-h-11 rounded-control border border-danger-border bg-card px-3 text-sm text-foreground";
 
 function Card({ title, sub, children }: { title: string; sub: string; children: React.ReactNode }) {
   return (
     <section className={`${card} print:hidden`}>
-      <h2 className="text-base font-semibold text-heading">{title}</h2>
+      <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">{title}</h2>
       <p className="mt-0.5 mb-3.5 text-xs text-text-muted">{sub}</p>
       {children}
     </section>
@@ -91,7 +91,7 @@ export default function BillingIdentity({
   const canSave = edited.length > 0 && prefixOk && gstinOk;
 
   return (
-    <form action={submit} className="flex flex-col gap-5">
+    <form action={submit} className="flex flex-col gap-6">
       <Card
         title="The clinic, as patients see it"
         sub="This is the name and address printed at the top of every bill and receipt."
@@ -236,7 +236,7 @@ export default function BillingIdentity({
       </Card>
 
       <section className={card}>
-        <p className="text-[11px] font-semibold tracking-[0.06em] text-text-muted uppercase print:hidden">
+        <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase print:hidden">
           Live preview
         </p>
         <div className="mt-2 max-w-[125mm] rounded-control border border-border p-4">

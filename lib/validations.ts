@@ -57,25 +57,6 @@ export const patientSchema = z.object({
 
 export type PatientFormValues = z.infer<typeof patientSchema>;
 
-export const clinicalRecordSchema = z.object({
-  patientId: z.coerce.number().int().positive(),
-  visitDate: isoDate,
-  chiefComplaint: z.string().trim().min(2, "Chief complaint is required").max(1000),
-  diagnosis: z.string().max(1000).optional(),
-  clinicalNotes: z.string().max(5000).optional(),
-  medicalHistory: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
-  drugAllergies: z.string().max(1000).optional(),
-  medications: z.string().max(1000).optional(),
-  otherHistory: z.string().max(1000).optional(),
-  bloodPressure: z.string().max(40).optional(),
-  weightKg: z.string().max(40).optional(),
-  dentalHistory: z.string().max(3000).optional(),
-  treatmentDone: z.string().max(3000).optional(),
-  estimateAmount: z.union([z.literal(""), z.coerce.number().int().nonnegative()]).optional(),
-  consentGiven: z.boolean().optional(),
-  consentNotes: z.string().max(2000).optional(),
-});
-
 export const treatmentPlanSchema = z.object({
   patientId: z.coerce.number().int().positive(),
   visitDate: isoDate.optional(),

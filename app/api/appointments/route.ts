@@ -1,3 +1,4 @@
+import { reportError } from "@/lib/monitoring";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
@@ -27,7 +28,7 @@ export async function GET() {
     });
     return NextResponse.json(appointments);
   } catch (error) {
-    console.error(error);
+    await reportError(error, { where: "api/appointments" });
     return NextResponse.json({ error: "Failed to load appointments." }, { status: 500 });
   }
 }
@@ -144,7 +145,7 @@ export async function POST(req: Request) {
       intakeRequired: data.treatment.toLowerCase() === "new consultation" && !result.priorIntake,
     }, { status: 201 });
   } catch (error) {
-    console.error(error);
+    await reportError(error, { where: "api/appointments" });
     if (error instanceof ScheduleConflictError) {
       return NextResponse.json({ error: error.message }, { status: 409 });
     }
@@ -178,7 +179,7 @@ export async function DELETE() {
     });
     return NextResponse.json({ success: true, archivedCount: result.count });
   } catch (error) {
-    console.error("Archive all appointments failed", error);
+    await reportError(error, { where: "api/appointments.archiveAll" });
     return NextResponse.json({ error: "Could not archive appointments." }, { status: 500 });
   }
 }

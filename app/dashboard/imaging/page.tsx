@@ -188,7 +188,7 @@ export default async function ImagingPage({
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="X-rays"
         sub={
@@ -225,8 +225,8 @@ export default async function ImagingPage({
       {/* --- X-rays that need a name ------------------------------------- */}
       {unmatchedStudies.length > 0 && (
         <section className="overflow-hidden rounded-card border border-warning-border border-l-[3px] border-l-[#c4a46c] bg-card shadow-[var(--shadow)]">
-          <div className="px-4.5 pt-3.5 pb-2.5">
-            <h2 className="text-base font-semibold text-heading">
+          <div className="px-5.5 pt-3.5 pb-2.5">
+            <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">
               {unmatchedStudies.length === 1
                 ? "One X-ray needs a name"
                 : `${unmatchedStudies.length} X-rays need a name`}
@@ -236,15 +236,15 @@ export default async function ImagingPage({
               patient&rsquo;s file.
             </p>
           </div>
-          <div className="flex flex-col gap-3 border-t border-border/70 px-4.5 py-3.5">
+          <div className="flex flex-col gap-3 border-t border-border/70 px-5.5 py-3.5">
             {unmatchedStudies.map((study) => (
               <div key={study.id} className="flex flex-col gap-2">
                 <div className="flex flex-wrap items-center gap-3">
-                  <span className="flex h-12 w-16 flex-none items-center justify-center rounded-[0.4rem] bg-heading text-[10px] font-semibold tracking-[0.06em] text-[#6eaeb9]">
+                  <span className="flex h-12 w-16 flex-none items-center justify-center rounded-[0.4rem] bg-heading text-[10px] font-semibold tracking-[0.14em] text-primary">
                     {modalityLabel(study.modality).toUpperCase().slice(0, 10)}
                   </span>
                   <div className="min-w-0">
-                    <p className="text-[13px] font-semibold text-heading">
+                    <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] font-semibold text-heading">
                       {study.accessionNumber || study.description || modalityLabel(study.modality)}
                     </p>
                     <p className="text-xs text-text-muted" title={exactStamp(study.acquisitionDate)}>
@@ -290,7 +290,7 @@ export default async function ImagingPage({
             key={filter.key}
             href={filterHref(filter.key, q)}
             aria-current={show === filter.key ? "true" : undefined}
-            className={`inline-flex min-h-10 items-center gap-1.5 rounded-pill border px-3 text-xs font-semibold whitespace-nowrap text-heading ${
+            className={`inline-flex min-h-11 items-center gap-1.5 rounded-pill border px-3 text-xs font-semibold whitespace-nowrap text-heading ${
               show === filter.key ? "border-primary bg-primary-soft" : "border-border bg-card hover:bg-muted"
             }`}
           >
@@ -305,7 +305,7 @@ export default async function ImagingPage({
 
       {/* --- Gallery -------------------------------------------------------- */}
       {studies.length === 0 ? (
-        <section className="flex flex-col items-center gap-2 rounded-card border border-border bg-card px-4.5 pt-9 pb-11 text-center shadow-[var(--shadow)]">
+        <section className="flex flex-col items-center gap-2 rounded-card border border-border bg-card px-5.5 pt-9 pb-11 text-center shadow-[var(--shadow)]">
           <ScanLine className="h-7 w-7 text-text-muted" strokeWidth={1.8} aria-hidden />
           <p className="text-[15px] font-semibold text-heading">
             {show === "unread" && !q
@@ -314,7 +314,7 @@ export default async function ImagingPage({
                 ? `Nothing matches “${q}”`
                 : "No X-rays yet"}
           </p>
-          <p className="max-w-[32rem] text-[13px] text-text-muted">
+          <p className="max-w-[32rem] text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
             {q
               ? "Try a patient name or a tooth number like 36."
               : "X-rays from connected devices land here automatically and file themselves against the patient in the chair."}
@@ -333,7 +333,7 @@ export default async function ImagingPage({
           <Link
             aria-disabled={page === 1}
             href={`${BASE}?${new URLSearchParams({ ...(q ? { q } : {}), ...(show !== "unread" ? { show } : {}), page: String(Math.max(1, page - 1)) })}`}
-            className={`inline-flex min-h-10 items-center rounded-control border border-border-strong px-3.5 text-[13px] font-semibold text-heading ${page === 1 ? "pointer-events-none opacity-40" : "hover:bg-muted"}`}
+            className={`inline-flex min-h-11 items-center rounded-control border border-border-strong px-3.5 text-[13px] font-semibold text-heading ${page === 1 ? "pointer-events-none opacity-40" : "hover:bg-muted"}`}
           >
             Back
           </Link>
@@ -343,7 +343,7 @@ export default async function ImagingPage({
           <Link
             aria-disabled={page === pages}
             href={`${BASE}?${new URLSearchParams({ ...(q ? { q } : {}), ...(show !== "unread" ? { show } : {}), page: String(Math.min(pages, page + 1)) })}`}
-            className={`inline-flex min-h-10 items-center rounded-control border border-border-strong px-3.5 text-[13px] font-semibold text-heading ${page === pages ? "pointer-events-none opacity-40" : "hover:bg-muted"}`}
+            className={`inline-flex min-h-11 items-center rounded-control border border-border-strong px-3.5 text-[13px] font-semibold text-heading ${page === pages ? "pointer-events-none opacity-40" : "hover:bg-muted"}`}
           >
             Next
           </Link>
@@ -353,20 +353,20 @@ export default async function ImagingPage({
       {/* --- Comparisons ---------------------------------------------------- */}
       {canSign && (
         <div className="grid items-stretch gap-5 xl:grid-cols-2">
-          <section className="rounded-card border border-border bg-card p-4.5 shadow-[var(--shadow)]">
-            <h2 className="text-base font-semibold text-heading">Compare two X-rays</h2>
+          <section className="rounded-card border border-border bg-card p-5.5 shadow-[var(--shadow)]">
+            <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Compare two X-rays</h2>
             <p className="mt-1 mb-3 text-xs text-text-muted">
               Then and now, side by side, with what you noticed written next to them.
             </p>
             <ImagingComparisonForm />
           </section>
           <section className="rounded-card border border-border bg-card shadow-[var(--shadow)]">
-            <div className="px-4.5 pt-4 pb-2.5">
-              <h2 className="text-base font-semibold text-heading">Saved comparisons</h2>
+            <div className="px-5.5 pt-4 pb-2.5">
+              <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Saved comparisons</h2>
               <p className="text-xs text-text-muted">Signed and kept on the patient&rsquo;s file.</p>
             </div>
             {comparisons.length === 0 ? (
-              <p className="border-t border-border/70 px-4.5 py-6 text-[13px] text-text-muted">
+              <p className="border-t border-border/70 px-5.5 py-6 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                 Nothing saved yet. Compare two X-rays and the note lands here.
               </p>
             ) : (
@@ -374,7 +374,7 @@ export default async function ImagingPage({
                 <Link
                   key={item.id}
                   href={`/dashboard/imaging/comparisons/${item.id}`}
-                  className="flex items-center justify-between gap-3 border-t border-border/70 px-4.5 py-3 hover:bg-muted"
+                  className="flex items-center justify-between gap-3 border-t border-border/70 px-5.5 py-3 hover:bg-muted"
                 >
                   <span className="min-w-0">
                     <span className="block text-[13px] font-semibold text-heading">

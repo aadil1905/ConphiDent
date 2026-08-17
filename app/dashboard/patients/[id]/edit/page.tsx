@@ -16,7 +16,7 @@ export default async function EditPatientPage({ params }: { params: Promise<{ id
   if (!patient) notFound();
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
+    <div className="flex w-full flex-col gap-5">
       <PageHeader
         title={`Edit ${patient.fullName.split(" ")[0]}'s details`}
         sub="Changes show up everywhere their name does, straight away."

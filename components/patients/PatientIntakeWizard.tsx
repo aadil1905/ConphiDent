@@ -223,7 +223,7 @@ const inputClass = "mt-2 min-h-11 w-full rounded-control border border-input bg-
  </h2>
  </div>
  {step > 1 && (
- <button type="button" onClick={() => setStep(step - 1)} className="inline-flex min-h-10 items-center gap-2 rounded-control border bg-card px-4 text-sm font-semibold">
+ <button type="button" onClick={() => setStep(step - 1)} className="inline-flex min-h-11 items-center gap-2 rounded-control border bg-card px-4 text-sm font-semibold">
  <ArrowLeft className="size-4" /> Back
  </button>
  )}
@@ -257,7 +257,7 @@ const inputClass = "mt-2 min-h-11 w-full rounded-control border border-input bg-
  <div className="rounded-card border bg-muted p-6 text-center">
  <MessageCircle className="mx-auto size-11 text-success" />
  <h3 className="mt-3 text-lg font-bold text-heading">Waiting for the patient</h3>
- <p className="mt-2 text-[13px] text-text-muted">They fill in their allergies, medical history and consent on their phone, and sign it there.</p>
+ <p className="mt-2 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">They fill in their allergies, medical history and consent on their phone, and sign it there.</p>
  <span className={`mt-4 inline-flex rounded-full px-3 py-1 text-xs font-bold ${statusStyles[request.status] || statusStyles.CREATED}`}>
  {INTAKE_STATUS_WORDS[request.status] ?? request.status}
  </span>

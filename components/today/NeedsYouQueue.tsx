@@ -74,7 +74,7 @@ export default function NeedsYouQueue({
       aria-labelledby="needs-you"
       className="rounded-card border border-border bg-card shadow-[var(--shadow)]"
     >
-      <div className="flex flex-wrap items-baseline justify-between gap-3 px-4.5 pt-4 pb-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-3 px-5.5 pt-4 pb-3">
         <h2 id="needs-you" className="text-lg font-semibold text-heading">
           Needs you today
         </h2>
@@ -86,10 +86,10 @@ export default function NeedsYouQueue({
       </div>
 
       {open.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 px-4.5 pt-8 pb-10 text-center">
+        <div className="flex flex-col items-center gap-2 px-5.5 pt-8 pb-10 text-center">
           <Check className="h-6.5 w-6.5 text-success" strokeWidth={2} aria-hidden />
           <p className="text-[15px] font-semibold text-heading">Nothing overdue. Nice.</p>
-          <p className="max-w-[26rem] text-[13px] text-text-muted">
+          <p className="max-w-[26rem] text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
             Anything that needs chasing will show up here the moment it does.
           </p>
         </div>
@@ -97,7 +97,7 @@ export default function NeedsYouQueue({
         open.map((item, index) => (
           <div
             key={`${item.taskId ?? "link"}-${index}`}
-            className={`grid grid-cols-1 items-center gap-3.5 border-t border-border px-4.5 py-3 lg:grid-cols-[minmax(0,1fr)_300px] ${
+            className={`grid grid-cols-1 items-center gap-3.5 border-t border-border px-5.5 py-3 lg:grid-cols-[minmax(0,1fr)_300px] ${
               item.overdue ? "border-l-[3px] border-l-danger-mark" : "border-l-[3px] border-l-warning"
             }`}
           >
@@ -111,7 +111,7 @@ export default function NeedsYouQueue({
                   {item.due}
                 </span>
               </div>
-              <p className="text-[13px] text-text-muted">{item.what}</p>
+              <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">{item.what}</p>
             </div>
             <div className="grid grid-cols-2 gap-2">
               {item.primaryHref ? (
@@ -142,7 +142,7 @@ export default function NeedsYouQueue({
       )}
 
       {total > open.length && open.length > 0 && (
-        <div className="border-t border-border px-4.5 py-3">
+        <div className="border-t border-border px-5.5 py-3">
           <Link href={moreHref} className="text-[13px] font-semibold text-primary hover:underline">
             See all {total} in Growth →
           </Link>

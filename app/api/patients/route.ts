@@ -1,3 +1,4 @@
+import { reportError } from "@/lib/monitoring";
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
       if (existingPatient) return NextResponse.json({ ...existingPatient, existed: true });
       return NextResponse.json({ error: "A patient with this phone number already exists." }, { status: 409 });
     }
-    console.error(error);
+    await reportError(error, { where: "api/patients" });
     return NextResponse.json({ error: "Failed to create patient." }, { status: 500 });
   }
 }

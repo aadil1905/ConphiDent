@@ -26,9 +26,9 @@ export default async function AppointmentDetailsPage({ params }: Props) {
 
   if (!appointment) {
     return (
-      <section className="flex flex-col items-center gap-2 rounded-card border border-border bg-card px-4.5 py-14 text-center shadow-[var(--shadow)]">
+      <section className="flex flex-col items-center gap-2 rounded-card border border-border bg-card px-5.5 py-14 text-center shadow-[var(--shadow)]">
         <h1 className="text-lg font-semibold text-heading">That visit is not here any more</h1>
-        <p className="text-[13px] text-text-muted">It may have been archived, or the link is old.</p>
+        <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">It may have been archived, or the link is old.</p>
         <Link href="/dashboard/appointments" className="mt-2 inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted">
           Back to the schedule
         </Link>
@@ -48,7 +48,7 @@ export default async function AppointmentDetailsPage({ params }: Props) {
     !["COMPLETED", "REVIEWED"].includes(appointment.patient?.intakeRequests[0]?.status || "");
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title={`${firstName}'s visit`}
         sub={`${day} · ${appointment.appointmentTime} · ${appointment.treatment}`}
@@ -69,8 +69,8 @@ export default async function AppointmentDetailsPage({ params }: Props) {
         }
       />
 
-      <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
-        <h2 className="text-base font-semibold text-heading">Who is coming</h2>
+      <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
+        <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Who is coming</h2>
         <dl className="mt-3.5 grid gap-4 sm:grid-cols-2">
           <div>
             <dt className="text-xs font-semibold text-text-muted">Patient</dt>
@@ -100,7 +100,7 @@ export default async function AppointmentDetailsPage({ params }: Props) {
               </Link>
             ) : (
               <Link
-                href={`/dashboard/clinical-records/new?patientId=${appointment.patientId}`}
+                href={`/dashboard/patients/${appointment.patientId}/edit`}
                 className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
               >
                 Continue medical history
@@ -110,8 +110,8 @@ export default async function AppointmentDetailsPage({ params }: Props) {
         ) : null}
       </section>
 
-      <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
-        <h2 className="text-base font-semibold text-heading">The visit</h2>
+      <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
+        <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">The visit</h2>
         <dl className="mt-3.5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <dt className="text-xs font-semibold text-text-muted">Day</dt>
@@ -131,14 +131,14 @@ export default async function AppointmentDetailsPage({ params }: Props) {
           </div>
         </dl>
         {appointment.notes ? (
-          <p className="mt-4 rounded-chip bg-muted px-3 py-2 text-[13px] text-foreground">{appointment.notes}</p>
+          <p className="mt-4 rounded-chip bg-muted px-3 py-2 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-foreground">{appointment.notes}</p>
         ) : null}
       </section>
 
       {appointment.labCases.length ? (
-        <section className="rounded-card border border-warning-border bg-warning-bg px-4.5 py-4 shadow-[var(--shadow)]">
-          <h2 className="text-base font-semibold text-heading">The lab work this visit depends on</h2>
-          <p className="mt-1 text-[13px] text-foreground">
+        <section className="rounded-card border border-warning-border bg-warning-bg px-5.5 py-4 shadow-[var(--shadow)]">
+          <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">The lab work this visit depends on</h2>
+          <p className="mt-1 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-foreground">
             Check the case is back before you confirm or move this visit.
           </p>
           <div className="mt-3.5 grid gap-2.5 sm:grid-cols-2">
@@ -151,7 +151,7 @@ export default async function AppointmentDetailsPage({ params }: Props) {
                 <p className="font-semibold text-heading">
                   {item.orderNumber || `LAB-${item.id}`} · {item.caseType}
                 </p>
-                <p className="mt-0.5 text-[13px] text-text-muted">
+                <p className="mt-0.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                   {item.labName} · {item.status.replaceAll("_", " ").toLowerCase()} · due{" "}
                   {item.dueDate?.toLocaleDateString("en-IN") || "not set"}
                 </p>
@@ -161,8 +161,8 @@ export default async function AppointmentDetailsPage({ params }: Props) {
         </section>
       ) : null}
 
-      <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
-        <h2 className="text-base font-semibold text-heading">Things you can do</h2>
+      <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
+        <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Things you can do</h2>
         <div className="mt-3.5">
           <AppointmentActions
             appointment={{

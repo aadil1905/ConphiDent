@@ -53,7 +53,7 @@ const toneMark = {
 } as const;
 
 const ghostButton =
-  "inline-flex min-h-10 cursor-pointer items-center justify-center rounded-control border border-border-strong bg-card px-3 text-xs font-semibold text-heading hover:bg-muted disabled:opacity-60";
+  "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-control border border-border-strong bg-card px-3 text-xs font-semibold text-heading hover:bg-muted disabled:opacity-60";
 
 function firstName(name: string) {
   return name.trim().split(/\s+/)[0] || name;
@@ -115,8 +115,9 @@ export default function GrowthQueue({
         label: "Undo",
         onClick: () =>
           startTransition(async () => {
-            await undoQueueItemAction(undo);
+            const undone = await undoQueueItemAction(undo);
             router.refresh();
+            if (!undone) toast.error("That one has already moved on. Nothing was put back.");
           }),
       },
     });
@@ -209,7 +210,7 @@ export default function GrowthQueue({
                 type="button"
                 onClick={() => setAskingToMessage(true)}
                 disabled={pending}
-                className="inline-flex min-h-10 cursor-pointer items-center rounded-control border border-white/40 px-3 text-[13px] font-semibold text-white hover:bg-white/10 disabled:opacity-60"
+                className="inline-flex min-h-11 cursor-pointer items-center rounded-control border border-white/40 px-3 text-[13px] font-semibold text-white hover:bg-white/10 disabled:opacity-60"
               >
                 Message all of them
               </button>
@@ -223,7 +224,7 @@ export default function GrowthQueue({
                   id="growth-assignee"
                   value={assignee}
                   onChange={(event) => setAssignee(Number(event.target.value))}
-                  className="min-h-10 cursor-pointer rounded-control border border-white/40 bg-heading px-2 text-[13px] font-semibold text-white"
+                  className="min-h-11 cursor-pointer rounded-control border border-white/40 bg-heading px-2 text-[13px] font-semibold text-white"
                 >
                   {teammates.map((mate) => (
                     <option key={mate.id} value={mate.id} className="text-heading">
@@ -235,7 +236,7 @@ export default function GrowthQueue({
                   type="button"
                   onClick={assign}
                   disabled={pending || !assignee}
-                  className="inline-flex min-h-10 cursor-pointer items-center rounded-control border border-white/40 px-3 text-[13px] font-semibold text-white hover:bg-white/10 disabled:opacity-60"
+                  className="inline-flex min-h-11 cursor-pointer items-center rounded-control border border-white/40 px-3 text-[13px] font-semibold text-white hover:bg-white/10 disabled:opacity-60"
                 >
                   Give them to {firstName(teammates.find((mate) => mate.id === assignee)?.name ?? "")}
                 </button>
@@ -244,7 +245,7 @@ export default function GrowthQueue({
             <button
               type="button"
               onClick={() => setSelected([])}
-              className="inline-flex min-h-10 cursor-pointer items-center rounded-control bg-white/15 px-3 text-[13px] font-semibold text-white hover:bg-white/25"
+              className="inline-flex min-h-11 cursor-pointer items-center rounded-control bg-white/15 px-3 text-[13px] font-semibold text-white hover:bg-white/25"
             >
               Clear
             </button>
@@ -253,9 +254,9 @@ export default function GrowthQueue({
       )}
 
       <section className="overflow-hidden rounded-card border border-border bg-card shadow-[var(--shadow)]">
-        <div className="flex flex-wrap items-baseline justify-between gap-3 px-4.5 pt-3.5 pb-2.5">
+        <div className="flex flex-wrap items-baseline justify-between gap-3 px-5.5 pt-3.5 pb-2.5">
           <div>
-            <h2 className="text-base font-semibold text-heading">{title}</h2>
+            <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">{title}</h2>
             <p className="text-xs text-text-muted">
               Enquiries and patients who need chasing, in one queue. Oldest promise first.
             </p>
@@ -283,7 +284,7 @@ export default function GrowthQueue({
           <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
             <CheckCheck className="h-7 w-7 text-success" strokeWidth={1.6} aria-hidden />
             <p className="text-[15px] font-semibold text-heading">{emptyTitle}</p>
-            <p className="max-w-[32rem] text-[13px] text-text-muted">{emptyBody}</p>
+            <p className="max-w-[32rem] text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">{emptyBody}</p>
           </div>
         ) : (
           <ul className="list-none">
@@ -292,11 +293,11 @@ export default function GrowthQueue({
               return (
                 <li
                   key={row.key}
-                  className={`grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-3.5 gap-y-2.5 border-t border-l-[3px] border-border/70 px-4.5 py-3 md:grid-cols-[1.75rem_minmax(0,1fr)_11rem_12rem] md:items-center ${
+                  className={`grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-3.5 gap-y-2.5 border-t border-l-[3px] border-border/70 px-5.5 py-3 md:grid-cols-[1.75rem_minmax(0,1fr)_11rem_12rem] md:items-center ${
                     toneMark[row.tone]
                   } ${picked ? "bg-muted" : ""}`}
                 >
-                  <label className="flex min-h-10 cursor-pointer items-center justify-center">
+                  <label className="flex min-h-11 cursor-pointer items-center justify-center">
                     <span className="sr-only">Select {row.name}</span>
                     <input
                       type="checkbox"
@@ -333,7 +334,7 @@ export default function GrowthQueue({
                     <p className="text-xs tabular-nums text-text-muted">
                       {row.phone} · {row.origin}
                     </p>
-                    <p className="mt-0.5 text-[13px] text-foreground">{row.why}</p>
+                    <p className="mt-0.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-foreground">{row.why}</p>
                   </div>
 
                   <div className="col-span-2 min-w-0 md:col-span-1">
@@ -379,7 +380,7 @@ export default function GrowthQueue({
           </ul>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4.5 py-3 text-xs text-text-muted">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5.5 py-3 text-xs text-text-muted">
           <span>{pageNote}</span>
           {footer}
         </div>
@@ -389,7 +390,7 @@ export default function GrowthQueue({
         <div
           role="presentation"
           onClick={() => setClosing(null)}
-          className="fixed inset-0 z-[95] flex items-center justify-center bg-[rgba(18,59,93,0.4)] p-5 backdrop-blur-[4px] motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150"
+          className="fixed inset-0 z-[95] flex items-center justify-center bg-[var(--overlay)] p-5 backdrop-blur-[4px] motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150"
         >
           <div
             ref={closePanel}
@@ -402,7 +403,7 @@ export default function GrowthQueue({
             <h2 className="text-[17px] font-semibold text-heading">
               How did it end with {firstName(closing.name)}?
             </h2>
-            <p className="text-[13px] text-text-muted">
+            <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
               This is the only place the reason gets recorded, so pick the closest one.
             </p>
             <div className="flex flex-col gap-1.5">

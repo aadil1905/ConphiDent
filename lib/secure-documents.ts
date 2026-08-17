@@ -1,8 +1,7 @@
 import "server-only";
 
 import { createHash, randomBytes } from "crypto";
-import type { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { prisma, type Db } from "@/lib/prisma";
 
 export type SecureDocumentType = "INVOICE" | "PRESCRIPTION" | "LAB_ORDER";
 
@@ -22,7 +21,7 @@ function applicationOrigin() {
   return url.origin;
 }
 
-type SecureDocumentClient = Pick<Prisma.TransactionClient, "secureDocumentAccess">;
+type SecureDocumentClient = Pick<Db, "secureDocumentAccess">;
 
 export async function createSecureDocumentLink(input: { clinicId: number; patientId: number; documentType: SecureDocumentType; documentId: number; createdByUserId?: number; expiresInHours?: number }, db: SecureDocumentClient = prisma) {
   const token = randomBytes(32).toString("base64url");

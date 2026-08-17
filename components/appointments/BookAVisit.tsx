@@ -1,12 +1,15 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import type { PatientMatch } from "@/app/api/patients/lookup/route";
+import { clearDraft, readDraft, saveDraft } from "@/lib/local-draft";
 
-const DRAFT_KEY = "conphident.booking.draft";
+// `note` and `reason` are stripped by `saveDraft` and never reach the device;
+// only the scaffolding of who and when survives a reload.
+const DRAFT_NAME = "booking";
 const DEBOUNCE_MS = 250;
 const UNDO_MS = 8000;
 
@@ -20,6 +23,8 @@ export type BookableDay = {
   slots: string[];
   /** "11 booked · 4 free times" */
   glance: string;
+  /** The clinic decided not to open this day — different from hours never set. */
+  closed?: boolean;
 };
 
 type Draft = { who: string; note: string; reason: string; iso: string; slot: string | null };
@@ -40,15 +45,6 @@ function pretty(time: string) {
   const [hour, minute] = time.split(":").map(Number);
   const meridiem = hour < 12 ? "am" : "pm";
   return `${((hour + 11) % 12) + 1}:${String(minute).padStart(2, "0")} ${meridiem}`;
-}
-
-function readDraft(): Draft | null {
-  try {
-    const raw = localStorage.getItem(DRAFT_KEY);
-    return raw ? (JSON.parse(raw) as Draft) : null;
-  } catch {
-    return null;
-  }
 }
 
 /**
@@ -84,8 +80,19 @@ export default function BookAVisit({
   const router = useRouter();
   const timer = useRef<number | null>(null);
   const saveTimer = useRef<number | null>(null);
+  // The submit button sits at the bottom of a long page while the fields it
+  // validates sit at the top. A toast alone strands the user next to the
+  // button; the failing field has to be brought back on screen.
+  const whoRef = useRef<HTMLInputElement | null>(null);
+  const phoneRef = useRef<HTMLInputElement | null>(null);
+  const whenRef = useRef<HTMLElement | null>(null);
 
-  const [draft] = useState(readDraft);
+  const bringToField = (target: HTMLElement | null) => {
+    target?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (target instanceof HTMLInputElement) target.focus({ preventScroll: true });
+  };
+
+  const [draft, setDraft] = useState<Draft | null>(null);
   const [who, setWho] = useState(defaultPatientName ?? "");
   const [matches, setMatches] = useState<PatientMatch[]>([]);
   const [picked, setPicked] = useState<PatientMatch | null>(null);
@@ -103,7 +110,24 @@ export default function BookAVisit({
   const [tried, setTried] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState("");
-  const [draftOffered, setDraftOffered] = useState(Boolean(draft?.who));
+  const [draftOffered, setDraftOffered] = useState(false);
+
+  // The draft is read after mount, and on a scheduled tick rather than in the
+  // effect body: localStorage does not exist on the server, so reading it as
+  // initial state made the server and client render different HTML and React
+  // reported a hydration failure on every visit to this page.
+  useEffect(() => {
+    const tick = setTimeout(() => {
+      const saved = readDraft<Draft>(DRAFT_NAME);
+      if (saved?.value.who) {
+        // The clinical free text is gone by design, so what comes back is the
+        // scaffolding: who it was for, and which slot was being looked at.
+        setDraft({ note: "", reason: "", iso: "", slot: null, ...saved.value } as Draft);
+        setDraftOffered(true);
+      }
+    }, 0);
+    return () => clearTimeout(tick);
+  }, []);
 
   const day = days[Math.min(dayIndex, days.length - 1)];
   const chosen = slot ? pretty(slot) : null;
@@ -121,7 +145,7 @@ export default function BookAVisit({
         ...next,
       };
       try {
-        localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+        saveDraft(DRAFT_NAME, payload);
       } catch {
         // A browser that will not keep a draft still lets them finish in one go.
       }
@@ -152,14 +176,17 @@ export default function BookAVisit({
     const digits = phone.replace(/\D/g, "");
     if (!picked) {
       toast.error("Tell us who this visit is for — a name is enough to start.");
+      bringToField(whoRef.current);
       return;
     }
     if (isNew && digits.length < 10) {
       toast.error("That number looks short — we need 10 digits to send reminders.");
+      bringToField(phoneRef.current);
       return;
     }
     if (!chosen) {
       toast.error("Pick one of the free times first.");
+      bringToField(whenRef.current);
       return;
     }
 
@@ -184,7 +211,11 @@ export default function BookAVisit({
       if (!response.ok) throw new Error(body.error || "That didn't save.");
 
       try {
-        localStorage.removeItem(DRAFT_KEY);
+        // Cancel the debounced autosave first: otherwise a timer armed by the
+        // last keystroke fires after this and writes the draft straight back.
+        if (saveTimer.current) window.clearTimeout(saveTimer.current);
+        saveTimer.current = null;
+        clearDraft(DRAFT_NAME);
       } catch {
         // Nothing to clean up.
       }
@@ -239,10 +270,23 @@ export default function BookAVisit({
                 onClick={() => {
                   setWho(draft.who);
                   setNote(draft.note);
-                  setReason(draft.reason);
-                  setSlot(draft.slot);
+                  // A draft can outlive its own week and its own vocabulary.
+                  // Restoring a time onto whatever day happens to be first
+                  // would book a day nobody picked, so the slot only comes
+                  // back when its day is still on offer and still has it.
+                  setReason(
+                    VISIT_TYPES.some((type) => type.value === draft.reason)
+                      ? draft.reason
+                      : VISIT_TYPES[0].value,
+                  );
                   const found = days.findIndex((item) => item.iso === draft.iso);
-                  if (found >= 0) setDayIndex(found);
+                  if (found >= 0) {
+                    setDayIndex(found);
+                    setSlot(days[found].slots.includes(draft.slot ?? "") ? draft.slot : null);
+                  } else {
+                    setSlot(null);
+                    toast.message("That draft's day has passed — pick a new time.");
+                  }
                   setDraftOffered(false);
                   look(draft.who);
                 }}
@@ -254,7 +298,7 @@ export default function BookAVisit({
                 type="button"
                 onClick={() => {
                   try {
-                    localStorage.removeItem(DRAFT_KEY);
+                    clearDraft(DRAFT_NAME);
                   } catch {
                     // Nothing to clean up.
                   }
@@ -269,8 +313,8 @@ export default function BookAVisit({
         )}
 
         {/* --- Who ---------------------------------------------------------- */}
-        <section className={`${card} flex flex-col gap-3 px-4.5 pt-4 pb-4.5`}>
-          <h2 className="text-base font-semibold text-heading">Who is coming in?</h2>
+        <section className={`${card} flex flex-col gap-3 px-5.5 pt-4 pb-4.5`}>
+          <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Who is coming in?</h2>
 
           {!picked ? (
             <>
@@ -282,6 +326,7 @@ export default function BookAVisit({
                   <Search className="pointer-events-none absolute left-3 h-4 w-4 text-text-muted" aria-hidden />
                   <input
                     id="who"
+                    ref={whoRef}
                     value={who}
                     onChange={(event) => {
                       setWho(event.target.value);
@@ -291,7 +336,7 @@ export default function BookAVisit({
                     placeholder="Start typing — e.g. Meera, or 99870"
                     autoComplete="off"
                     aria-invalid={tried && !picked}
-                    className={`min-h-[46px] w-full rounded-control border bg-white pr-3 pl-9 text-[15px] text-foreground ${
+                    className={`min-h-[46px] w-full rounded-control border bg-card pr-3 pl-9 text-[15px] text-foreground ${
                       tried && !picked ? "border-danger-mark" : "border-border-strong"
                     }`}
                   />
@@ -372,7 +417,7 @@ export default function BookAVisit({
               </div>
 
               {picked.alert && (
-                <p className="rounded-[0.4rem] border-l-[3px] border-l-warning bg-warning-bg px-3 py-2.5 text-[13px] text-warning">
+                <p className="rounded-[0.4rem] border-l-[3px] border-l-warning bg-warning-bg px-3 py-2.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-warning">
                   {picked.alert}
                 </p>
               )}
@@ -381,12 +426,13 @@ export default function BookAVisit({
                 <label className="flex max-w-xs flex-col gap-1.5">
                   <span className="text-xs font-semibold text-heading">Mobile number</span>
                   <input
+                    ref={phoneRef}
                     value={phone}
                     onChange={(event) => setPhone(event.target.value)}
                     placeholder="+91 98XXX XXXXX"
                     inputMode="tel"
                     aria-invalid={tried && isNew && phone.replace(/\D/g, "").length < 10}
-                    className={`min-h-[46px] rounded-control border bg-white px-3 text-[15px] tabular-nums text-foreground ${
+                    className={`min-h-[46px] rounded-control border bg-card px-3 text-[15px] tabular-nums text-foreground ${
                       tried && isNew && phone.replace(/\D/g, "").length < 10
                         ? "border-danger-mark"
                         : "border-border-strong"
@@ -404,9 +450,9 @@ export default function BookAVisit({
         </section>
 
         {/* --- When --------------------------------------------------------- */}
-        <section className={`${card} flex flex-col gap-3.5 px-4.5 pt-4 pb-4.5`}>
+        <section ref={whenRef} className={`${card} flex flex-col gap-3.5 px-5.5 pt-4 pb-4.5`}>
           <div className="flex flex-wrap items-baseline justify-between gap-3">
-            <h2 className="text-base font-semibold text-heading">When?</h2>
+            <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">When?</h2>
             <span className="text-xs text-text-muted">
               Free times come from this clinic&rsquo;s own slot setup
             </span>
@@ -425,14 +471,14 @@ export default function BookAVisit({
                 aria-pressed={index === dayIndex}
                 className={`min-h-[68px] min-w-[92px] flex-none px-2.5 py-2 text-left ${chip(index === dayIndex)}`}
               >
-                <span className="block text-[11px] font-semibold tracking-[0.06em] text-text-muted uppercase">
+                <span className="block text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
                   {item.dow}
                 </span>
                 <span className="block text-[15px] font-semibold tabular-nums">{item.date}</span>
                 <span
-                  className={`block text-[11px] ${item.slots.length ? "text-success" : "text-warning"}`}
+                  className={`block text-[11px] ${item.slots.length ? "text-success" : item.closed ? "text-text-muted" : "text-warning"}`}
                 >
-                  {item.slots.length ? `${item.slots.length} free` : "nothing set up"}
+                  {item.slots.length ? `${item.slots.length} free` : item.closed ? "closed" : "nothing set up"}
                 </span>
               </button>
             ))}
@@ -466,18 +512,19 @@ export default function BookAVisit({
               </div>
             </div>
           ) : (
-            <p className="rounded-[0.4rem] border-l-[3px] border-l-warning bg-warning-bg px-3.5 py-3 text-[13px] text-warning">
-              Nothing is set up for {day.label} yet. Pick another day, or book a time manually — it will
-              still save.
+            <p className="rounded-[0.4rem] border-l-[3px] border-l-warning bg-warning-bg px-3.5 py-3 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-warning">
+              {day.closed
+                ? `The clinic is closed on ${day.label}. Pick another day.`
+                : `Nothing is set up for ${day.label} yet. Pick another day, or book a time manually — it will still save.`}
             </p>
           )}
 
         </section>
 
         {/* --- Which kind of visit ------------------------------------------ */}
-        <section className={`${card} flex flex-col gap-3.5 px-4.5 pt-4 pb-4.5`}>
+        <section className={`${card} flex flex-col gap-3.5 px-5.5 pt-4 pb-4.5`}>
           <div>
-            <h2 className="text-base font-semibold text-heading">What kind of visit?</h2>
+            <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">What kind of visit?</h2>
             <p className="mt-0.5 text-xs text-text-muted">
               This decides where you land after saving — a new patient needs their details taken,
               somebody you already treat does not.
@@ -512,7 +559,7 @@ export default function BookAVisit({
               }}
               rows={3}
               placeholder="Optional — e.g. she is in pain, keep 30 minutes"
-              className="resize-y rounded-control border border-border bg-white px-3 py-2.5 text-sm text-foreground"
+              className="resize-y rounded-control border border-border bg-card px-3 py-2.5 text-sm text-foreground"
             />
           </label>
           <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm">
@@ -528,8 +575,8 @@ export default function BookAVisit({
       </div>
 
       {/* --- Summary -------------------------------------------------------- */}
-      <aside className="flex flex-col gap-5">
-        <div className={`${card} flex flex-col gap-3 px-4.5 py-4`}>
+      <aside className="flex flex-col gap-6">
+        <div className={`${card} flex flex-col gap-3 px-5.5 py-4`}>
           <h2 className="text-[15px] font-semibold text-heading">This booking</h2>
           <dl className="flex flex-col gap-2.5 text-[13px]">
             {[
@@ -551,7 +598,7 @@ export default function BookAVisit({
               },
             ].map((row) => (
               <div key={row.label}>
-                <dt className="text-[11px] font-semibold tracking-[0.06em] text-text-muted uppercase">
+                <dt className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
                   {row.label}
                 </dt>
                 <dd className={`tabular-nums ${row.muted ? "text-warning" : "text-foreground"}`}>
@@ -583,7 +630,7 @@ export default function BookAVisit({
 
         <div className="rounded-card border border-border bg-card px-4 py-3.5">
           <p className="mb-1.5 text-xs font-semibold text-heading">{day.label} at a glance</p>
-          <p className="text-[13px] text-text-muted">{day.glance}</p>
+          <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">{day.glance}</p>
         </div>
       </aside>
     </div>

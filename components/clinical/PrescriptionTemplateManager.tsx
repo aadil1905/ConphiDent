@@ -120,7 +120,7 @@ export default function PrescriptionTemplateManager({ templates }: { templates: 
               {templates.filter((entry) => entry.active).length} in use · {templates.filter((entry) => !entry.active).length} archived
             </p>
           </div>
-          <button type="button" onClick={startNew} className="inline-flex min-h-10 cursor-pointer items-center gap-1 rounded-control border border-border-strong bg-card px-3 text-xs font-semibold text-heading hover:bg-muted">
+          <button type="button" onClick={startNew} className="inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-control border border-border-strong bg-card px-3 text-xs font-semibold text-heading hover:bg-muted">
             <Plus className="size-3.5" aria-hidden />New
           </button>
         </div>
@@ -145,16 +145,16 @@ export default function PrescriptionTemplateManager({ templates }: { templates: 
               </button>
             ))
           ) : (
-            <p className="rounded-control border border-dashed border-border-strong p-4 text-center text-[13px] text-text-muted">
+            <p className="rounded-control border border-dashed border-border-strong p-4 text-center text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
               No sets yet — build the first one on the right.
             </p>
           )}
         </div>
       </aside>
 
-      <form onSubmit={save} className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
-        <h2 className="text-base font-semibold text-heading">{selectedId === null ? "A new set" : selected?.name || "Edit the set"}</h2>
-        <p className="mt-0.5 text-[13px] text-text-muted">
+      <form onSubmit={save} className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
+        <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">{selectedId === null ? "A new set" : selected?.name || "Edit the set"}</h2>
+        <p className="mt-0.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
           {selected?.active === false
             ? "This set is archived — saving it brings it back."
             : "The diagnosis and every direction load together when someone starts from this set. They still review each dose against the patient."}

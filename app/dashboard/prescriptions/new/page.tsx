@@ -6,6 +6,8 @@ import PrescriptionForm from "@/components/clinical/PrescriptionForm";
 import PageIntro from "@/components/dashboard/PageIntro";
 import type { StructuredMedication } from "@/lib/prescription-core";
 import { allergySummaryFrom } from "@/lib/prescription-core";
+import SafetyBanner from "@/components/clinical/SafetyBanner";
+import { patientSafety } from "@/lib/patient-safety";
 
 const appointmentSelect = {
   id: true,
@@ -27,7 +29,7 @@ export default async function NewPrescriptionPage({ searchParams }: { searchPara
       dateOfBirth: true,
       gender: true,
       medicalNotes: true,
-      clinicalRecords: { where: { enteredInErrorAt: null, status: "FINAL" }, select: { drugAllergies: true }, orderBy: [{ visitDate: "desc" }, { updatedAt: "desc" }, { id: "desc" }], take: 20 },
+      intakeRequests: { where: { drugAllergies: { not: null } }, select: { drugAllergies: true, status: true }, orderBy: [{ completedAt: "desc" }, { id: "desc" }], take: 20 },
       appointments: {
         where: { status: { not: "Cancelled" }, archivedAt: null },
         select: appointmentSelect,
@@ -36,12 +38,14 @@ export default async function NewPrescriptionPage({ searchParams }: { searchPara
     },
     orderBy: { fullName: "asc" },
   }), prisma.prescriptionTemplate.findMany({ where: { clinicId: user.clinicId, active: true, reviewedAt: { not: null } }, select: { id: true, name: true, diagnosis: true, items: true }, orderBy: { name: "asc" } })]);
-  const patientOptions = patients.map(({ clinicalRecords, medicalNotes, ...patient }) => ({ ...patient, allergySummary: allergySummaryFrom(clinicalRecords, medicalNotes) }));
+  const patientOptions = patients.map(({ intakeRequests, medicalNotes, ...patient }) => ({ ...patient, allergySummary: allergySummaryFrom(intakeRequests, medicalNotes) }));
+  const selected = patients.find((entry) => entry.id === Number(patientId));
   const reviewedTemplates = templates.map((template) => ({ ...template, items: template.items as unknown as StructuredMedication[] }));
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageIntro eyebrow="Prescriptions" title="New prescription" description="Write the script. It attaches to the visit you pick when you save." />
+      {selected && <SafetyBanner safety={patientSafety({ medicalNotes: selected.medicalNotes, intakeAnswers: selected.intakeRequests })} recordHref={`/dashboard/patients/${selected.id}/edit`} />}
       <PrescriptionForm patients={patientOptions} templates={reviewedTemplates} initialPatientId={patientId ? Number(patientId) : undefined} initialVisit={visit} prescriberReady={Boolean(user.fullName.trim() && user.registrationNumber?.trim())} />
     </div>
   );

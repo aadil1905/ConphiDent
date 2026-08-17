@@ -129,11 +129,6 @@ const REACHED_ANOTHER_WAY = new Set([
   // ⌘K from every screen, and the search box in the top bar.
   "/dashboard/search",
   // The five tabs across the top of Messages.
-  "/dashboard/automation",
-  "/dashboard/whatsapp-operations",
-  "/dashboard/ai-coach",
-  // Reached from the Clinical workspace and from any patient's file.
-  "/dashboard/clinical-records",
 ]);
 
 const stranded = [];

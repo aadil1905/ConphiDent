@@ -23,14 +23,23 @@ export async function POST(request: Request) {
     const visitDate = data.visitDate;
     const patient = await prisma.patient.findFirst({ where: { id: data.patientId, clinicId: user.clinicId, archivedAt: null }, select: { id: true } });
     if (!patient) return NextResponse.json({ error: "Patient not found." }, { status: 404 });
+    // The picker only offers active services, but this check did not look at
+    // `active` — so a treatment switched off since the form loaded was still
+    // accepted, and the plan quoted work the clinic has stopped offering.
+    //
+    // Prices are deliberately NOT re-read from the catalogue here. A plan is a
+    // quote given to a patient; the figure the clinician saw and agreed is the
+    // one that belongs on the record, even if the fee schedule moves afterwards.
     if (data.serviceId) {
-      const service = await prisma.clinicService.findFirst({ where: { id: data.serviceId, clinicId: user.clinicId }, select: { id: true } });
+      const service = await prisma.clinicService.findFirst({ where: { id: data.serviceId, clinicId: user.clinicId }, select: { id: true, active: true, name: true } });
       if (!service) return NextResponse.json({ error: "Service not found." }, { status: 404 });
+      if (!service.active) return NextResponse.json({ error: `${service.name} is no longer offered. Reload the page and pick a current treatment.` }, { status: 409 });
     }
     for (const item of data.items) {
       if (!item.serviceId) continue;
-      const service = await prisma.clinicService.findFirst({ where: { id: item.serviceId, clinicId: user.clinicId }, select: { id: true } });
+      const service = await prisma.clinicService.findFirst({ where: { id: item.serviceId, clinicId: user.clinicId }, select: { id: true, active: true, name: true } });
       if (!service) return NextResponse.json({ error: "One of the selected services was not found." }, { status: 404 });
+      if (!service.active) return NextResponse.json({ error: `${service.name} is no longer offered. Reload the page and pick a current treatment.` }, { status: 409 });
     }
     // Not gated on status: the plan attaches to whatever visit is on the books
     // that day, and still saves when there is none.

@@ -16,24 +16,24 @@ export default function LogEnquiry({
   invalid: boolean;
 }) {
   return (
-    <section className="rounded-card border border-border-strong bg-card px-4.5 py-4 shadow-[var(--shadow)]">
+    <section className="rounded-card border border-border-strong bg-card px-5.5 py-4 shadow-[var(--shadow)]">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold text-heading">Someone just called</h2>
+          <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Someone just called</h2>
           <p className="text-xs text-text-muted">
             Three fields. You can fill the rest in after you have spoken to them.
           </p>
         </div>
         <Link
           href={closeHref}
-          className="inline-flex min-h-10 items-center rounded-control border border-border-strong bg-card px-3 text-xs font-semibold text-heading hover:bg-muted"
+          className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3 text-xs font-semibold text-heading hover:bg-muted"
         >
           Close
         </Link>
       </div>
 
       {invalid && (
-        <p className="mt-3 rounded-control border border-danger-border bg-danger-bg px-3 py-2 text-[13px] text-danger">
+        <p className="mt-3 rounded-control border border-danger-border bg-danger-bg px-3 py-2 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-danger">
           Nothing was saved. A name of two letters or more and a 10-digit mobile are what we need to
           reach them.
         </p>

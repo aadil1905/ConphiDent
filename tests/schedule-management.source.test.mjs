@@ -3,7 +3,15 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const read = (file) => readFileSync(resolve(process.cwd(), file), "utf8");
+/**
+ * Source is normalised to LF before matching.
+ *
+ * `core.autocrlf` is true, so a Windows working copy has CRLF endings, and any
+ * pattern that spans lines then silently fails to match. That looked exactly
+ * like the code having drifted away from the test, which is part of why these
+ * files sat unrun. Normalised, the patterns mean what they say on any platform.
+ */
+const read = (file) => readFileSync(resolve(process.cwd(), file), "utf8").replace(/\r\n/g, "\n");
 const tenantActions = read("app/dashboard/settings/operations/actions.ts");
 const platformActions = read("app/platform/clinics/[clinicId]/actions.ts");
 const platformPage = read("app/platform/clinics/[clinicId]/page.tsx");
@@ -52,10 +60,16 @@ test("schedule actions reject malformed times, days, and slot ranges", () => {
     assert.match(source, /!isClosed && openTime >= closeTime/);
   }
 
+  // Only the tenant form grew a second session. The platform form did not, so
+  // the two are no longer the same shape and are asserted separately.
   for (const source of [tenantActions, platformActions]) {
     const parse = compiledScheduleInput(source);
+    const splitShift = source === tenantActions;
     const valid = { dayOfWeek: 4, openTime: "09:00", closeTime: "18:00", slotMinutes: 30 };
-    assert.deepEqual(parse(scheduleForm(valid)), { ...valid, isClosed: false });
+    assert.deepEqual(
+      parse(scheduleForm(valid)),
+      splitShift ? { ...valid, isClosed: false, second: null } : { ...valid, isClosed: false },
+    );
     assert.equal(parse(scheduleForm({ ...valid, openTime: "9:00" })), null);
     assert.equal(parse(scheduleForm({ ...valid, openTime: "09:00junk" })), null);
     assert.equal(parse(scheduleForm({ ...valid, dayOfWeek: 7 })), null);
@@ -65,7 +79,31 @@ test("schedule actions reject malformed times, days, and slot ranges", () => {
     assert.equal(parse(scheduleForm({ ...valid, openTime: "18:00", closeTime: "18:00" })), null);
     assert.deepEqual(
       parse(scheduleForm({ ...valid, openTime: "18:00", closeTime: "18:00", isClosed: true })),
-      { ...valid, openTime: "18:00", closeTime: "18:00", isClosed: true },
+      splitShift
+        ? { ...valid, openTime: "18:00", closeTime: "18:00", isClosed: true, second: null }
+        : { ...valid, openTime: "18:00", closeTime: "18:00", isClosed: true },
+    );
+
+    if (!splitShift) continue;
+    // The evening session a clinic that shuts for lunch needs. It was added
+    // with no test at all, so these are new: both ends required, after the
+    // morning closes, and never on a day marked closed.
+    // A clinic that shuts for lunch: mornings to 13:00, evenings from 16:00.
+    const morning = { ...valid, closeTime: "13:00" };
+    const evening = { ...morning, openTime2: "16:00", closeTime2: "20:00" };
+    assert.deepEqual(parse(scheduleForm(evening)), {
+      ...morning, isClosed: false, second: { openTime: "16:00", closeTime: "20:00" },
+    });
+    assert.equal(parse(scheduleForm({ ...evening, closeTime2: "" })), null, "an evening with no end is rejected");
+    assert.equal(parse(scheduleForm({ ...evening, openTime2: "" })), null, "an evening with no start is rejected");
+    assert.equal(parse(scheduleForm({ ...evening, closeTime2: "16:00" })), null, "an evening that ends when it starts is rejected");
+    assert.equal(parse(scheduleForm({ ...evening, openTime2: "17:00", closeTime2: "16:30" })), null, "an evening that runs backwards is rejected");
+    // 12:00 is before the morning session closes at 13:00, so the two overlap.
+    assert.equal(parse(scheduleForm({ ...evening, openTime2: "12:00" })), null, "an evening overlapping the morning is rejected");
+    assert.deepEqual(
+      parse(scheduleForm({ ...evening, isClosed: true })),
+      { ...morning, isClosed: true, second: null },
+      "a closed day carries no evening session",
     );
   }
 });

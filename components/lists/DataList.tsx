@@ -74,11 +74,11 @@ export default function DataList({
   return (
     <section className="overflow-hidden rounded-card border border-border bg-card shadow-[var(--shadow)]">
       {total === 0 ? (
-        <div className="p-6">{empty}</div>
+        <div>{empty}</div>
       ) : (
         <>
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-[13px]">
+            <table className="w-full border-collapse text-[length:var(--text-dense)] leading-[var(--text-dense-lh)]">
               <thead>
                 <tr className="bg-muted text-left">
                   {columns.map((column) => (
@@ -93,7 +93,7 @@ export default function DataList({
                             : "descending"
                           : undefined
                       }
-                      className={`border-b border-border px-4 py-2.5 text-[11px] font-semibold tracking-[0.06em] whitespace-nowrap text-text-muted uppercase ${
+                      className={`border-b-2 border-border px-5 py-3 text-[length:var(--text-micro)] font-bold tracking-[0.14em] whitespace-nowrap text-heading uppercase ${
                         column.align === "right" ? "text-right" : "text-left"
                       } ${column.secondary ? "hidden sm:table-cell" : ""}`}
                     >
@@ -106,7 +106,7 @@ export default function DataList({
             </table>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-xs text-text-muted">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3.5 text-[length:var(--text-secondary)] text-text-muted">
             <span>{showingLine(shown, total, noun)}</span>
             <div className="flex flex-wrap items-center gap-3">
               {total > PAGE_SIZES[0] && (
@@ -119,7 +119,7 @@ export default function DataList({
                 <Link
                   href={listHref(basePath, query, { page: page - 1 })}
                   aria-disabled={page <= 1}
-                  className={`inline-flex h-9 items-center rounded-control border border-border px-3 font-semibold ${
+                  className={`inline-flex min-h-11 items-center rounded-control border border-border px-3 font-semibold ${
                     page <= 1 ? "pointer-events-none opacity-40" : "hover:bg-muted"
                   }`}
                 >
@@ -131,7 +131,7 @@ export default function DataList({
                 <Link
                   href={listHref(basePath, query, { page: page + 1 })}
                   aria-disabled={page >= pages}
-                  className={`inline-flex h-9 items-center rounded-control border border-border px-3 font-semibold ${
+                  className={`inline-flex min-h-11 items-center rounded-control border border-border px-3 font-semibold ${
                     page >= pages ? "pointer-events-none opacity-40" : "hover:bg-muted"
                   }`}
                 >
@@ -147,7 +147,12 @@ export default function DataList({
   );
 }
 
-/** A row that carries a 3px stroke down its left edge when it needs attention. */
+/**
+ * A row that carries a 3px stroke down its left edge when it needs attention.
+ *
+ * Positioned, so that the one `ListLink` inside it can stretch its hit area
+ * over the whole row — see `ListLink`.
+ */
 export function ListRow({
   needsAttention,
   children,
@@ -157,7 +162,7 @@ export function ListRow({
 }) {
   return (
     <tr
-      className={`border-b border-border/70 last:border-b-0 hover:bg-primary-soft ${
+      className={`relative border-b border-border/70 last:border-b-0 hover:bg-primary-soft ${
         needsAttention ? "border-l-[3px] border-l-danger-mark" : ""
       }`}
     >
@@ -169,21 +174,89 @@ export function ListRow({
 export function ListCell({
   align,
   secondary,
+  /**
+   * The cell holding this row's `ListLink`. It changes no styling — it marks,
+   * in the markup and in the DOM, which cell carries the whole row.
+   */
+  primary,
+  /**
+   * This cell has its own link or button. It is lifted above the row link's
+   * overlay so that control is still its own target rather than being
+   * swallowed by the row's.
+   *
+   * Only set it where it is true. A plain text cell lifted for no reason is a
+   * hole in the row's hit area — which is the whole point of the overlay — and
+   * the hole is invisible, because the row still works everywhere else.
+   */
+  interactive,
   className = "",
   children,
 }: {
   align?: "left" | "right";
   secondary?: boolean;
+  primary?: boolean;
+  interactive?: boolean;
   className?: string;
   children: React.ReactNode;
 }) {
   return (
     <td
-      className={`px-4 py-3 align-middle ${align === "right" ? "text-right" : "text-left"} ${
-        secondary ? "hidden sm:table-cell" : ""
-      } ${className}`}
+      data-primary={primary ? "" : undefined}
+      className={`px-5 py-3.5 align-middle ${interactive ? "relative z-10" : ""} ${
+        align === "right" ? "text-right" : "text-left"
+      } ${secondary ? "hidden sm:table-cell" : ""} ${className}`}
     >
       {children}
     </td>
+  );
+}
+
+/**
+ * The one link that opens what a row is about, with the whole row as its target.
+ *
+ * A row is about 73px tall and the name inside it is about 20px, so roughly
+ * three quarters of what reads as tappable was not — a real miss for a gloved
+ * hand on a tablet beside the chair, and invisible in review because the link
+ * does work if you hit it.
+ *
+ * The overlay is a pseudo-element rather than a wrapping anchor because a table
+ * row cannot contain one anchor spanning several cells. It resolves against
+ * `ListRow`, which is why the cell holding it must be the `primary` one: a
+ * positioned cell would trap the overlay inside that single column. Every other
+ * cell sits at `z-10` so a second link or a button in the row is still its own
+ * target rather than being swallowed by the row's.
+ *
+ * Text selection still works — the overlay is transparent and only takes the
+ * pointer on a click, the same as any link laid over a card.
+ *
+ * Which cell to mark `primary`: the one that identifies the row, and it has to
+ * be visible at every width — a `secondary` cell is `display: none` below `sm`,
+ * which would leave the row with no target on exactly the narrow screen the big
+ * target is for. Where the identifying cell is hidden or is not a link, the
+ * trailing action cell carries the row instead; the lab list does that.
+ */
+export function ListLink({
+  href,
+  className = "",
+  children,
+}: {
+  href: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    // `data-row-link` opts this anchor out of the workspace's global
+    // `transform: translateZ(0)` on links. A transformed element is a
+    // containing block for its absolutely positioned descendants, so with it
+    // the overlay below resolves against this anchor instead of the row and
+    // quietly collapses to the width of the text — which is the bug this
+    // component exists to fix. See the rule in `globals.css`.
+    <Link
+      href={href}
+      data-row-link
+      className={`after:absolute after:inset-0 after:content-[''] ${className}`}
+    >
+      {children}
+    </Link>
   );
 }

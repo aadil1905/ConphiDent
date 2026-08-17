@@ -70,11 +70,15 @@ export function buildTimeSlots(openTime: string, closeTime: string, slotMinutes:
   let current = openHour * 60 + openMinute;
   const closing = closeHour * 60 + closeMinute;
   const slots: string[] = [];
-  while (current < closing && slots.length < 10) {
+  // Same rule as the booking generator (scheduleWindowSlots): a slot must fit
+  // inside the window in full, and long days are not silently truncated —
+  // otherwise the settings summary promises times booking will refuse.
+  const step = Math.max(15, slotMinutes);
+  while (current + step <= closing && slots.length < 96) {
     const hour = String(Math.floor(current / 60)).padStart(2, "0");
     const minute = String(current % 60).padStart(2, "0");
     slots.push(`${hour}:${minute}`);
-    current += Math.max(15, slotMinutes);
+    current += step;
   }
   return slots;
 }

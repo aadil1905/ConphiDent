@@ -236,7 +236,7 @@ export default async function GrowthPage({
 
       <RailCard title="Where they came from">
         {metrics.sources.length === 0 ? (
-          <p className="text-[13px] text-text-muted">
+          <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
             Nobody has got in touch this month, so there is nothing to count yet.
           </p>
         ) : (
@@ -258,7 +258,7 @@ export default async function GrowthPage({
 
       <RailCard title="Why people did not come">
         {metrics.lossReasons.length === 0 ? (
-          <p className="text-[13px] text-text-muted">
+          <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
             Nobody has been written off this month. Reasons are recorded when you press Done and pick
             one.
           </p>

@@ -199,11 +199,11 @@ export async function closeQueueItemAction(key: string, outcomeValue: string): P
 export async function undoQueueItemAction(undo: QueueUndo) {
   const user = await requirePermission("managePatients");
   const target = parseKey(undo.key);
-  if (!target) return;
+  if (!target) return false;
 
   if (target.source === "lead" && undo.lead) {
     const stages = ["NEW", "CONTACTED", "BOOKED", "VISITED", "CONVERTED", "LOST"];
-    if (!stages.includes(undo.lead.stage)) return;
+    if (!stages.includes(undo.lead.stage)) return false;
     await prisma.lead.updateMany({
       where: { id: target.id, clinicId: user.clinicId },
       data: {
@@ -217,7 +217,7 @@ export async function undoQueueItemAction(undo: QueueUndo) {
   if (target.source === "task" && undo.task) {
     const statuses = [...OPEN_TASK_STATUSES, "COMPLETED", "CANCELLED"];
     const scheduledFor = readDate(undo.task.scheduledFor);
-    if (!statuses.includes(undo.task.status) || !scheduledFor) return;
+    if (!statuses.includes(undo.task.status) || !scheduledFor) return false;
     await prisma.followUpTask.updateMany({
       where: { id: target.id, clinicId: user.clinicId },
       data: {
@@ -231,6 +231,7 @@ export async function undoQueueItemAction(undo: QueueUndo) {
   }
 
   revalidateQueue();
+  return true;
 }
 
 /**

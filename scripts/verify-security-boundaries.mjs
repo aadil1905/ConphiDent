@@ -4,10 +4,6 @@ import { resolve } from "node:path";
 const root = process.cwd();
 
 const checks = [
-  ["app/api/chat/route.ts", "requireApiFeature(\"ai_coach\")"],
-  ["app/api/clinical-records/route.ts", "clinicId: user.clinicId"],
-  ["app/api/clinical-records/route.ts", "action: \"CLINICAL_RECORD_CREATED\""],
-  ["app/api/clinical-records/[id]/route.ts", "action: \"CLINICAL_RECORD_CORRECTED\""],
   ["app/api/prescriptions/route.ts", "action: \"PRESCRIPTION_ISSUED\""],
   ["app/api/prescriptions/[id]/route.ts", "action: \"PRESCRIPTION_CORRECTED\""],
   ["app/api/invoices/route.ts", "clinicId: user.clinicId"],
@@ -71,9 +67,6 @@ const checks = [
   ["lib/whatsapp-webhook-inbox.ts", "whatsAppWebhookEvent.upsert"],
   ["lib/whatsapp.ts", "disconnectedAt: null"],
   ["lib/secure-documents.ts", "createHash(\"sha256\")"],
-  ["app/dashboard/clinical-records/[id]/edit/page.tsx", "id, clinicId: user.clinicId, enteredInErrorAt: null"],
-  ["app/dashboard/clinical-records/page.tsx", "clinicId: user.clinicId, enteredInErrorAt: null"],
-  ["app/dashboard/clinical-records/new/page.tsx", "clinicId: user.clinicId"],
   ["app/dashboard/prescriptions/new/page.tsx", "clinicId: user.clinicId"],
   ["app/dashboard/treatment-plans/new/page.tsx", "clinicId: user.clinicId"],
   ["app/dashboard/treatment-plans/page.tsx", "clinicId: user.clinicId, cancelledAt: null"],

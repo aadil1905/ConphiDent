@@ -4,7 +4,15 @@ import test from "node:test";
 
 import { formatPatientAgeSnapshot } from "../lib/prescription-core.ts";
 
-const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
+/**
+ * Source is normalised to LF before matching.
+ *
+ * `core.autocrlf` is true, so a Windows working copy has CRLF endings, and any
+ * pattern that spans lines then silently fails to match. That looked exactly
+ * like the code having drifted away from the test, which is part of why these
+ * files sat unrun. Normalised, the patterns mean what they say on any platform.
+ */
+const read = async (path) => (await readFile(new URL(`../${path}`, import.meta.url), "utf8")).replace(/\r\n/g, "\n");
 
 test("prescription age snapshots render canonical and legacy records once", () => {
   assert.equal(formatPatientAgeSnapshot("34"), "34 years");
@@ -85,7 +93,13 @@ test("paid invoices explain why voiding is blocked", async () => {
     read("app/dashboard/billing/page.tsx"),
     read("app/dashboard/delete-actions.ts"),
   ]);
-  assert.match(page, /Reverse posted payments before voiding/);
-  assert.match(actions, /reverse-payments-before-void/);
+  // The action refuses the void and redirects with `?error=`. It did that into
+  // a page that read no such parameter for the whole of Phase B, so the refusal
+  // was silent: the dialog closed and the invoice stayed. Both halves are
+  // asserted now, because either one alone is useless.
+  assert.match(actions, /redirect\("\/dashboard\/billing\?error=reverse-payments-before-void"\)/);
+  assert.match(page, /"reverse-payments-before-void":/);
+  assert.match(page, /params\.error/);
+  assert.match(page, /Reverse them first/);
   assert.match(actions, /requireFeature\("billing"\)/);
 });

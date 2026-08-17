@@ -164,7 +164,7 @@ export default function NavDrawer({
         type="button"
         aria-label="Close navigation"
         onClick={onClose}
-        className="fixed inset-0 z-[70] cursor-default bg-[rgba(18,59,93,0.35)] backdrop-blur-[4px] motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200"
+        className="fixed inset-0 z-[70] cursor-default bg-[var(--overlay)] backdrop-blur-[4px] motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200"
       />
       <div
         ref={panel}
@@ -175,7 +175,7 @@ export default function NavDrawer({
       >
         <div className="flex items-center gap-2.5 border-b border-border px-3 py-3.5">
           {logoUrl ? (
-            <div className="h-10 w-10 flex-none overflow-hidden rounded-control border border-border bg-white p-0.5">
+            <div className="h-10 w-10 flex-none overflow-hidden rounded-control border border-border bg-[var(--logo-plate)] p-0.5">
               <Image src={logoUrl} alt="" width={40} height={40} unoptimized className="h-full w-full object-contain" />
             </div>
           ) : (

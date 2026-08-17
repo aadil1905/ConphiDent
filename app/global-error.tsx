@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-// global-error replaces the root layout, so it has to pull in the tokens itself.
+// global-error replaces the root layout, so it has to pull in the tokens and
+// the portal theme itself — neither reaches it from the layout above.
 import "./globals.css";
+import "./portal.css";
+import { brandFontVariables } from "@/lib/fonts";
+import { reportCrash } from "@/components/ui/report-crash";
 
 export default function GlobalError({
   error,
@@ -12,17 +16,18 @@ export default function GlobalError({
   unstable_retry: () => void;
 }) {
   useEffect(() => {
-    console.error("Application error:", error);
+    reportCrash("root", error);
   }, [error]);
 
   return (
     <html lang="en">
-      <body className="grid min-h-screen place-items-center bg-background p-6 font-sans text-foreground">
-        <main className="w-full max-w-lg rounded-card border border-border bg-card p-8 text-center shadow-[var(--shadow)]">
-          <h1 className="text-[22px] leading-tight font-bold text-heading">
+      <body className={`cf-portal ${brandFontVariables} grid min-h-screen place-items-center p-6`}>
+        <main className="w-full max-w-lg rounded-card border border-border bg-card p-10 text-center shadow-[var(--shadow)]">
+          <p className="portal-kicker">Something went wrong</p>
+          <h1 className="mt-3 text-[26px] leading-tight font-semibold text-heading">
             That screen didn&rsquo;t load
           </h1>
-          <p className="mt-3 text-[13px] leading-6 text-text-muted">
+          <p className="mt-3 text-[13.5px] leading-6 text-text-muted">
             Something went wrong on our side. Nothing you had saved has changed — try again.
           </p>
           <button

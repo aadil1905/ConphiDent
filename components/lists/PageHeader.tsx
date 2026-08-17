@@ -13,10 +13,16 @@ export default function PageHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <header className="flex flex-wrap items-start justify-between gap-3 print:hidden">
+    <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 print:hidden">
       <div className="min-w-0">
-        <h1 className="text-[22px] leading-tight font-bold text-heading">{title}</h1>
-        {sub && <p className="mt-1 text-[13px] text-text-muted">{sub}</p>}
+        <h1 className="text-[length:var(--text-page)] leading-[var(--text-page-lh)] font-semibold tracking-[-0.01em] text-heading">
+          {title}
+        </h1>
+        {sub && (
+          <p className="mt-1.5 max-w-[65ch] text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
+            {sub}
+          </p>
+        )}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </header>

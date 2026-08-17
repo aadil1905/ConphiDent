@@ -49,10 +49,10 @@ export default function RecentlyOpened() {
   const rows = useSyncExternalStore(subscribe, readRecent, () => NONE);
 
   return (
-    <section className="rounded-card border border-border bg-card p-4.5 shadow-[var(--shadow)]">
-      <h2 className="text-base font-semibold text-heading">You looked at these recently</h2>
+    <section className="rounded-card border border-border bg-card p-5.5 shadow-[var(--shadow)]">
+      <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">You looked at these recently</h2>
       {rows.length === 0 ? (
-        <p className="mt-1 text-[13px] text-text-muted">
+        <p className="mt-1 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
           Nothing yet on this device. Whatever you open from here or from ⌘K turns up in this list.
         </p>
       ) : (

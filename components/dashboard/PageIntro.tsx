@@ -13,7 +13,7 @@ export default function PageIntro({ title, description }: PageIntroProps) {
   return (
     <header className="min-w-0">
       <h1 className="text-[22px] leading-tight font-bold text-heading">{title}</h1>
-      <p className="mt-1 max-w-3xl text-[13px] text-text-muted">{description}</p>
+      <p className="mt-1 max-w-3xl text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">{description}</p>
     </header>
   );
 }

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AlertTriangle, MessageSquare } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { requirePermission, can } from "@/lib/permissions";
 import { hasFeature } from "@/lib/features";
 import { prisma } from "@/lib/prisma";
@@ -8,10 +8,14 @@ import { clockTime, exactStamp, humanTime, overdueBy, rupees } from "@/lib/forma
 import { STATUS_LABELS } from "@/lib/visit-status";
 import ToothMap from "@/components/patients/ToothMap";
 import SendFormButton from "@/components/patients/SendFormButton";
+import ScrollToSection from "@/components/patients/ScrollToSection";
+import BackLink from "@/components/navigation/BackLink";
+import SafetyBanner from "@/components/clinical/SafetyBanner";
+import { patientSafety } from "@/lib/patient-safety";
 
 export const dynamic = "force-dynamic";
 
-const TABS = ["Overview", "Visits", "Clinical", "Plans", "Money", "Files"] as const;
+const TABS = ["Visits", "Clinical", "Plans", "Money", "Files"] as const;
 type Tab = (typeof TABS)[number];
 
 function visitMoment(date: Date, time: string) {
@@ -26,9 +30,11 @@ function visitMoment(date: Date, time: string) {
   return when;
 }
 
-function Card({ children }: { children: React.ReactNode }) {
+function Card({ id, children }: { id?: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-card border border-border bg-card shadow-[var(--shadow)]">{children}</section>
+    <section id={id} className="scroll-mt-24 rounded-card border border-border bg-card shadow-[var(--shadow)]">
+      {children}
+    </section>
   );
 }
 
@@ -59,7 +65,7 @@ export default async function Patient360Page({
   if (!Number.isInteger(patientId)) notFound();
 
   const requested = (await searchParams).tab;
-  const tab: Tab = TABS.includes(requested as Tab) ? (requested as Tab) : "Overview";
+  const tab: Tab | null = TABS.includes(requested as Tab) ? (requested as Tab) : null;
   const now = new Date();
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -82,7 +88,7 @@ export default async function Patient360Page({
   const canSeeClinical = can(user.role, "viewClinical");
   const canSeeMoney = can(user.role, "manageBilling");
 
-  const [visits, invoices, plans, notes, chart, studies, intakes, whatsappOn] = await Promise.all([
+  const [visits, invoices, plans, chart, studies, intakes, whatsappOn] = await Promise.all([
     prisma.appointment.findMany({
       where: { clinicId: user.clinicId, patientId, archivedAt: null },
       orderBy: [{ appointmentDate: "desc" }, { appointmentTime: "desc" }],
@@ -127,23 +133,6 @@ export default async function Patient360Page({
       },
     }),
     canSeeClinical
-      ? prisma.clinicalRecord.findMany({
-          where: { clinicId: user.clinicId, patientId },
-          orderBy: { visitDate: "desc" },
-          take: 12,
-          select: {
-            id: true,
-            visitDate: true,
-            chiefComplaint: true,
-            diagnosis: true,
-            clinicalNotes: true,
-            drugAllergies: true,
-            medicalHistory: true,
-            provider: { select: { name: true } },
-          },
-        })
-      : [],
-    canSeeClinical
       ? prisma.dentalChartEntry.findMany({
           where: { clinicId: user.clinicId, patientId, status: "CURRENT" },
           orderBy: { visitDate: "desc" },
@@ -169,7 +158,10 @@ export default async function Patient360Page({
       where: { clinicId: user.clinicId, patientId },
       orderBy: { createdAt: "desc" },
       take: 5,
-      select: { id: true, status: true, completedAt: true, expiresAt: true, createdAt: true },
+      // `drugAllergies` is here for the safety banner. It used to come off a
+      // clinical note; notes were removed and an allergy is a standing fact
+      // about the person, not a note, so the intake carries it now.
+      select: { id: true, status: true, completedAt: true, expiresAt: true, createdAt: true, drugAllergies: true },
     }),
     hasFeature(user.clinicId, "whatsapp"),
   ]);
@@ -207,97 +199,31 @@ export default async function Patient360Page({
     (intake) => !["COMPLETED", "REVIEWED"].includes(intake.status) && intake.expiresAt > now,
   );
 
-  const alerts = [
-    patient.medicalNotes?.trim(),
-    notes.find((note) => note.drugAllergies?.trim())?.drugAllergies?.trim(),
-  ].filter((line): line is string => Boolean(line));
+  const safety = patientSafety({ medicalNotes: patient.medicalNotes, intakeAnswers: intakes });
 
-  const timeline = [
-    ...visits.slice(0, 12).map((visit) => {
-      const moment = visitMoment(visit.appointmentDate, visit.appointmentTime);
-      return {
-        key: `visit-${visit.id}`,
-        at: moment,
-        title:
-          visit.status === "Completed"
-            ? `${visit.treatment} — seen`
-            : `Booked for ${humanTime(moment, now)}`,
-        detail: [visit.treatment, visit.provider?.name].filter(Boolean).join(" · "),
-        tone: visit.status === "Cancelled" || visit.status === "No-show" ? "bad" : "flat",
-        amount: null as string | null,
-      };
-    }),
-    ...invoices.slice(0, 12).flatMap((invoice) => {
-      const paid = invoice.payments.reduce((total, payment) => total + payment.amount, 0);
-      const due = invoice.totalAmount - paid;
-      return [
-        ...invoice.payments.map((payment, index) => ({
-          key: `pay-${invoice.id}-${index}`,
-          at: payment.paidAt,
-          title: `${invoice.invoiceNumber} paid`,
-          detail: `${payment.method} · receipt on WhatsApp`,
-          tone: "good" as const,
-          amount: rupees(payment.amount),
-        })),
-        ...(due > 0
-          ? [
-              {
-                key: `due-${invoice.id}`,
-                at: invoice.issueDate,
-                title: `${invoice.invoiceNumber} still owes ${rupees(due)}`,
-                detail: invoice.lineItems.map((line) => line.description).join(", ") || "Treatment",
-                tone: "bad" as const,
-                amount: rupees(due),
-              },
-            ]
-          : []),
-      ];
-    }),
-    ...notes.slice(0, 8).map((note) => ({
-      key: `note-${note.id}`,
-      at: note.visitDate,
-      title: note.chiefComplaint,
-      detail: note.diagnosis || note.clinicalNotes?.slice(0, 120) || "Clinical note",
-      tone: "flat" as const,
-      amount: null,
-    })),
-    {
-      key: "registered",
-      at: patient.createdAt,
-      title: "Joined your list",
-      detail: "First recorded here",
-      tone: "flat" as const,
-      amount: null,
-    },
-  ]
-    .sort((a, b) => b.at.getTime() - a.at.getTime())
-    .slice(0, 12);
 
   const tabCounts: Record<Tab, string> = {
-    Overview: "",
     Visits: String(visits.length),
-    Clinical: String(notes.length),
+    Clinical: String(Object.keys(conditions).length),
     Plans: String(plans.length),
     Money: balance > 0 ? rupees(balance) : String(invoices.length),
     Files: String(studies.length),
   };
 
-  const tabHref = (target: Tab) =>
-    target === "Overview" ? `/dashboard/patients/${patient.id}` : `/dashboard/patients/${patient.id}?tab=${target}`;
-
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
+      {tab && <ScrollToSection target={tab} />}
       <header className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <span className="grid h-11 w-11 flex-none place-items-center rounded-pill bg-secondary text-[15px] font-bold text-heading">
             {initials}
           </span>
           <div className="min-w-0 flex-1">
-            <Link href="/dashboard/patients" className="text-xs font-semibold text-primary hover:underline">
+            <BackLink fallback="/dashboard/patients" className="text-xs font-semibold text-primary hover:underline">
               ← Patients
-            </Link>
+            </BackLink>
             <div className="flex flex-wrap items-baseline gap-2.5">
-              <h1 className="text-[21px] leading-tight font-bold text-heading">{patient.fullName}</h1>
+              <h1 className="text-[length:var(--text-page)] leading-[var(--text-page-lh)] font-semibold tracking-[-0.01em] text-heading">{patient.fullName}</h1>
               <span className="text-[13px] text-text-muted">
                 {[age !== null && `${age} y`, patient.gender, patient.phone].filter(Boolean).join(" · ")}
               </span>
@@ -337,84 +263,34 @@ export default async function Patient360Page({
           </div>
         </div>
 
-        <div role="tablist" aria-label="Patient sections" className="flex gap-1 overflow-x-auto border-b border-border">
+        {/* The whole record reads top to bottom now — these are jump links,
+            not tabs that hide five sections behind clicks. */}
+        <nav aria-label="Jump to a section" className="flex gap-1 overflow-x-auto border-b border-border">
           {TABS.map((option) => (
-            <Link
+            <a
               key={option}
-              href={tabHref(option)}
-              role="tab"
-              aria-selected={tab === option}
-              className={`inline-flex min-h-[42px] flex-none items-center border-b-2 px-3.5 text-[13px] font-semibold ${
-                tab === option
-                  ? "border-b-primary text-heading"
-                  : "border-b-transparent text-text-muted hover:text-heading"
-              }`}
+              href={`#${option}`}
+              className="inline-flex min-h-11 flex-none items-center px-3.5 text-[13px] font-semibold text-text-muted hover:text-heading"
             >
               {option}
               {tabCounts[option] && (
                 <span className="ml-1.5 font-normal text-text-muted">{tabCounts[option]}</span>
               )}
-            </Link>
+            </a>
           ))}
-        </div>
+        </nav>
       </header>
 
       <div className="grid items-start gap-5">
         <div className="flex min-w-0 flex-col gap-5">
-          {tab === "Overview" && (
-            <Card>
-              <div className="flex flex-wrap items-baseline justify-between gap-3 px-4.5 pt-4 pb-3">
-                <h2 className="text-base font-semibold text-heading">What happened so far</h2>
-                <span className="text-xs text-text-muted">Showing the last {timeline.length}</span>
-              </div>
-              {timeline.map((event) => (
-                <div
-                  key={event.key}
-                  className="grid grid-cols-[20px_minmax(0,1fr)_140px] gap-3 border-t border-border px-4.5 py-3"
-                >
-                  <span className="flex justify-center pt-1">
-                    <span
-                      aria-hidden
-                      className={`h-2.5 w-2.5 rounded-pill ${
-                        event.tone === "good"
-                          ? "bg-success"
-                          : event.tone === "bad"
-                            ? "bg-danger-mark"
-                            : "bg-primary"
-                      }`}
-                    />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-heading">{event.title}</p>
-                    <p className="text-[13px] text-text-muted">{event.detail}</p>
-                  </div>
-                  <div className="text-right">
-                    <p title={exactStamp(event.at)} className="text-xs tabular-nums text-text-muted">
-                      {humanTime(event.at, now)}
-                    </p>
-                    {event.amount && (
-                      <p
-                        className={`text-[13px] font-semibold tabular-nums ${
-                          event.tone === "good" ? "text-success" : "text-danger"
-                        }`}
-                      >
-                        {event.amount}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </Card>
-          )}
-
-          {tab === "Visits" && (
-            <Card>
-              <div className="flex flex-wrap items-baseline justify-between gap-3 px-4.5 pt-4 pb-3">
-                <h2 className="text-base font-semibold text-heading">Visits</h2>
+          {(
+            <Card id="Visits">
+              <div className="flex flex-wrap items-baseline justify-between gap-3 px-5.5 pt-4 pb-3">
+                <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Visits</h2>
                 <span className="text-xs text-text-muted">Showing {visits.length}</span>
               </div>
               {visits.length === 0 ? (
-                <p className="border-t border-border px-4.5 py-8 text-center text-[13px] text-text-muted">
+                <p className="border-t border-border px-5.5 py-8 text-center text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                   No visits yet. Book the first one and it will show up here.
                 </p>
               ) : (
@@ -423,7 +299,7 @@ export default async function Patient360Page({
                   return (
                     <div
                       key={visit.id}
-                      className="grid grid-cols-1 items-center gap-3 border-t border-border px-4.5 py-2.5 sm:grid-cols-[170px_minmax(0,1fr)_140px_150px]"
+                      className="grid grid-cols-1 items-center gap-3 border-t border-border px-5.5 py-2.5 sm:grid-cols-[170px_minmax(0,1fr)_140px_150px]"
                     >
                       <span title={exactStamp(moment)} className="text-[13px] tabular-nums">
                         {moment.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })},{" "}
@@ -457,11 +333,11 @@ export default async function Patient360Page({
             </Card>
           )}
 
-          {tab === "Clinical" && canSeeClinical && (
-            <>
+          {canSeeClinical && (
+            <div id="Clinical" className="flex scroll-mt-24 flex-col gap-5">
               <Card>
-                <div className="flex flex-wrap items-baseline justify-between gap-3 px-4.5 pt-4 pb-1">
-                  <h2 className="text-base font-semibold text-heading">Mouth as it stands</h2>
+                <div className="flex flex-wrap items-baseline justify-between gap-3 px-5.5 pt-4 pb-1">
+                  <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Mouth as it stands</h2>
                   <Link
                     href={`/dashboard/clinical-workspace/${patient.id}`}
                     className="text-[13px] font-semibold text-primary hover:underline"
@@ -469,87 +345,41 @@ export default async function Patient360Page({
                     Open charting →
                   </Link>
                 </div>
-                <p className="px-4.5 pb-3.5 text-[13px] text-text-muted">
+                <p className="px-5.5 pb-3.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                   Hover a tooth to see what was recorded. Charting happens in the clinical workspace.
                 </p>
-                <div className="px-4.5 pb-4.5">
+                <div className="px-5.5 pb-4.5">
                   <ToothMap conditions={conditions} />
                 </div>
               </Card>
 
               <Card>
-                <div className="flex flex-wrap items-baseline justify-between gap-3 px-4.5 pt-4 pb-2.5">
-                  <h2 className="text-base font-semibold text-heading">Notes from their visits</h2>
-                  <div className="flex flex-wrap gap-2">
-                    <Link
-                      href={`/dashboard/clinical-records/new?patientId=${patient.id}`}
-                      className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
-                    >
-                      Write a note
-                    </Link>
-                    {can(user.role, "issuePrescription") && (
-                      <Link
-                        href={`/dashboard/prescriptions/new?patientId=${patient.id}`}
-                        className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-3.5 text-[13px] font-semibold text-white hover:bg-primary-hover"
-                      >
-                        Prescribe
-                      </Link>
-                    )}
+                <div className="flex flex-wrap items-baseline justify-between gap-3 px-5.5 pt-4 pb-4">
+                  <div className="min-w-0">
+                    <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Prescribing</h2>
+                    <p className="mt-1 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
+                      What has already been prescribed is under Prescriptions.
+                    </p>
                   </div>
-                </div>
-                {notes.length === 0 ? (
-                  <p className="border-t border-border px-4.5 py-8 text-center text-[13px] text-text-muted">
-                    Nothing written down yet. Start a visit and the first note lands here.
-                  </p>
-                ) : (
-                  notes.map((note) => (
-                    <div
-                      key={note.id}
-                      className="grid items-start gap-3 border-t border-border px-4.5 py-3 sm:grid-cols-[minmax(0,1fr)_120px]"
+                  {can(user.role, "issuePrescription") && (
+                    <Link
+                      href={`/dashboard/prescriptions/new?patientId=${patient.id}`}
+                      className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-3.5 text-[13px] font-semibold text-white hover:bg-primary-hover"
                     >
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap justify-between gap-2.5">
-                          <Link
-                            href={`/dashboard/clinical-records/${note.id}`}
-                            className="text-sm font-semibold text-primary hover:underline"
-                          >
-                            {note.chiefComplaint}
-                          </Link>
-                          <span
-                            title={exactStamp(note.visitDate)}
-                            className="text-xs tabular-nums text-text-muted"
-                          >
-                            {note.visitDate.toLocaleDateString("en-IN", {
-                              day: "numeric",
-                              month: "short",
-                              year: "numeric",
-                            })}
-                            {note.provider?.name ? ` · ${note.provider.name}` : ""}
-                          </span>
-                        </div>
-                        <p className="text-[13px] text-text-muted">
-                          {note.diagnosis || note.clinicalNotes || "No detail written down."}
-                        </p>
-                      </div>
-                      <Link
-                        href={`/dashboard/clinical-records/${note.id}`}
-                        className="inline-flex min-h-11 items-center justify-center rounded-control border border-border-strong bg-card px-3 text-[13px] font-semibold text-heading hover:bg-muted"
-                      >
-                        Open note
-                      </Link>
-                    </div>
-                  ))
-                )}
+                      Prescribe
+                    </Link>
+                  )}
+                </div>
               </Card>
-            </>
+            </div>
           )}
 
-          {tab === "Plans" && (
-            <Card>
-              <div className="flex flex-wrap items-baseline justify-between gap-3 px-4.5 pt-4 pb-3">
+          {(
+            <Card id="Plans">
+              <div className="flex flex-wrap items-baseline justify-between gap-3 px-5.5 pt-4 pb-3">
                 <div className="min-w-0">
-                  <h2 className="text-base font-semibold text-heading">Treatment plans</h2>
-                  <p className="mt-1 text-[13px] text-text-muted">
+                  <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Treatment plans</h2>
+                  <p className="mt-1 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                     What you agreed, and how far along it is.
                   </p>
                 </div>
@@ -561,7 +391,7 @@ export default async function Patient360Page({
                 </Link>
               </div>
               {plans.length === 0 ? (
-                <p className="border-t border-border px-4.5 py-8 text-center text-[13px] text-text-muted">
+                <p className="border-t border-border px-5.5 py-8 text-center text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                   Nothing planned yet. Agree a plan and its progress shows up here.
                 </p>
               ) : (
@@ -573,7 +403,7 @@ export default async function Patient360Page({
                   // Real progress: what has actually been billed against the plan.
                   const pct = priced > 0 ? Math.min(100, Math.round((invoiced / priced) * 100)) : 0;
                   return (
-                    <div key={plan.id} className="flex flex-col gap-2 border-t border-border px-4.5 py-3">
+                    <div key={plan.id} className="flex flex-col gap-2 border-t border-border px-5.5 py-3">
                       <div className="flex flex-wrap items-baseline justify-between gap-3">
                         <Link
                           href={`/dashboard/treatment-plans/${plan.id}`}
@@ -585,7 +415,7 @@ export default async function Patient360Page({
                           {priced > 0 ? rupees(priced) : "not priced"}
                         </span>
                       </div>
-                      <p className="text-[13px] text-text-muted">
+                      <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                         {plan.notes || `Last touched ${humanTime(plan.updatedAt, now)}`}
                       </p>
                       {priced > 0 && (
@@ -633,11 +463,11 @@ export default async function Patient360Page({
             </Card>
           )}
 
-          {tab === "Money" && canSeeMoney && (
-            <Card>
-              <div className="flex flex-wrap items-baseline justify-between gap-3 px-4.5 pt-4 pb-3">
+          {canSeeMoney && (
+            <Card id="Money">
+              <div className="flex flex-wrap items-baseline justify-between gap-3 px-5.5 pt-4 pb-3">
                 <div className="min-w-0">
-                  <h2 className="text-base font-semibold text-heading">Invoices and payments</h2>
+                  <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Invoices and payments</h2>
                   <p className="mt-1 text-xs text-text-muted">
                     {balance > 0
                       ? `${rupees(balance)} outstanding across ${invoices.length} ${
@@ -654,7 +484,7 @@ export default async function Patient360Page({
                 </Link>
               </div>
               {invoices.length === 0 ? (
-                <p className="border-t border-border px-4.5 py-8 text-center text-[13px] text-text-muted">
+                <p className="border-t border-border px-5.5 py-8 text-center text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                   Nothing billed yet.
                 </p>
               ) : (
@@ -665,7 +495,7 @@ export default async function Patient360Page({
                   return (
                     <div
                       key={invoice.id}
-                      className="grid grid-cols-1 items-center gap-3 border-t border-border px-4.5 py-2.5 sm:grid-cols-[120px_minmax(0,1fr)_120px_130px_150px]"
+                      className="grid grid-cols-1 items-center gap-3 border-t border-border px-5.5 py-2.5 sm:grid-cols-[120px_minmax(0,1fr)_120px_130px_150px]"
                     >
                       <Link
                         href={`/dashboard/billing/${invoice.id}`}
@@ -697,10 +527,10 @@ export default async function Patient360Page({
             </Card>
           )}
 
-          {tab === "Files" && (
-            <Card>
-              <div className="flex flex-wrap items-baseline justify-between gap-3 px-4.5 pt-4 pb-3">
-                <h2 className="text-base font-semibold text-heading">X-rays and documents</h2>
+          {(
+            <Card id="Files">
+              <div className="flex flex-wrap items-baseline justify-between gap-3 px-5.5 pt-4 pb-3">
+                <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">X-rays and documents</h2>
                 <div className="flex flex-wrap gap-2">
                   {can(user.role, "uploadImaging") && (
                     <Link
@@ -710,37 +540,21 @@ export default async function Patient360Page({
                       Add an X-ray
                     </Link>
                   )}
-                  <Link
-                    href={`/dashboard/patients/${patient.id}/case-paper`}
-                    className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
-                  >
-                    Case paper
-                  </Link>
-                  {can(user.role, "viewImaging") && (
-                    <Link
-                      href={`/dashboard/patients/${patient.id}/xrays`}
-                      className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
-                    >
-                      All X-rays
-                    </Link>
-                  )}
-                  <Link
-                    href={`/dashboard/imaging?patient=${patient.id}`}
-                    className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-3.5 text-[13px] font-semibold text-white hover:bg-primary-hover"
-                  >
-                    Add an X-ray
-                  </Link>
+                  {/* "Case paper" and "All X-rays" used to link to sub-routes
+                      that are now redirects straight back to this page, and a
+                      second ungated "Add an X-ray" sat beside the gated one.
+                      Everything they opened is on this page already. */}
                 </div>
               </div>
               {studies.length === 0 ? (
-                <p className="border-t border-border px-4.5 py-8 text-center text-[13px] text-text-muted">
+                <p className="border-t border-border px-5.5 py-8 text-center text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                   No X-rays on file. Anything you capture and match lands here.
                 </p>
               ) : (
                 studies.map((study) => (
                   <div
                     key={study.id}
-                    className="grid grid-cols-1 items-center gap-3 border-t border-border px-4.5 py-2.5 sm:grid-cols-[120px_minmax(0,1fr)_140px_130px]"
+                    className="grid grid-cols-1 items-center gap-3 border-t border-border px-5.5 py-2.5 sm:grid-cols-[120px_minmax(0,1fr)_140px_130px]"
                   >
                     <span className="text-[13px] font-semibold tabular-nums text-heading">
                       {study.accessionNumber || study.modality}
@@ -772,9 +586,9 @@ export default async function Patient360Page({
           )}
         </div>
 
-        <aside className="flex flex-col gap-5">
+        <aside className="flex flex-col gap-6">
           <div className="flex flex-col gap-2.5 rounded-card border border-border bg-card p-4 shadow-[var(--shadow)]">
-            <p className="text-[13px] font-semibold text-heading">Forms and consent</p>
+            <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] font-semibold text-heading">Forms and consent</p>
 
             <div className="flex flex-col gap-1.5 border-b border-border/70 pb-2">
               <div className="flex items-baseline justify-between gap-2">
@@ -812,19 +626,11 @@ export default async function Patient360Page({
             </p>
           </div>
 
-          {alerts.length > 0 && (
-            <div className="rounded-card border border-danger-border bg-danger-bg p-4">
-              <p className="mb-1.5 flex items-center gap-2 text-[13px] font-bold text-danger">
-                <AlertTriangle className="h-4 w-4" strokeWidth={2} aria-hidden />
-                Read before treating
-              </p>
-              <p className="text-[13px] text-danger">{alerts.join(" · ")}</p>
-            </div>
-          )}
+          <SafetyBanner safety={safety} recordHref={`/dashboard/patients/${patient.id}/edit`} />
 
           <div className="flex flex-col gap-3 rounded-card border border-border bg-card p-4 shadow-[var(--shadow)]">
             <div>
-              <p className="text-[11px] font-semibold tracking-[0.06em] text-text-muted uppercase">
+              <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
                 Next visit
               </p>
               {nextVisit ? (
@@ -843,7 +649,7 @@ export default async function Patient360Page({
 
             {canSeeMoney && (
               <div>
-                <p className="text-[11px] font-semibold tracking-[0.06em] text-text-muted uppercase">
+                <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
                   Balance
                 </p>
                 <p
@@ -862,7 +668,7 @@ export default async function Patient360Page({
 
             {activePlan && (
               <div>
-                <p className="text-[11px] font-semibold tracking-[0.06em] text-text-muted uppercase">
+                <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
                   Plan in progress
                 </p>
                 <p className="text-sm font-semibold text-heading">{activePlan.title}</p>
@@ -874,10 +680,10 @@ export default async function Patient360Page({
             )}
 
             <div>
-              <p className="text-[11px] font-semibold tracking-[0.06em] text-text-muted uppercase">
+              <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
                 Reachable on
               </p>
-              <p className="text-[13px]">
+              <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)]">
                 {whatsappOn ? `WhatsApp · ${patient.phone}` : patient.phone}
               </p>
             </div>
@@ -885,7 +691,7 @@ export default async function Patient360Page({
 
           <div className="flex flex-col gap-2 rounded-card border border-border bg-card p-4">
             <p className="text-xs font-semibold text-heading">Details</p>
-            <p className="text-[13px] text-text-muted">
+            <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
               {patient.email || "No email on file"}
               <br />
               {patient.address || "No address on file"}
@@ -899,7 +705,7 @@ export default async function Patient360Page({
             </p>
             <Link
               href={`/dashboard/patients/${patient.id}/edit`}
-              className="inline-flex min-h-10 w-fit items-center rounded-control border border-border-strong bg-card px-3 text-[13px] font-semibold text-heading hover:bg-muted"
+              className="inline-flex min-h-11 w-fit items-center rounded-control border border-border-strong bg-card px-3 text-[13px] font-semibold text-heading hover:bg-muted"
             >
               Edit details
             </Link>

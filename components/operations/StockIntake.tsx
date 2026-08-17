@@ -22,7 +22,7 @@ function Overlay({ onClose, children, side = false }: { onClose: () => void; chi
   return (
     <div
       onClick={onClose}
-      className={`fixed inset-0 z-[95] flex bg-[rgba(18,59,93,0.35)] backdrop-blur-[2px] ${side ? "justify-end" : "items-center justify-center p-4"}`}
+      className={`fixed inset-0 z-[95] flex bg-[var(--overlay)] backdrop-blur-[2px] ${side ? "justify-end" : "items-center justify-center p-4"}`}
     >
       <div
         ref={panel}
@@ -78,7 +78,7 @@ export function AddItemButton() {
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
               <h2 className="text-[17px] font-semibold text-heading">Add an item</h2>
-              <p className="mt-0.5 text-[13px] text-text-muted">
+              <p className="mt-0.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                 Name and unit are enough — everything else can wait.
               </p>
             </div>
@@ -186,14 +186,14 @@ export function ReceiveStockButton({ id, name, unit }: { id: number; name: strin
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="min-h-10 cursor-pointer rounded-control border border-border-strong bg-card px-3 text-xs font-semibold whitespace-nowrap text-heading hover:bg-muted"
+        className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-3 text-xs font-semibold whitespace-nowrap text-heading hover:bg-muted"
       >
         Add stock
       </button>
       {open && (
         <Overlay onClose={() => setOpen(false)}>
           <h2 className="text-[17px] font-semibold text-heading">Stock arrived for {name}?</h2>
-          <p className="mt-0.5 mb-3.5 text-[13px] text-text-muted">
+          <p className="mt-0.5 mb-3.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
             It goes on the ledger as a batch — expiry first, so nothing old hides at the back.
           </p>
           <form onSubmit={submit} className="flex flex-col gap-3.5">

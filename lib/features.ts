@@ -18,7 +18,6 @@ export const FEATURE_REGISTRY = {
   inventory: { label: "Inventory", defaultEnabled: true },
   reports: { label: "Reports", defaultEnabled: true },
   analytics: { label: "Advanced analytics", defaultEnabled: true },
-  ai_coach: { label: "AI Coach", defaultEnabled: true },
 } as const;
 
 export type FeatureKey = keyof typeof FEATURE_REGISTRY;

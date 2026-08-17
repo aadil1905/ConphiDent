@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requestPasswordResetAction } from "@/app/login/actions";
+import { brandFontVariables } from "@/lib/fonts";
 import { PLATFORM_NAME } from "@/lib/platform";
 
 export default async function ForgotPasswordPage({
@@ -10,12 +11,10 @@ export default async function ForgotPasswordPage({
   const { sent, expired } = await searchParams;
 
   return (
-    <main className="grid min-h-screen place-items-center bg-background p-5">
+    <main className={`cf-portal ${brandFontVariables} grid min-h-screen place-items-center p-5`}>
       <section className="w-full max-w-md rounded-card border border-border bg-card p-8 shadow-[var(--shadow-overlay)]">
-        <p className="text-[11px] font-semibold tracking-[0.08em] text-primary uppercase">
-          {PLATFORM_NAME}
-        </p>
-        <h1 className="mt-2.5 text-[26px] leading-tight font-bold text-heading">
+        <p className="portal-kicker">{PLATFORM_NAME}</p>
+        <h1 className="mt-3 text-[27px] leading-tight font-semibold text-heading">
           Forgotten your password?
         </h1>
 

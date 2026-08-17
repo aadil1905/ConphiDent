@@ -136,7 +136,7 @@ export default function SignaturePad({ onChange, invalid, ref }: SignaturePadPro
           className="block h-40 w-full cursor-crosshair touch-none"
         />
         {empty && (
-          <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[15px] text-[#8fa8b4]">
+          <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[15px] text-text-muted">
             Draw your signature here
           </span>
         )}

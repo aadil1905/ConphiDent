@@ -1,3 +1,4 @@
+import { crossTenant } from "@/lib/tenant-guard";
 import { NextRequest, NextResponse } from "next/server";
 import { processPendingWhatsAppWebhookEvents } from "@/lib/whatsapp-webhook-inbox";
 
@@ -8,7 +9,7 @@ export async function GET(request: NextRequest) {
   }
   const startedAt = Date.now();
   try {
-    const result = await processPendingWhatsAppWebhookEvents();
+    const result = await crossTenant(() => processPendingWhatsAppWebhookEvents());
     console.info(JSON.stringify({
       event: "cron.completed",
       job: "whatsapp-webhook-inbox",

@@ -54,15 +54,15 @@ export default async function ExportsPage() {
         return (
           <section
             key={sheet.name}
-            className="flex flex-wrap items-center gap-x-5 gap-y-3.5 rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]"
+            className="flex flex-wrap items-center gap-x-5 gap-y-3.5 rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]"
           >
             <span className="grid h-11 w-11 flex-none place-items-center rounded-control bg-secondary text-heading">
               <Icon className="h-[19px] w-[19px]" strokeWidth={1.8} aria-hidden />
             </span>
 
             <div className="min-w-[16rem] flex-1">
-              <h2 className="text-base font-semibold text-heading">{sheet.name}</h2>
-              <p className="mt-0.5 text-[13px] text-text-muted">{sheet.what}</p>
+              <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">{sheet.name}</h2>
+              <p className="mt-0.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">{sheet.what}</p>
               {/* What is actually in the file, so nobody downloads three to find out. */}
               <p className="mt-1.5 text-xs text-text-muted">{sheet.columns}</p>
             </div>
@@ -78,7 +78,7 @@ export default async function ExportsPage() {
         );
       })}
 
-      <p className="rounded-card border border-warning-border bg-warning-bg px-4 py-3 text-[13px] text-warning">
+      <p className="rounded-card border border-warning-border bg-warning-bg px-4 py-3 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-warning">
         These files hold real patient details. Keep them somewhere only your clinic can reach, and
         delete them when you are done.
       </p>

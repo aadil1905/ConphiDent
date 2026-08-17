@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { rupees } from "@/lib/format";
 
 const field =
-  "min-h-11 w-full rounded-control border border-border bg-white px-3 text-sm text-foreground outline-none";
+  "min-h-11 w-full rounded-control border border-border bg-card px-3 text-sm text-foreground outline-none";
 
 export default function PaymentForm({
   invoiceId,
@@ -44,7 +44,7 @@ export default function PaymentForm({
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
-      <p className="text-[13px] text-text-muted">
+      <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
         Still owing:{" "}
         <span className="font-semibold tabular-nums text-heading">{rupees(outstanding)}</span>
       </p>

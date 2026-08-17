@@ -74,7 +74,7 @@ export default function ChairList({
       aria-labelledby="chairs"
       className="rounded-card border border-border bg-card shadow-[var(--shadow)]"
     >
-      <div className="flex flex-wrap items-baseline justify-between gap-3 px-4.5 pt-4 pb-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-3 px-5.5 pt-4 pb-3">
         <h2 id="chairs" className="text-lg font-semibold text-heading">
           Today in the chairs
         </h2>
@@ -86,10 +86,10 @@ export default function ChairList({
       </div>
 
       {visits.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 border-t border-border px-4.5 pt-8 pb-10 text-center">
+        <div className="flex flex-col items-center gap-2 border-t border-border px-5.5 pt-8 pb-10 text-center">
           <Clock className="h-6.5 w-6.5 text-text-muted" strokeWidth={1.8} aria-hidden />
           <p className="text-[15px] font-semibold text-heading">The diary is empty today</p>
-          <p className="max-w-[26rem] text-[13px] text-text-muted">
+          <p className="max-w-[26rem] text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
             A quiet day is a good day to ring the people waiting on a callback.
           </p>
           <Link
@@ -116,11 +116,16 @@ export default function ChairList({
           return (
             <div
               key={visit.id}
-              className={`grid grid-cols-1 items-center gap-3.5 border-t border-border px-4.5 py-2.5 sm:grid-cols-[84px_minmax(0,1fr)] lg:grid-cols-[84px_minmax(0,1fr)_140px_156px] ${
-                isArrived ? "bg-[#fbfeff]" : ""
+              className={`grid grid-cols-1 items-center gap-3.5 border-t border-border px-5.5 py-2.5 sm:grid-cols-[84px_minmax(0,1fr)] lg:grid-cols-[84px_minmax(0,1fr)_140px_156px] ${
+                isArrived ? "bg-card" : ""
               }`}
             >
-              <div className="text-[13px] font-semibold tabular-nums text-heading">{visit.time}</div>
+              {/* The time is the column a dentist scans down to find "now", and it was
+                  the smallest thing in its own row — 13px against the 14px patient
+                  name beside it. It leads the row, so it reads like it. */}
+              <div className="text-[length:var(--text-section)] leading-none font-semibold tabular-nums text-heading">
+                {visit.time}
+              </div>
 
               <div className="min-w-0">
                 <div className="flex flex-wrap items-baseline gap-2">
@@ -135,7 +140,7 @@ export default function ChairList({
                     {visit.relative}
                   </span>
                 </div>
-                <p className="text-[13px] text-text-muted">
+                <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                   {visit.reason}
                   {visit.blocker && ` · ${visit.blocker}`}
                 </p>
@@ -169,7 +174,7 @@ export default function ChairList({
         })
       )}
 
-      <div className="border-t border-border px-4.5 py-3">
+      <div className="border-t border-border px-5.5 py-3">
         <Link
           href="/dashboard/appointments"
           className="text-[13px] font-semibold text-primary hover:underline"

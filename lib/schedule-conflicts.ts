@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { prisma, type Db } from "@/lib/prisma";
 import {
   appointmentDateKey,
   appointmentDayRange,
@@ -17,7 +17,7 @@ type AppointmentSlot = {
   excludeAppointmentId?: number;
 };
 
-type AppointmentReader = Pick<Prisma.TransactionClient, "appointment">;
+type AppointmentReader = Pick<Db, "appointment">;
 
 function assertOptionalId(value: number | null | undefined, label: string) {
   if (value != null && (!Number.isInteger(value) || value <= 0)) {

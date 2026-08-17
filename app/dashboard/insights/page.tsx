@@ -52,8 +52,8 @@ function Tile({
   const Icon = change === null ? Minus : change >= 0 ? ArrowUp : ArrowDown;
   return (
     <div className="flex flex-col gap-0.5 rounded-card border border-border bg-card px-4 py-3.5 shadow-[var(--shadow)]">
-      <p className="text-[11px] font-semibold tracking-[0.06em] text-text-muted uppercase">{label}</p>
-      <p className="text-[26px] leading-[1.15] font-bold tabular-nums text-heading">{value}</p>
+      <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">{label}</p>
+      <p className="text-[length:var(--text-metric)] leading-[var(--text-metric-lh)] font-bold tabular-nums text-heading">{value}</p>
       <p
         className={`flex items-center gap-1.5 text-xs font-semibold ${
           good === null ? "text-text-muted" : good ? "text-success" : "text-danger"
@@ -77,11 +77,11 @@ function Bars({
   rows: Array<{ label: string; value: string; portion: number }>;
 }) {
   return (
-    <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
-      <h2 className="text-base font-semibold text-heading">{title}</h2>
+    <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
+      <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">{title}</h2>
       <p className="mb-3 text-xs text-text-muted">{sub}</p>
       <div className="flex flex-col gap-2.5">
-        {rows.length === 0 && <p className="text-[13px] text-text-muted">Nothing to show for this stretch yet.</p>}
+        {rows.length === 0 && <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">Nothing to show for this stretch yet.</p>}
         {rows.map((row, index) => (
           <div key={row.label} className="flex flex-col gap-1">
             <div className="flex justify-between gap-2.5 text-[13px]">
@@ -179,7 +179,7 @@ export default async function InsightsPage({
   ];
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="How the clinic is doing"
         sub={`${range.label} · every number comes from one shared calculation, so Growth and Money always agree`}
@@ -227,8 +227,8 @@ export default async function InsightsPage({
         ))}
       </div>
 
-      <section className="rounded-card border border-border border-l-[3px] border-l-primary bg-card px-4.5 py-4 shadow-[var(--shadow)]">
-        <p className="text-[11px] font-semibold tracking-[0.06em] text-primary uppercase">The short version</p>
+      <section className="rounded-card border border-border border-l-[3px] border-l-primary bg-card px-5.5 py-4 shadow-[var(--shadow)]">
+        <p className="text-[11px] font-semibold tracking-[0.14em] text-primary uppercase">The short version</p>
         <p className="max-w-[62rem] text-[15px] text-pretty">{summary}</p>
       </section>
 
@@ -240,10 +240,10 @@ export default async function InsightsPage({
 
       {tab === "money" && (
         <>
-          <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
+          <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
             <div className="mb-3.5 flex flex-wrap items-baseline justify-between gap-3">
               <div>
-                <h2 className="text-base font-semibold text-heading">Treated and collected, week by week</h2>
+                <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Treated and collected, week by week</h2>
                 <p className="text-xs text-text-muted">
                   Solid is what you collected. Outline is what you treated but have not been paid for.
                 </p>
@@ -254,14 +254,14 @@ export default async function InsightsPage({
                   Collected
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="h-3 w-3 rounded-[3px] border-2 border-[#6eaeb9]" aria-hidden />
+                  <span className="h-3 w-3 rounded-[3px] border-2 border-[var(--chart-2)]" aria-hidden />
                   Treated, unpaid
                 </span>
               </div>
             </div>
             <div className="flex h-[200px] items-end gap-2.5">
               {money.weekly.length === 0 && (
-                <p className="text-[13px] text-text-muted">Nothing billed in this stretch yet.</p>
+                <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">Nothing billed in this stretch yet.</p>
               )}
               {money.weekly.map((week) => (
                 <div
@@ -278,7 +278,7 @@ export default async function InsightsPage({
                       style={{ height: `${Math.round((week.collected / weekMax) * 100)}%` }}
                     />
                     <div
-                      className="w-[40%] rounded-t-[3px] border-2 border-b-0 border-[#6eaeb9] bg-muted"
+                      className="w-[40%] rounded-t-[3px] border-2 border-b-0 border-[var(--chart-2)] bg-muted"
                       style={{
                         height: `${Math.round((Math.max(0, week.treated - week.collected) / weekMax) * 100)}%`,
                       }}
@@ -301,8 +301,8 @@ export default async function InsightsPage({
               }))}
             />
 
-            <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
-              <h2 className="text-base font-semibold text-heading">Money still with patients</h2>
+            <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
+              <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Money still with patients</h2>
               <p className="mb-3 text-xs text-text-muted">The longer it sits, the harder it gets.</p>
               <div className="flex flex-col gap-2">
                 {money.ageing.map((bucket) => (
@@ -343,8 +343,8 @@ export default async function InsightsPage({
 
       {tab === "chairs" && (
         <>
-          <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
-            <h2 className="text-base font-semibold text-heading">Chairs filled, day by day</h2>
+          <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
+            <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Chairs filled, day by day</h2>
             <p className="mb-3.5 text-xs text-text-muted">
               Booked visits across the whole stretch, added up by weekday.
             </p>
@@ -361,8 +361,8 @@ export default async function InsightsPage({
                       day.booked / dayMax > 0.9
                         ? "bg-primary"
                         : day.booked / dayMax < 0.65
-                          ? "bg-[#c4a46c]"
-                          : "bg-[#2d879b]"
+                          ? "bg-[var(--chart-3)]"
+                          : "bg-[var(--chart-2)]"
                     }`}
                     style={{ height: `${Math.round((day.booked / dayMax) * 100)}%` }}
                   />
@@ -372,8 +372,8 @@ export default async function InsightsPage({
             </div>
           </section>
 
-          <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
-            <h2 className="text-base font-semibold text-heading">Empty chairs cost you</h2>
+          <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
+            <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Empty chairs cost you</h2>
             <p className="mb-3 text-xs text-text-muted">Missed and cancelled visits in this stretch.</p>
             <div className="flex flex-col gap-2">
               {[
@@ -396,8 +396,8 @@ export default async function InsightsPage({
 
       {tab === "growth" && (
         <>
-          <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
-            <h2 className="text-base font-semibold text-heading">From enquiry to treated</h2>
+          <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
+            <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">From enquiry to treated</h2>
             <p className="mb-3.5 text-xs text-text-muted">
               The same numbers as the Growth queue — one calculation, used everywhere.
             </p>
@@ -427,26 +427,26 @@ export default async function InsightsPage({
 
           <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))]">
             <section className="overflow-x-auto rounded-card border border-border bg-card shadow-[var(--shadow)]">
-              <div className="px-4.5 pt-4 pb-2.5">
-                <h2 className="text-base font-semibold text-heading">Which sources are worth it</h2>
+              <div className="px-5.5 pt-4 pb-2.5">
+                <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Which sources are worth it</h2>
                 <p className="text-xs text-text-muted">Sorted by how many actually got treated.</p>
               </div>
               <div className="min-w-[460px]">
-                <div className="grid grid-cols-[minmax(120px,1fr)_100px_100px_120px] gap-3 border-b border-border bg-muted px-4.5 py-2.5 text-[11px] font-semibold tracking-[0.06em] text-text-muted uppercase">
+                <div className="grid grid-cols-[minmax(120px,1fr)_100px_100px_120px] gap-3 border-b border-border bg-muted px-5.5 py-2.5 text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
                   <span>Where from</span>
                   <span>Enquiries</span>
                   <span>Treated</span>
                   <span>Worth</span>
                 </div>
                 {growth.sources.length === 0 && (
-                  <p className="px-4.5 py-6 text-[13px] text-text-muted">
+                  <p className="px-5.5 py-6 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                     Nobody has got in touch in this stretch.
                   </p>
                 )}
                 {growth.sources.map((source) => (
                   <div
                     key={source.label}
-                    className="grid grid-cols-[minmax(120px,1fr)_100px_100px_120px] items-center gap-3 border-b border-border/70 px-4.5 py-2.5 text-[13px] last:border-b-0"
+                    className="grid grid-cols-[minmax(120px,1fr)_100px_100px_120px] items-center gap-3 border-b border-border/70 px-5.5 py-2.5 text-[13px] last:border-b-0"
                   >
                     <span className="font-semibold text-heading">{source.label}</span>
                     <span className="tabular-nums text-text-muted">{source.enquiries}</span>

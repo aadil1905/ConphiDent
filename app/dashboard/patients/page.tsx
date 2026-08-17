@@ -7,7 +7,7 @@ import { hasFeature } from "@/lib/features";
 import { prisma } from "@/lib/prisma";
 import { exactStamp, humanTime, rupees } from "@/lib/format";
 import { listHref, pageWindow, parseListQuery, type RawSearchParams } from "@/lib/list-params";
-import DataList, { ListCell, ListRow } from "@/components/lists/DataList";
+import DataList, { ListCell, ListLink, ListRow } from "@/components/lists/DataList";
 import ListSearch from "@/components/lists/ListSearch";
 import FilterChips from "@/components/lists/FilterChips";
 import EmptyState from "@/components/lists/EmptyState";
@@ -149,7 +149,7 @@ export default async function PatientsPage({
   });
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Patients"
         sub={`${everyone.toLocaleString("en-IN")} on your list`}
@@ -216,14 +216,14 @@ export default async function PatientsPage({
       >
         {rows.map((row) => (
           <ListRow key={row.id} needsAttention={row.balance > 0}>
-            <ListCell>
+            <ListCell primary>
               <div className="flex flex-wrap items-baseline gap-2">
-                <Link
+                <ListLink
                   href={`/dashboard/patients/${row.id}`}
                   className="text-sm font-semibold text-primary hover:underline"
                 >
                   {row.name}
-                </Link>
+                </ListLink>
                 {row.flag && (
                   <span className="inline-flex items-center rounded-pill bg-warning-bg px-2 py-0.5 text-[11px] font-semibold text-warning">
                     {row.flag.length > 34 ? `${row.flag.slice(0, 34)}…` : row.flag}
@@ -254,13 +254,13 @@ export default async function PatientsPage({
                 <span className="text-text-muted">—</span>
               )}
             </ListCell>
-            <ListCell align="right">
+            <ListCell align="right" interactive>
               <div className="flex justify-end gap-1.5">
                 <Link
                   href={`/dashboard/appointments/new?patient=${row.id}`}
                   title={`Book a visit for ${row.name}`}
                   aria-label={`Book a visit for ${row.name}`}
-                  className="grid h-10 w-10 place-items-center rounded-control border border-border-strong bg-card text-heading hover:bg-muted"
+                  className="grid h-11 w-11 place-items-center rounded-control border border-border-strong bg-card text-heading hover:bg-muted"
                 >
                   <CalendarPlus className="h-4 w-4" strokeWidth={1.9} aria-hidden />
                 </Link>
@@ -269,7 +269,7 @@ export default async function PatientsPage({
                     href={`/dashboard/conversations?phone=${encodeURIComponent(row.phone)}`}
                     title={`Message ${row.name} on WhatsApp`}
                     aria-label={`Message ${row.name} on WhatsApp`}
-                    className="grid h-10 w-10 place-items-center rounded-control border border-border-strong bg-card text-heading hover:bg-muted"
+                    className="grid h-11 w-11 place-items-center rounded-control border border-border-strong bg-card text-heading hover:bg-muted"
                   >
                     <MessageSquare className="h-4 w-4" strokeWidth={1.9} aria-hidden />
                   </Link>

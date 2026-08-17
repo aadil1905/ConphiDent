@@ -36,13 +36,13 @@ function TilesSkeleton({ count = 4 }: { count?: number }) {
 function RowsSkeleton({ rows = 8, columns = 5 }: { rows?: number; columns?: number }) {
   return (
     <section className="overflow-hidden rounded-card border border-border bg-card shadow-[var(--shadow)]">
-      <div className="flex gap-4 border-b border-border bg-muted px-4.5 py-2.5">
+      <div className="flex gap-4 border-b border-border bg-muted px-5.5 py-2.5">
         {Array.from({ length: columns }).map((_, index) => (
           <div key={index} className="h-3 flex-1 animate-pulse rounded bg-border-strong/40" />
         ))}
       </div>
       {Array.from({ length: rows }).map((_, row) => (
-        <div key={row} className="flex items-center gap-4 border-b border-border/70 px-4.5 py-3.5 last:border-b-0">
+        <div key={row} className="flex items-center gap-4 border-b border-border/70 px-5.5 py-3.5 last:border-b-0">
           {Array.from({ length: columns }).map((_, index) => (
             <div key={index} className="h-4 flex-1 animate-pulse rounded bg-muted" />
           ))}
@@ -56,7 +56,7 @@ function CardsSkeleton({ count = 3 }: { count?: number }) {
   return (
     <>
       {Array.from({ length: count }).map((_, index) => (
-        <section key={index} className="flex flex-col gap-3 rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
+        <section key={index} className="flex flex-col gap-3 rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
           <Bar w="w-40" h="h-5" />
           <Bar w="w-full" />
           <Bar w="w-4/5" />
@@ -80,7 +80,7 @@ export default function PageSkeleton({
   shape?: "list" | "board" | "detail" | "split";
 }) {
   return (
-    <div aria-busy="true" aria-label="Loading" className="flex flex-col gap-5">
+    <div aria-busy="true" aria-label="Loading" className="flex flex-col gap-6">
       <HeaderSkeleton />
 
       {shape === "list" && (

@@ -4,6 +4,8 @@ import { AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import Pending from "@/components/ui/pending";
+import { useUnsavedGuard } from "@/components/ui/unsaved-guard";
 
 type Values = {
   fullName: string;
@@ -32,7 +34,7 @@ function firstIssue(body: PatientResponse) {
 }
 
 const field = (bad: boolean) =>
-  `min-h-11 w-full rounded-control border bg-white px-3 text-sm text-foreground outline-none ${
+  `min-h-11 w-full rounded-control border bg-card px-3 text-sm text-foreground outline-none ${
     bad ? "border-danger-mark" : "border-border"
   }`;
 
@@ -44,6 +46,7 @@ export default function PatientForm({
   mode?: "create" | "edit";
 }) {
   const router = useRouter();
+  const { formRef: unsavedFormRef, release: releaseUnsaved, dialog: unsavedDialog } = useUnsavedGuard();
   const [saving, setSaving] = useState(false);
   const [problems, setProblems] = useState<{ field?: FieldName; text: string }[]>([]);
 
@@ -99,6 +102,7 @@ export default function PatientForm({
         // Nothing to clean up.
       }
 
+      releaseUnsaved();
       const firstName = data.fullName.split(" ")[0] || data.fullName;
       toast.success(
         body.existed
@@ -123,22 +127,24 @@ export default function PatientForm({
 
   return (
     <form
+      ref={unsavedFormRef}
       onSubmit={submit}
       className="overflow-hidden rounded-card border border-border bg-card shadow-[var(--shadow)]"
     >
-      <div className="border-b border-border px-4.5 py-4">
-        <h2 className="text-base font-semibold text-heading">
+      {unsavedDialog}
+      <div className="border-b border-border px-5.5 py-4">
+        <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">
           {mode === "create" ? "Who are they?" : "Their details"}
         </h2>
-        <p className="mt-1 text-[13px] text-text-muted">
+        <p className="mt-1 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
           A name and a mobile number is enough to start. The rest can wait until they are in the chair.
         </p>
       </div>
 
-      <div className="flex flex-col gap-5 p-4.5">
+      <div className="flex flex-col gap-6 p-5.5">
         <div className="grid gap-4 md:grid-cols-2">
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-heading">Full name</span>
+            <span className="text-xs font-semibold text-heading">Full name<span aria-hidden className="font-normal text-danger-mark"> *</span></span>
             <input
               required
               name="fullName"
@@ -156,7 +162,7 @@ export default function PatientForm({
           </label>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-heading">Mobile number</span>
+            <span className="text-xs font-semibold text-heading">Mobile number<span aria-hidden className="font-normal text-danger-mark"> *</span></span>
             <input
               required
               name="phone"
@@ -172,7 +178,7 @@ export default function PatientForm({
                 {problems.find((problem) => problem.field === "phone")?.text}
               </span>
             ) : (
-              <span className="text-xs text-text-muted">This is how reminders and receipts reach them.</span>
+              <span className="text-xs text-text-muted">10 digits. This is how reminders and receipts reach them.</span>
             )}
           </label>
 
@@ -228,7 +234,7 @@ export default function PatientForm({
             rows={5}
             defaultValue={patient?.medicalNotes ?? ""}
             placeholder="Allergies, pregnancy, diabetes, blood thinners, anything that changes what is safe"
-            className="rounded-control border border-border bg-white px-3 py-2.5 text-sm text-foreground outline-none"
+            className="rounded-control border border-border bg-card px-3 py-2.5 text-sm text-foreground outline-none"
           />
           <span className="text-xs text-text-muted">
             This shows in red at the top of their file, so nobody misses it.
@@ -250,7 +256,7 @@ export default function PatientForm({
         )}
       </div>
 
-      <div className="flex flex-col-reverse gap-2.5 border-t border-border bg-muted px-4.5 py-3.5 sm:flex-row sm:justify-end">
+      <div className="flex flex-col-reverse gap-2.5 border-t border-border bg-muted px-5.5 py-3.5 sm:flex-row sm:justify-end">
         <button
           type="button"
           onClick={() => router.back()}
@@ -262,9 +268,10 @@ export default function PatientForm({
         <button
           type="submit"
           disabled={saving}
-          className="min-h-11 cursor-pointer rounded-control border border-primary bg-primary px-6 text-[13px] font-semibold text-white hover:bg-primary-hover disabled:opacity-70"
+          aria-busy={saving}
+          className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-control border border-primary bg-primary px-6 text-[13px] font-semibold text-white hover:bg-primary-hover disabled:opacity-70"
         >
-          {saving ? "Saving…" : mode === "create" ? "Add them" : "Save"}
+          {saving ? <Pending label="Saving…" /> : mode === "create" ? "Add them" : "Save"}
         </button>
       </div>
     </form>

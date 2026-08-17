@@ -62,7 +62,7 @@ export default async function FindAnythingPage({
       title="Find anything"
       sub="Press Ctrl-K or ⌘K from any screen — you never have to come here first."
     >
-      <section className="flex flex-col gap-3 rounded-card border border-border bg-card p-4.5 shadow-[var(--shadow)]">
+      <section className="flex flex-col gap-3 rounded-card border border-border bg-card p-5.5 shadow-[var(--shadow)]">
         <form className="flex gap-2.5">
           {scope && <input type="hidden" name="kind" value={scope} />}
           <label className="flex min-w-0 flex-1 items-center gap-2 rounded-control border border-border-strong bg-card px-3.5">
@@ -91,7 +91,7 @@ export default async function FindAnythingPage({
                   key={option.value || "all"}
                   href={scopeHref(option.value)}
                   aria-current={active ? "true" : undefined}
-                  className={`inline-flex min-h-10 items-center gap-1.5 rounded-pill border px-3 text-xs font-semibold whitespace-nowrap ${
+                  className={`inline-flex min-h-11 items-center gap-1.5 rounded-pill border px-3 text-xs font-semibold whitespace-nowrap ${
                     active
                       ? "border-primary bg-primary-soft text-heading"
                       : "border-border bg-card text-foreground hover:bg-muted"
@@ -110,8 +110,8 @@ export default async function FindAnythingPage({
         <>
           <RecentlyOpened />
 
-          <section className="rounded-card border border-border bg-card p-4.5 shadow-[var(--shadow)]">
-            <h2 className="text-base font-semibold text-heading">Or just start something</h2>
+          <section className="rounded-card border border-border bg-card p-5.5 shadow-[var(--shadow)]">
+            <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Or just start something</h2>
             <p className="mt-0.5 text-xs text-text-muted">
               The same list ⌘K offers, if you would rather click than type.
             </p>
@@ -140,7 +140,7 @@ export default async function FindAnythingPage({
             Nothing matches &ldquo;{query}&rdquo;
             {scope ? ` in ${(KIND_TITLES[scope] ?? scope).toLowerCase()}` : ""}
           </p>
-          <p className="max-w-[32rem] text-[13px] text-text-muted">
+          <p className="max-w-[32rem] text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
             {scope
               ? "It may be somewhere else — look in everything."
               : "Try a phone number, or part of a bill number. If they are new to you, add them now."}
@@ -178,8 +178,8 @@ export default async function FindAnythingPage({
           key={group.kind}
           className="overflow-hidden rounded-card border border-border bg-card shadow-[var(--shadow)]"
         >
-          <div className="flex flex-wrap items-baseline justify-between gap-3 px-4.5 pt-3.5 pb-2.5">
-            <h2 className="text-base font-semibold text-heading">
+          <div className="flex flex-wrap items-baseline justify-between gap-3 px-5.5 pt-3.5 pb-2.5">
+            <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">
               {KIND_TITLES[group.kind] ?? group.kind}
             </h2>
             <span className="text-xs text-text-muted">
@@ -190,10 +190,10 @@ export default async function FindAnythingPage({
             <Link
               key={`${hit.href}-${index}`}
               href={hit.href}
-              className="block border-t border-border/70 px-4.5 py-3 hover:bg-primary-soft"
+              className="block border-t border-border/70 px-5.5 py-3 hover:bg-primary-soft"
             >
               <p className="text-sm font-semibold text-heading">{hit.title}</p>
-              <p className="text-[13px] text-text-muted">{hit.detail}</p>
+              <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">{hit.detail}</p>
             </Link>
           ))}
         </section>

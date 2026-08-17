@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import Pending from "@/components/ui/pending";
+import { useUnsavedGuard } from "@/components/ui/unsaved-guard";
 
 type AppointmentVisit = { id: number; appointmentDate: string | Date; appointmentTime: string; treatment: string; status: string };
 type Patient = { id: number; fullName: string; phone: string; appointments?: AppointmentVisit[] };
@@ -62,6 +64,7 @@ export default function InvoiceForm({
   fromPatient?: boolean;
 }) {
   const router = useRouter();
+  const { formRef: unsavedFormRef, release: releaseUnsaved, dialog: unsavedDialog } = useUnsavedGuard();
   const [saving, setSaving] = useState(false);
   const [patientId, setPatientId] = useState(initialPatientId ? String(initialPatientId) : "");
   const [planId, setPlanId] = useState("");
@@ -139,6 +142,7 @@ export default function InvoiceForm({
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "That did not save.");
 
+      releaseUnsaved();
       toast.success(`${body.invoiceNumber} raised for ${money(totals.total)}.`);
       const context = fromPatient
         ? `?fromPatient=${body.patientId}${payload.issueDate ? `&visit=${encodeURIComponent(String(payload.issueDate))}` : ""}`
@@ -153,10 +157,11 @@ export default function InvoiceForm({
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-5">
+    <form ref={unsavedFormRef} onSubmit={submit} className="flex flex-col gap-6">
+      {unsavedDialog}
       {/* --- 1. What kind of document ------------------------------------- */}
-      <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
-        <h2 className="text-base font-semibold text-heading">What are you giving them?</h2>
+      <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
+        <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">What are you giving them?</h2>
         <div className="mt-3 flex flex-wrap gap-2">
           {DOCUMENT_TYPES.map((type) => (
             <button
@@ -178,11 +183,11 @@ export default function InvoiceForm({
       </section>
 
       {/* --- 2. Who and which visit --------------------------------------- */}
-      <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
-        <h2 className="text-base font-semibold text-heading">Who is it for?</h2>
+      <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
+        <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Who is it for?</h2>
         <div className="mt-3 grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))]">
           <label className={label}>
-            Patient
+            Patient<span aria-hidden className="font-normal text-danger-mark"> *</span>
             <select
               required
               name="patientId"
@@ -203,7 +208,7 @@ export default function InvoiceForm({
           </label>
 
           <label className={label}>
-            Which visit
+            Which visit<span aria-hidden className="font-normal text-danger-mark"> *</span>
             <select required name="issueDate" defaultValue={initialVisit || todayKey()} className={field}>
               <option value={todayKey()}>Today</option>
               {visits.map((visit) => (
@@ -231,9 +236,9 @@ export default function InvoiceForm({
       </section>
 
       {/* --- 3. The work -------------------------------------------------- */}
-      <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
+      <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-base font-semibold text-heading">What are you charging for?</h2>
+          <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">What are you charging for?</h2>
           <button
             type="button"
             onClick={() => setLines((current) => [...current, blankLine()])}
@@ -255,7 +260,7 @@ export default function InvoiceForm({
               }`}
             >
               <label className={label}>
-                Treatment
+                Treatment<span aria-hidden className="font-normal text-danger-mark"> *</span>
                 <input
                   required
                   value={line.description}
@@ -265,15 +270,15 @@ export default function InvoiceForm({
                 />
               </label>
               <label className={label}>
-                How many
+                How many<span aria-hidden className="font-normal text-danger-mark"> *</span>
                 <input required type="number" min="1" value={line.quantity} onChange={(event) => updateLine(index, "quantity", event.target.value)} className={field} />
               </label>
               <label className={label}>
-                Price each
+                Price each in ₹<span aria-hidden className="font-normal text-danger-mark"> *</span>
                 <input required type="number" min="0" value={line.unitPrice} onChange={(event) => updateLine(index, "unitPrice", event.target.value)} className={field} />
               </label>
               <label className={label}>
-                Taken off
+                Taken off in ₹
                 <input type="number" min="0" value={line.discount} onChange={(event) => updateLine(index, "discount", event.target.value)} className={field} />
               </label>
               {taxable && (
@@ -330,7 +335,7 @@ export default function InvoiceForm({
 
       {/* --- 4. Paying now, only if they are ------------------------------- */}
       {isBill && (
-        <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
+        <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
           <label className="flex cursor-pointer items-center gap-2.5 text-base font-semibold text-heading">
             <input
               type="checkbox"
@@ -366,7 +371,7 @@ export default function InvoiceForm({
       )}
 
       {/* --- 5. The rest, folded away -------------------------------------- */}
-      <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
+      <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
         <button
           type="button"
           onClick={() => setShowExtras((open) => !open)}
@@ -409,9 +414,10 @@ export default function InvoiceForm({
           <button
             type="submit"
             disabled={!canSave}
-            className="min-h-11 cursor-pointer rounded-control border border-primary bg-primary px-5 text-[13px] font-semibold text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:border-border-strong disabled:bg-muted disabled:text-text-muted"
+            aria-busy={saving}
+            className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-control border border-primary bg-primary px-5 text-[13px] font-semibold text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:border-border-strong disabled:bg-muted disabled:text-text-muted"
           >
-            {saving ? "Raising…" : `Raise this ${DOCUMENT_TYPES.find((type) => type.value === documentType)?.label.toLowerCase()}`}
+            {saving ? <Pending label="Raising…" /> : `Raise this ${DOCUMENT_TYPES.find((type) => type.value === documentType)?.label.toLowerCase()}`}
           </button>
         </div>
       </footer>

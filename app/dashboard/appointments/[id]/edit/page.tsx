@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import AppointmentForm from "@/components/appointments/AppointmentForm";
+import { appointmentRevision } from "@/lib/appointment-revision";
 import { requireFeature } from "@/lib/features";
 import { requirePermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -79,18 +80,19 @@ export default async function EditAppointmentPage({
   ]);
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
+    <div className="flex w-full flex-col gap-5">
       <header className="min-w-0">
-        <h1 className="text-[22px] leading-tight font-bold text-heading">
+        <h1 className="text-[length:var(--text-page)] leading-[var(--text-page-lh)] font-semibold tracking-[-0.01em] text-heading">
           Change {appointment.patientName.split(" ")[0]}&rsquo;s visit
         </h1>
-        <p className="mt-1 text-[13px] text-text-muted">
+        <p className="mt-1 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
           Moving the day or time here is enough — the patient is told when you save.
         </p>
       </header>
       <AppointmentForm
         mode="edit"
         appointmentId={appointment.id}
+        revision={appointmentRevision(appointment)}
         clinicTimezone={clinic?.timezone || "Asia/Kolkata"}
         locations={locations.map((location) => ({
           id: location.id,

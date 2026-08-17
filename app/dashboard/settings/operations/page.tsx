@@ -20,37 +20,68 @@ import {
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 const field =
-  "min-h-11 w-full rounded-control border border-border bg-white px-3 text-sm text-foreground outline-none";
+  "min-h-11 w-full rounded-control border border-border bg-card px-3 text-sm text-foreground outline-none";
 const area =
-  "min-h-20 w-full rounded-control border border-border bg-white px-3 py-2.5 text-sm font-normal text-foreground outline-none";
+  "min-h-20 w-full rounded-control border border-border bg-card px-3 py-2.5 text-sm font-normal text-foreground outline-none";
 
 function Card({ title, sub, children }: { title: string; sub: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-card border border-border bg-card p-4.5 shadow-[var(--shadow)]">
-      <h2 className="text-base font-semibold text-heading">{title}</h2>
-      <p className="mt-1 text-[13px] text-text-muted">{sub}</p>
+    <section className="rounded-card border border-border bg-card p-5.5 shadow-[var(--shadow)]">
+      <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">{title}</h2>
+      <p className="mt-1 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">{sub}</p>
       <div className="mt-4">{children}</div>
     </section>
   );
 }
 
-export default async function ClinicOperationsPage() {
+/** What a refused save actually means, in the words of the thing refused. */
+const REFUSALS: Record<string, string> = {
+  "service-name": "That did not save — a treatment needs a name before it can go on the list.",
+  hours: "Those hours did not save. Times read HH:MM, closing has to be after opening, and an evening session has to start after the morning one ends.",
+  branch: "Opening hours have nowhere to go until there is an active main branch. Set one up first.",
+};
+
+export default async function ClinicOperationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const refusal = REFUSALS[(await searchParams).error ?? ""];
   const user = await requireUser();
   if (user.role !== "OWNER") redirect("/dashboard");
 
-  const [services, hours, whatsapp] = await Promise.all([
+  const [services, hours, branch, whatsapp] = await Promise.all([
     prisma.clinicService.findMany({
       where: { clinicId: user.clinicId },
       orderBy: [{ active: "desc" }, { sortOrder: "asc" }, { name: "asc" }],
     }),
     prisma.clinicHours.findMany({ where: { clinicId: user.clinicId }, orderBy: { dayOfWeek: "asc" } }),
+    // Booking reads the branch rows, and a day may carry a second (evening)
+    // session as a sortOrder-1 row — so this editor reads and shows the same.
+    prisma.clinicLocation.findFirst({
+      where: { clinicId: user.clinicId, active: true, isPrimary: true },
+      select: {
+        hours: {
+          orderBy: [{ dayOfWeek: "asc" }, { sortOrder: "asc" }],
+          select: { dayOfWeek: true, sortOrder: true, openTime: true, closeTime: true, slotMinutes: true, isClosed: true },
+        },
+      },
+    }),
     prisma.clinicWhatsAppSettings.findUnique({ where: { clinicId: user.clinicId } }),
   ]);
   const hourByDay = new Map(hours.map((hour) => [hour.dayOfWeek, hour]));
-  const openDays = defaultHours.filter((day) => !(hourByDay.get(day.dayOfWeek) ?? day).isClosed).length;
+  const sessionsByDay = new Map<number, NonNullable<typeof branch>["hours"]>();
+  for (const row of branch?.hours ?? []) {
+    sessionsByDay.set(row.dayOfWeek, [...(sessionsByDay.get(row.dayOfWeek) ?? []), row]);
+  }
+  const openDays = defaultHours.filter((day) => {
+    const sessions = sessionsByDay.get(day.dayOfWeek);
+    if (sessions?.length) return !sessions.every((row) => row.isClosed);
+    return !(hourByDay.get(day.dayOfWeek) ?? day).isClosed;
+  }).length;
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
+    <div className="flex w-full flex-col gap-5">
       <PageHeader
         title="Services, hours and slots"
         sub={`Open ${openDays} ${openDays === 1 ? "day" : "days"} a week. This is what decides which times a patient can pick.`}
@@ -63,6 +94,15 @@ export default async function ClinicOperationsPage() {
           </Link>
         }
       />
+
+      {refusal && (
+        <p
+          role="alert"
+          className="rounded-control border border-danger-border bg-danger-bg px-3.5 py-3 text-[13px] text-danger"
+        >
+          {refusal}
+        </p>
+      )}
 
       <Card
         title="What you offer"
@@ -100,7 +140,7 @@ export default async function ClinicOperationsPage() {
 
         <div className="mt-4 overflow-hidden rounded-control border border-border">
           {services.length === 0 ? (
-            <p className="px-4 py-8 text-center text-[13px] text-text-muted">
+            <p className="px-4 py-8 text-center text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
               Nothing on the list yet. Add the first treatment above and it becomes bookable.
             </p>
           ) : (
@@ -119,7 +159,7 @@ export default async function ClinicOperationsPage() {
                         </span>
                       )}
                     </p>
-                    <p className="text-[13px] text-text-muted">
+                    <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                       {[
                         service.description,
                         `${service.durationMinutes} minutes`,
@@ -204,51 +244,75 @@ export default async function ClinicOperationsPage() {
       >
         <div className="flex flex-col gap-3">
           {defaultHours.map((fallback) => {
-            const hour = hourByDay.get(fallback.dayOfWeek) || fallback;
-            const slots = hour.isClosed ? [] : buildTimeSlots(hour.openTime, hour.closeTime, hour.slotMinutes);
+            // The branch rows are what booking reads; a second row on a day is
+            // the evening session of a split shift.
+            const sessions = (sessionsByDay.get(fallback.dayOfWeek) ?? []).filter((row) => !row.isClosed);
+            const closedByBranch = (sessionsByDay.get(fallback.dayOfWeek) ?? []).some((row) => row.isClosed);
+            const hour = sessions[0] ?? hourByDay.get(fallback.dayOfWeek) ?? fallback;
+            const evening = sessions[1] ?? null;
+            const closed = sessions.length ? closedByBranch : (hourByDay.get(fallback.dayOfWeek) ?? fallback).isClosed;
+            const slots = closed
+              ? []
+              : [hour, ...(evening ? [evening] : [])].flatMap((session) =>
+                  buildTimeSlots(session.openTime, session.closeTime, session.slotMinutes ?? hour.slotMinutes),
+                );
             return (
               <form
                 key={fallback.dayOfWeek}
                 action={saveHoursAction}
-                className="grid items-end gap-3 rounded-control border border-border p-3 md:grid-cols-[140px_1fr_1fr_120px_110px_auto]"
+                className="flex flex-col gap-3 rounded-control border border-border p-3"
               >
                 <input type="hidden" name="dayOfWeek" value={fallback.dayOfWeek} />
-                <div>
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <span className="text-sm font-semibold text-heading">{DAYS[fallback.dayOfWeek]}</span>
-                  <p className="mt-0.5 text-xs text-text-muted">
-                    {hour.isClosed
+                  <p className="text-xs text-text-muted">
+                    {closed
                       ? "Closed"
                       : slots.length
-                        ? `${slots.length} slots · ${slots[0]} to ${slots[slots.length - 1]}`
+                        ? `${slots.length} slots · ${slots[0]} to ${slots[slots.length - 1]}${evening ? " · split shift" : ""}`
                         : "No slots — check the times"}
                   </p>
                 </div>
-                <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">
-                  Opens
-                  <input name="openTime" type="time" defaultValue={hour.openTime} className={`${field} tabular-nums`} />
-                </label>
-                <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">
-                  Closes
-                  <input name="closeTime" type="time" defaultValue={hour.closeTime} className={`${field} tabular-nums`} />
-                </label>
-                <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">
-                  Slot length
-                  <input
-                    name="slotMinutes"
-                    type="number"
-                    min="15"
-                    step="15"
-                    defaultValue={hour.slotMinutes}
-                    className={`${field} tabular-nums`}
-                  />
-                </label>
-                <label className="flex min-h-11 items-center gap-2 text-[13px] font-semibold text-heading">
-                  <input name="isClosed" type="checkbox" value="true" defaultChecked={hour.isClosed} />
-                  Closed
-                </label>
-                <button className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted">
-                  Save
-                </button>
+                <div className="grid items-end gap-3 md:grid-cols-[1fr_1fr_1fr_1fr_110px_96px_auto]">
+                  <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">
+                    Opens
+                    <input name="openTime" type="time" defaultValue={hour.openTime} className={`${field} tabular-nums`} />
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">
+                    Closes
+                    <input name="closeTime" type="time" defaultValue={hour.closeTime} className={`${field} tabular-nums`} />
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-xs font-semibold text-text-muted">
+                    Evening opens
+                    <input name="openTime2" type="time" defaultValue={evening?.openTime ?? ""} className={`${field} tabular-nums`} />
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-xs font-semibold text-text-muted">
+                    Evening closes
+                    <input name="closeTime2" type="time" defaultValue={evening?.closeTime ?? ""} className={`${field} tabular-nums`} />
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">
+                    Slot length
+                    <input
+                      name="slotMinutes"
+                      type="number"
+                      min="15"
+                      step="15"
+                      defaultValue={hour.slotMinutes}
+                      className={`${field} tabular-nums`}
+                    />
+                  </label>
+                  <label className="flex min-h-11 items-center gap-2 text-[13px] font-semibold text-heading">
+                    <input name="isClosed" type="checkbox" value="true" defaultChecked={closed} />
+                    Closed
+                  </label>
+                  <button className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted">
+                    Save
+                  </button>
+                </div>
+                <p className="text-xs text-text-muted">
+                  Leave the evening times blank for one continuous session. A split shift — say
+                  10:00–13:30 and 17:30–20:30 — offers no times in the gap.
+                </p>
               </form>
             );
           })}

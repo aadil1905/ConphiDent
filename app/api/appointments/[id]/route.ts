@@ -1,7 +1,9 @@
+import { reportError } from "@/lib/monitoring";
 import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 
+import { appointmentRevision } from "@/lib/appointment-revision";
 import { validateAppointmentResources } from "@/lib/appointment-scheduling";
 import { ensureEncounter } from "@/lib/encounters";
 import { canonicalPatientPhone } from "@/lib/phone";
@@ -17,8 +19,27 @@ import { appointmentSchema } from "@/lib/validations";
 
 class AppointmentNotFoundError extends Error {}
 class ScheduleConflictError extends Error {}
+class StaleAppointmentError extends Error {}
 
 type RouteContext = { params: Promise<{ id: string }> };
+
+/**
+ * The edit form posts every field, so the second of two people editing one
+ * appointment used to overwrite the first with values read before that first
+ * save existed — silently, and including fields they never touched.
+ *
+ * The form now sends back the revision token for the appointment as it loaded
+ * it (see `appointmentRevision`), and a save is refused if the appointment has
+ * moved on since. A request that sends no token is still accepted: a stale
+ * cached page or a hand-written call should not start failing, and this is a
+ * guard against two people colliding rather than a permission check.
+ */
+function expectedRevisionFrom(body: unknown) {
+  if (!body || typeof body !== "object") return null;
+  const value = (body as { expectedRevision?: unknown }).expectedRevision;
+  if (typeof value !== "string" || !/^[0-9a-f]{32}$/.test(value)) return null;
+  return value;
+}
 
 function appointmentIdFrom(value: string) {
   const id = Number(value);
@@ -40,6 +61,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     const { id } = await params;
     const appointmentId = appointmentIdFrom(id);
     const body = await request.json();
+    const expectedRevision = expectedRevisionFrom(body);
     const data = appointmentSchema.partial().parse(body);
     if (Object.keys(data).length === 0) {
       return NextResponse.json({ error: "No changes provided." }, { status: 400 });
@@ -53,6 +75,9 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
             where: { id: appointmentId, clinicId: user.clinicId, archivedAt: null },
           });
           if (!current) throw new AppointmentNotFoundError();
+          if (expectedRevision && appointmentRevision(current) !== expectedRevision) {
+            throw new StaleAppointmentError();
+          }
 
           const currentDateKey = appointmentDateKey(current.appointmentDate);
           const dateKey = data.appointmentDate ?? currentDateKey;
@@ -206,6 +231,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
         if (
           error instanceof AppointmentNotFoundError
           || error instanceof ScheduleConflictError
+          || error instanceof StaleAppointmentError
           || error instanceof InvalidScheduleInputError
         ) {
           throw error;
@@ -222,7 +248,13 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     if (!appointment) throw new Error("Could not update appointment.");
     return NextResponse.json(appointment);
   } catch (error) {
-    console.error(error);
+    await reportError(error, { where: "api/appointments/[id]" });
+    if (error instanceof StaleAppointmentError) {
+      return NextResponse.json({
+        error: "Somebody else changed this appointment while you had it open. Reload it and make your change again — saving now would undo theirs.",
+        code: "STALE_APPOINTMENT",
+      }, { status: 409 });
+    }
     if (error instanceof ScheduleConflictError) {
       return NextResponse.json({ error: error.message }, { status: 409 });
     }
@@ -257,7 +289,7 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     }
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error(error);
+    await reportError(error, { where: "api/appointments/[id]" });
     if (error instanceof InvalidScheduleInputError) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }

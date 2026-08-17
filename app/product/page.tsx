@@ -1,11 +1,60 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import MarketingMotion from "@/components/marketing/MarketingMotion";
-import PlatformExplorer from "@/components/marketing/PlatformExplorer";
-import ProductTour from "@/components/marketing/ProductTour";
-import PublicShell from "@/components/marketing/PublicShell";
+import JourneyStory from "@/components/marketing/JourneyStory";
+import { Aurora, Reveal, WordReveal } from "@/components/marketing/Motion";
+import PublicShell, { SETUP_URL } from "@/components/marketing/PublicShell";
 
-export const metadata: Metadata = { title: "Platform", description: "Explore the connected ConphiDent workspace for dental clinic operations.", alternates: { canonical: "/product" } };
+export const metadata: Metadata = {
+  title: "Platform",
+  description:
+    "A tour of the connected ConphiDent workspace — the day, the diary, the patient record, clinical charting, billing, WhatsApp, laboratory, imaging, operations and insights.",
+  alternates: { canonical: "/product" },
+};
 
-export default function Product() { return <PublicShell><MarketingMotion/><section className="mk-page-hero"><div className="cf-wrap" data-reveal><p className="mk-kicker">The ConphiDent platform</p><h1>A connected workspace for the complete clinic day.</h1><p>Patient information, schedules, care, finance, communication and operations work as one system—not a collection of separate screens.</p><div className="mk-actions"><Link href="/demo" className="mk-button">Book a personalised demo <ArrowRight/></Link><Link href="#platform-overview" className="mk-text-link">Explore product areas <ArrowRight/></Link></div></div></section><PlatformExplorer/><ProductTour/><section className="mk-final"><div className="cf-wrap" data-reveal><p className="mk-kicker">See your workflow in the product</p><h2>Explore ConphiDent with your own clinic day in mind.</h2><p>A focused walkthrough can cover patient intake, appointments, clinical care, billing, WhatsApp, laboratory work, inventory and reporting.</p><Link href="/demo" className="mk-button">Book a demo <ArrowRight/></Link></div></section></PublicShell>; }
+export default function Product() {
+  return (
+    <PublicShell>
+      <section className="mk-hero">
+        <Aurora />
+        <div className="cf-wrap">
+          <div className="mk-hero-copy">
+            <Reveal><p className="mk-kicker">The platform</p></Reveal>
+            <WordReveal className="t-display" text="One workspace for the whole clinic day." />
+            <Reveal delay={0.12}>
+              <p className="t-lead">
+                Patient information, the diary, clinical care, money, communication and operations
+                behave as one system — because they are written against one record, not stitched
+                together after the fact.
+              </p>
+              <div className="mk-actions">
+                <Link href="#workflow" className="mk-button">Follow a patient through it <ArrowRight /></Link>
+                <a href={SETUP_URL} className="mk-button-ghost">Start onboarding</a>
+              </div>
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
+      <JourneyStory />
+
+      <section className="mk-final">
+        <Aurora />
+        <div className="cf-wrap">
+          <Reveal>
+            <p className="mk-kicker">Your clinic, specifically</p>
+            <h2 className="t-h2">Walk it against your own Monday morning.</h2>
+            <p className="t-lead">
+              A focused walkthrough can cover intake, the diary, charting, billing, WhatsApp,
+              laboratory work, imaging and reporting — whichever of those is hurting most.
+            </p>
+            <div className="mk-actions">
+              <Link href="/demo" className="mk-button">Book a demo <ArrowRight /></Link>
+              <Link href="/features" className="mk-button-ghost">Read every capability</Link>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+    </PublicShell>
+  );
+}

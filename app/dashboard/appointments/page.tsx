@@ -6,7 +6,7 @@ import { requirePermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { exactStamp, humanTime } from "@/lib/format";
 import { listHref, pageWindow, parseListQuery, type RawSearchParams } from "@/lib/list-params";
-import DataList, { ListCell, ListRow } from "@/components/lists/DataList";
+import DataList, { ListCell, ListLink, ListRow } from "@/components/lists/DataList";
 import ListSearch from "@/components/lists/ListSearch";
 import FilterChips from "@/components/lists/FilterChips";
 import EmptyState from "@/components/lists/EmptyState";
@@ -154,7 +154,7 @@ export default async function SchedulePage({
   const unconfirmedCount = visits.filter((visit) => visit.status === "Pending").length;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Schedule"
         sub={rangeLabel}
@@ -180,7 +180,7 @@ export default async function SchedulePage({
               href={listHref(BASE, query, { view: option, page: 1 })}
               role="tab"
               aria-selected={view === option}
-              className={`inline-flex min-h-9 items-center rounded-[0.45rem] px-3.5 text-[13px] font-semibold ${
+              className={`inline-flex min-h-11 items-center rounded-[0.45rem] px-3.5 text-[13px] font-semibold ${
                 view === option ? "bg-secondary text-heading" : "text-text-muted hover:bg-muted"
               }`}
             >
@@ -193,7 +193,7 @@ export default async function SchedulePage({
           <Link
             href={shiftHref(-step)}
             aria-label={view === "week" ? "Previous week" : "Previous day"}
-            className="grid h-10 w-10 place-items-center rounded-control border border-border-strong bg-card text-heading hover:bg-muted"
+            className="grid h-11 w-11 place-items-center rounded-control border border-border-strong bg-card text-heading hover:bg-muted"
           >
             <ChevronLeft className="h-4 w-4" aria-hidden />
           </Link>
@@ -203,13 +203,13 @@ export default async function SchedulePage({
           <Link
             href={shiftHref(step)}
             aria-label={view === "week" ? "Next week" : "Next day"}
-            className="grid h-10 w-10 place-items-center rounded-control border border-border-strong bg-card text-heading hover:bg-muted"
+            className="grid h-11 w-11 place-items-center rounded-control border border-border-strong bg-card text-heading hover:bg-muted"
           >
             <ChevronRight className="h-4 w-4" aria-hidden />
           </Link>
           <Link
             href={listHref(BASE, query, { date: isoDate(today), page: 1 })}
-            className="inline-flex min-h-10 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
           >
             Today
           </Link>
@@ -244,8 +244,8 @@ export default async function SchedulePage({
 
       {view === "day" && (
         <section className="rounded-card border border-border bg-card shadow-[var(--shadow)]">
-          <div className="flex flex-wrap items-baseline justify-between gap-3 px-4.5 pt-3.5 pb-2.5">
-            <h2 className="text-base font-semibold text-heading">The day, chair by chair</h2>
+          <div className="flex flex-wrap items-baseline justify-between gap-3 px-5.5 pt-3.5 pb-2.5">
+            <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">The day, chair by chair</h2>
             <span className="text-xs text-text-muted">
               {total === 0
                 ? "Nothing booked"
@@ -272,7 +272,7 @@ export default async function SchedulePage({
               return (
                 <div
                   key={visit.id}
-                  className="grid grid-cols-1 items-center gap-3 border-t border-border px-4.5 py-2.5 sm:grid-cols-[84px_minmax(0,1fr)] lg:grid-cols-[84px_minmax(0,1fr)_150px_150px_120px]"
+                  className="grid grid-cols-1 items-center gap-3 border-t border-border px-5.5 py-2.5 sm:grid-cols-[84px_minmax(0,1fr)] lg:grid-cols-[84px_minmax(0,1fr)_150px_150px_120px]"
                 >
                   <div className="text-[13px] font-semibold tabular-nums text-heading">
                     {visit.appointmentTime}
@@ -293,7 +293,7 @@ export default async function SchedulePage({
                         {humanTime(moment, now)}
                       </span>
                     </div>
-                    <p className="truncate text-[13px] text-text-muted">
+                    <p className="truncate text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                       {visit.treatment} · {visit.phone}
                     </p>
                   </div>
@@ -322,14 +322,14 @@ export default async function SchedulePage({
         <section className="overflow-x-auto rounded-card border border-border bg-card shadow-[var(--shadow)]">
           <div className="min-w-[900px]">
             <div className="grid grid-cols-[84px_repeat(7,1fr)] border-b border-border bg-muted">
-              <div className="p-2.5 text-[11px] font-semibold tracking-[0.06em] text-text-muted uppercase">
+              <div className="p-2.5 text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
                 Time
               </div>
               {Array.from({ length: 7 }, (_, index) => {
                 const day = new Date(weekStart.getTime() + index * DAY);
                 return (
                   <div key={index} className="border-l border-border p-2.5">
-                    <div className="text-[11px] font-semibold tracking-[0.06em] text-text-muted uppercase">
+                    <div className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
                       {day.toLocaleDateString("en-IN", { weekday: "short" })}
                     </div>
                     <div className="text-[13px] font-semibold tabular-nums text-heading">
@@ -423,13 +423,15 @@ export default async function SchedulePage({
             const moment = visitMoment(visit.appointmentDate, visit.appointmentTime);
             return (
               <ListRow key={visit.id} needsAttention={visit.status === "No-show"}>
-                <ListCell>
-                  <span title={exactStamp(moment)} className="tabular-nums">
-                    {moment.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} ·{" "}
-                    {visit.appointmentTime}
-                  </span>
+                <ListCell primary>
+                  <ListLink href={`${BASE}/${visit.id}`} className="tabular-nums text-foreground">
+                    <span title={exactStamp(moment)}>
+                      {moment.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} ·{" "}
+                      {visit.appointmentTime}
+                    </span>
+                  </ListLink>
                 </ListCell>
-                <ListCell>
+                <ListCell interactive>
                   {visit.patientId ? (
                     <Link
                       href={`/dashboard/patients/${visit.patientId}`}
@@ -462,7 +464,7 @@ export default async function SchedulePage({
                     {STATUS_LABELS[visit.status] ?? visit.status}
                   </span>
                 </ListCell>
-                <ListCell align="right">
+                <ListCell align="right" interactive>
                   <Link href={`${BASE}/${visit.id}`} className="text-xs font-semibold text-primary">
                     Open
                   </Link>

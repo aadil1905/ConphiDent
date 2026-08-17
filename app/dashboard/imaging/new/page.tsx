@@ -1,11 +1,11 @@
 export const dynamic = "force-dynamic";
 
-import Link from "next/link";
 import { requireFeature } from "@/lib/features";
 import { requirePermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import WorkPage from "@/components/lists/WorkPage";
 import ImagingImportForm from "@/components/imaging/ImagingImportForm";
+import BackLink from "@/components/navigation/BackLink";
 
 export default async function AddXrayPage({
   searchParams,
@@ -37,12 +37,12 @@ export default async function AddXrayPage({
       title={patient ? `Add an X-ray for ${patient.fullName.split(" ")[0]}` : "Add an X-ray"}
       sub="Three steps: whose it is, what it shows, then the file itself."
       actions={
-        <Link
-          href={patient ? `/dashboard/patients/${patient.id}/xrays` : "/dashboard/imaging"}
+        <BackLink
+          fallback={patient ? `/dashboard/patients/${patient.id}/xrays` : "/dashboard/imaging"}
           className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
         >
           {patient ? "Back to their X-rays" : "Back to Imaging"}
-        </Link>
+        </BackLink>
       }
     >
       <ImagingImportForm

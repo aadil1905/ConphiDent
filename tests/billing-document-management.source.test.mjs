@@ -7,7 +7,15 @@ import {
   normalizeInvoicePrefix,
 } from "../lib/invoice-number.ts";
 
-const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
+/**
+ * Source is normalised to LF before matching.
+ *
+ * `core.autocrlf` is true, so a Windows working copy has CRLF endings, and any
+ * pattern that spans lines then silently fails to match. That looked exactly
+ * like the code having drifted away from the test, which is part of why these
+ * files sat unrun. Normalised, the patterns mean what they say on any platform.
+ */
+const read = async (path) => (await readFile(new URL(`../${path}`, import.meta.url), "utf8")).replace(/\r\n/g, "\n");
 
 test("invoice prefixes are normalized for safe document numbers", () => {
   assert.equal(normalizeInvoicePrefix(" ddw clinic! "), "DDWCLINIC");
@@ -45,10 +53,14 @@ test("invoice creation owns numbering and freezes the complete clinic identity",
 });
 
 test("authenticated clinic users can manage future billing-document identity", async () => {
-  const [page, actions] = await Promise.all([
+  const [pageSource, form, actions] = await Promise.all([
     read("app/dashboard/settings/billing/page.tsx"),
+    // The fields moved out of the page into their own component; the feature
+    // gate stayed on the page. Both are read so the test follows the code.
+    read("components/billing/BillingIdentity.tsx"),
     read("app/dashboard/settings/actions.ts"),
   ]);
+  const page = `${pageSource}\n${form}`;
   for (const field of [
     "invoicePrefix",
     "receiptPrefix",
@@ -76,15 +88,23 @@ test("billing workflow has no role-based authorization gates", async () => {
   ].map(read));
   const source = files.join("\n");
   assert.doesNotMatch(source, /require(?:Api)?Permission\(/);
-  assert.doesNotMatch(source, /"manageBilling"|"recordPayment"/);
+  assert.doesNotMatch(source, /"recordPayment"/);
+  // `manageBilling` survives here on purpose, and only in one shape: a
+  // capability check on *voiding*, which is destructive and stays with the
+  // owner. It must never come back as a gate on reaching or raising a bill.
+  for (const match of source.matchAll(/.*"manageBilling".*/g)) {
+    assert.match(match[0], /can\(user\.role, "manageBilling"\)/, `manageBilling is gating access again: ${match[0].trim()}`);
+  }
   assert.match(source, /requireApiFeature\("billing"\)/);
   assert.match(source, /requireFeature\("billing"\)/);
   assert.match(source, /requireApiFeatures\(\["billing", "whatsapp"\]\)/);
 });
 
 test("billing navigation is visible without a role permission", async () => {
-  const sidebar = await read("components/Sidebar.tsx");
-  assert.match(sidebar, /href: "\/dashboard\/billing", label: "Revenue", icon: ReceiptIndianRupee, feature: "billing" }/);
-  assert.match(sidebar, /href: "\/dashboard\/settings\/billing", label: "Billing settings"/);
-  assert.doesNotMatch(sidebar, /href: "\/dashboard\/billing"[^\n]*permission: "manageBilling"/);
+  // Phase B replaced components/Sidebar.tsx with the shell's nav table.
+  const nav = await read("components/shell/nav-items.ts");
+  assert.match(nav, /href: "\/dashboard\/billing",[^\n]*feature: "billing"/);
+  assert.match(nav, /href: "\/dashboard\/settings\/billing", label: "How your bills look"/);
+  // The entitlement is the only gate; no role keeps Money out of the nav.
+  assert.doesNotMatch(nav, /href: "\/dashboard\/billing"[^\n]*permission:/);
 });

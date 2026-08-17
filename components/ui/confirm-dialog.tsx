@@ -57,7 +57,7 @@ export function ConfirmDialog({
     <div
       role="presentation"
       onClick={onCancel}
-      className="fixed inset-0 z-[95] flex items-center justify-center bg-[rgba(18,59,93,0.35)] p-4 backdrop-blur-[4px] motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150"
+      className="fixed inset-0 z-[95] flex items-center justify-center bg-[var(--overlay)] p-4 backdrop-blur-[4px] motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150"
     >
       <div
         ref={panel}
@@ -65,10 +65,10 @@ export function ConfirmDialog({
         aria-modal="true"
         aria-label={copy.title}
         onClick={(event) => event.stopPropagation()}
-        className="flex w-full max-w-[460px] flex-col gap-3 rounded-card border border-border-strong bg-card p-4.5 shadow-[var(--shadow-overlay)]"
+        className="flex w-full max-w-[460px] flex-col gap-3 rounded-card border border-border-strong bg-card p-5.5 shadow-[var(--shadow-overlay)]"
       >
         <h2 className="text-[17px] font-semibold text-heading">{copy.title}</h2>
-        <p className="text-[13px] text-text-muted">{copy.body}</p>
+        <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">{copy.body}</p>
         <div className="flex flex-wrap justify-end gap-2.5">
           <button
             type="button"

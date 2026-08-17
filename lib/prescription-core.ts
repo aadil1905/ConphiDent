@@ -37,15 +37,18 @@ export function formatPatientAgeSnapshot(value?: string | null) {
 }
 
 /**
- * An allergy is a standing fact about the patient, not a property of the most
- * recent note. Whoever wrote today's note may have left the field blank, so
- * every recent signed note counts, plus the patient's own medical notes.
+ * An allergy is a standing fact about the patient, not a property of any one
+ * document. It used to be gathered from clinical notes; notes were removed from
+ * the product and the allergy did not go with them — it is now gathered from
+ * every intake the patient has filled in, plus the clinic's own note on the
+ * patient record. Any one of them may have been left blank, so they are all
+ * read and de-duplicated rather than taking the most recent.
  */
 export function allergySummaryFrom(
-  records: readonly { drugAllergies?: string | null }[],
+  reported: readonly { drugAllergies?: string | null }[],
   medicalNotes?: string | null,
 ) {
-  const parts = [...records.map((record) => record.drugAllergies), medicalNotes]
+  const parts = [...reported.map((entry) => entry.drugAllergies), medicalNotes]
     .map((value) => value?.trim())
     .filter((value): value is string => Boolean(value));
   return parts.length ? [...new Set(parts)].join(" · ") : null;

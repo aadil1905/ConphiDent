@@ -9,6 +9,7 @@ import { clockTime, exactStamp, humanTime, rupees } from "@/lib/format";
 import PageHeader from "@/components/lists/PageHeader";
 import ConversationComposer from "@/components/whatsapp/ConversationComposer";
 import HandoffControl from "@/components/whatsapp/HandoffControl";
+import ScrollToLatest from "@/components/whatsapp/ScrollToLatest";
 
 const DAY = 24 * 60 * 60 * 1000;
 const BASE = "/dashboard/conversations";
@@ -18,14 +19,6 @@ const FILTERS = [
   { key: "enquiries", label: "Enquiries" },
   { key: "optedout", label: "Opted out" },
   { key: "all", label: "Everything" },
-] as const;
-
-const TABS = [
-  ["Inbox", BASE],
-  ["Automations", "/dashboard/automation"],
-  ["What went out", "/dashboard/whatsapp-operations"],
-  ["Approved answers", "/dashboard/ai-coach"],
-  ["Setup", "/dashboard/settings/whatsapp"],
 ] as const;
 
 const STATE_WORDS: Record<string, { label: string; tone: string }> = {
@@ -233,30 +226,16 @@ export default async function MessagesInboxPage({
       ];
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Messages"
         sub="Every WhatsApp thread with a patient, and everything that goes out on its own."
       />
-      <div role="tablist" aria-label="Messages sections" className="flex gap-1 overflow-x-auto border-b border-border">
-        {TABS.map(([label, tabHref]) =>
-          label === "Inbox" ? (
-            <span key={label} role="tab" aria-selected="true" className="inline-flex min-h-11 flex-none items-center border-b-2 border-b-primary px-3.5 text-[13px] font-semibold text-heading">
-              {label}
-            </span>
-          ) : (
-            <Link key={label} role="tab" aria-selected="false" href={tabHref} className="inline-flex min-h-11 flex-none items-center border-b-2 border-b-transparent px-3.5 text-[13px] font-semibold text-text-muted hover:text-heading">
-              {label}
-            </Link>
-          ),
-        )}
-      </div>
-
       {totalCount === 0 && !q ? (
         <section className="flex flex-col items-center gap-2 rounded-card border border-border bg-card px-6 py-14 text-center shadow-[var(--shadow)]">
           <MessagesSquare className="h-8 w-8 text-primary" strokeWidth={1.6} aria-hidden />
           <h2 className="text-[15px] font-semibold text-heading">Your inbox is ready</h2>
-          <p className="max-w-xl text-[13px] text-text-muted">
+          <p className="max-w-xl text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
             Connect the clinic&rsquo;s WhatsApp number and every patient chat lands here on its own.
           </p>
           <Link
@@ -267,15 +246,15 @@ export default async function MessagesInboxPage({
           </Link>
         </section>
       ) : (
-        <div className="grid min-h-[calc(100vh-280px)] items-stretch gap-4 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)_270px]">
+        /* One surface split in two, the way a messenger looks. On a phone the
+           list is the whole screen and a chat covers it — data-open drives it. */
+        <div className="wa" data-open={params.conversation ? "true" : "false"}>
           {/* --- Thread list ------------------------------------------------ */}
-          <section
-            className={`${params.conversation ? "hidden lg:flex" : "flex"} min-w-0 flex-col overflow-hidden rounded-card border border-border bg-card shadow-[var(--shadow)]`}
-          >
-            <div className="flex flex-col gap-2 border-b border-border/70 p-3">
+          <section className="wa__list min-h-0">
+            <div className="flex flex-col gap-2 border-b border-border/70 bg-card p-3">
               <form action={BASE} className="contents">
                 {show !== "reply" && <input type="hidden" name="show" value={show} />}
-                <label className="flex min-h-11 items-center gap-2 rounded-control border border-border bg-white px-3">
+                <label className="flex min-h-11 items-center gap-2 rounded-control border border-border bg-card px-3">
                   <span className="sr-only">Search conversations</span>
                   <input
                     name="q"
@@ -291,7 +270,7 @@ export default async function MessagesInboxPage({
                     key={filter.key}
                     href={href({ show: filter.key === "reply" ? undefined : filter.key, conversation: undefined }, { q })}
                     aria-current={show === filter.key ? "true" : undefined}
-                    className={`inline-flex min-h-9 items-center rounded-pill border px-2.5 text-xs font-semibold whitespace-nowrap text-heading ${
+                    className={`inline-flex min-h-11 items-center rounded-pill border px-2.5 text-xs font-semibold whitespace-nowrap text-heading ${
                       show === filter.key ? "border-primary bg-primary-soft" : "border-border bg-card hover:bg-muted"
                     }`}
                   >
@@ -301,13 +280,13 @@ export default async function MessagesInboxPage({
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="min-h-0 flex-1 overflow-y-auto bg-card">
               {threads.length === 0 && (
                 <div className="flex flex-col items-center gap-1.5 px-4 pt-8 pb-9 text-center">
                   <p className="text-sm font-semibold text-heading">
                     {show === "reply" ? "Everyone has been answered. Nice." : "Nothing here"}
                   </p>
-                  <p className="text-[13px] text-text-muted">
+                  <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                     {q ? "No chats match what you typed." : "New chats show up here the moment they arrive."}
                   </p>
                 </div>
@@ -325,11 +304,11 @@ export default async function MessagesInboxPage({
                     key={thread.id}
                     href={href({ conversation: thread.id }, { q, show })}
                     aria-current={isActive ? "true" : undefined}
-                    className={`grid grid-cols-[36px_minmax(0,1fr)_auto] items-start gap-2.5 border-b border-border/70 px-3 py-2.5 ${
+                    className={`wa__row grid grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-3 px-3.5 py-3 ${
                       thread.needsReply ? "border-l-[3px] border-l-primary" : "border-l-[3px] border-l-transparent"
-                    } ${isActive ? "bg-primary-soft" : "hover:bg-muted"}`}
+                    }`}
                   >
-                    <span className="grid h-9 w-9 place-items-center rounded-pill bg-secondary text-xs font-bold text-heading">
+                    <span className="grid h-11 w-11 place-items-center rounded-pill bg-muted text-[13px] font-semibold text-heading">
                       {initialsOf(name)}
                     </span>
                     <span className="flex min-w-0 flex-col gap-px">
@@ -361,7 +340,7 @@ export default async function MessagesInboxPage({
                 );
               })}
               <div className="flex flex-col gap-1.5 px-3 pt-3.5 pb-4">
-                <p className="text-[11px] font-semibold tracking-[0.06em] text-text-muted uppercase">Older chats</p>
+                <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">Older chats</p>
                 <p className="text-xs text-text-muted">
                   {threads.length >= totalCount
                     ? `That is every chat — ${totalCount} in all.`
@@ -372,7 +351,7 @@ export default async function MessagesInboxPage({
                 {show !== "all" && (
                   <Link
                     href={href({ show: "all", conversation: undefined }, { q })}
-                    className="inline-flex min-h-10 w-fit items-center rounded-control border border-border-strong bg-card px-3 text-xs font-semibold text-heading hover:bg-muted"
+                    className="inline-flex min-h-11 w-fit items-center rounded-control border border-border-strong bg-card px-3 text-xs font-semibold text-heading hover:bg-muted"
                   >
                     Show everything
                   </Link>
@@ -382,30 +361,38 @@ export default async function MessagesInboxPage({
           </section>
 
           {/* --- Conversation ----------------------------------------------- */}
-          <section
-            className={`${params.conversation ? "flex" : "hidden lg:flex"} min-w-0 flex-col overflow-hidden rounded-card border border-border bg-card shadow-[var(--shadow)]`}
-          >
+          <section className="wa__thread min-h-0">
             {!active ? (
-              <div className="grid flex-1 place-items-center p-8 text-center">
-                <div>
-                  <MessagesSquare className="mx-auto h-8 w-8 text-primary" strokeWidth={1.6} aria-hidden />
-                  <p className="mt-2 text-sm font-semibold text-heading">Pick a chat</p>
-                  <p className="mt-1 text-[13px] text-text-muted">Choose someone on the left to read the thread.</p>
+              <div className="wa__paper grid flex-1 place-items-center p-8 text-center">
+                <div className="max-w-sm">
+                  <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[var(--wa-in)] shadow-[var(--shadow)]">
+                    <MessagesSquare className="h-7 w-7 text-primary" strokeWidth={1.4} aria-hidden />
+                  </span>
+                  <p className="mt-4 font-[family-name:var(--font-display)] text-lg font-semibold text-heading">
+                    Your clinic&rsquo;s WhatsApp
+                  </p>
+                  <p className="mt-1.5 text-[length:var(--text-body)] leading-relaxed text-text-muted">
+                    Pick a chat on the left to read the thread and reply. Everything a patient
+                    sends lands here on its own.
+                  </p>
                 </div>
               </div>
             ) : (
               <>
-                <div className="flex flex-wrap items-center gap-3 border-b border-border/70 px-4 py-3">
+                <div className="flex flex-wrap items-center gap-3 border-b border-border/70 bg-card px-4 py-2.5">
                   <Link
                     href={href({ conversation: undefined }, { q, show })}
-                    className="grid h-10 w-10 flex-none cursor-pointer place-items-center rounded-control text-heading hover:bg-muted lg:hidden"
+                    className="grid h-11 w-11 flex-none cursor-pointer place-items-center rounded-control text-heading hover:bg-muted lg:hidden"
                     aria-label="Back to all chats"
                   >
                     ←
                   </Link>
+                  <span className="grid h-10 w-10 flex-none place-items-center rounded-pill bg-muted text-xs font-semibold text-heading">
+                    {initialsOf(activeName)}
+                  </span>
                   <div className="min-w-0 flex-[1_1_180px]">
-                    <p className="text-sm font-semibold text-heading">{activeName}</p>
-                    <p className="text-xs text-text-muted">
+                    <p className="truncate text-sm font-semibold text-heading">{activeName}</p>
+                    <p className="truncate text-xs text-text-muted">
                       {active.phone}
                       {optedOut ? " · asked us to stop" : active.status === "RESOLVED" ? " · resolved" : " · open"}
                     </p>
@@ -419,7 +406,8 @@ export default async function MessagesInboxPage({
                   />
                 </div>
 
-                <div className="flex min-h-[220px] flex-1 flex-col justify-end overflow-y-auto bg-background px-4 py-3.5">
+                <div className="wa__paper min-h-0 flex-1 overflow-y-auto px-4 py-3.5 sm:px-8">
+                  <div className="flex min-h-full flex-col justify-end">
                   {active.messages.map((message, index) => {
                     const ours = message.direction === "OUTBOUND";
                     const state = ours ? STATE_WORDS[message.deliveryStatus] : null;
@@ -454,23 +442,23 @@ export default async function MessagesInboxPage({
                           }`}
                         >
                           <div
-                            className={`px-3.5 py-2.5 text-[13px] leading-[1.45] whitespace-pre-line shadow-[0_1px_2px_rgba(18,59,93,0.06)] ${
-                              ours
-                                ? "bg-primary text-white"
-                                : "border border-border bg-card text-foreground"
+                            className={`wa__bubble ${ours ? "wa__bubble--out" : "wa__bubble--in"} ${
+                              startsRun ? "wa__bubble--first" : ""
+                            } px-3 py-2 text-[13.5px] leading-[1.45] whitespace-pre-line shadow-[0_1px_1px_rgba(0,0,0,0.10)] text-[var(--wa-bubble-text)] ${
+                              ours ? "bg-[var(--wa-out)]" : "bg-[var(--wa-in)]"
                             } ${
                               // Square off the corner facing the run so a turn
                               // reads as one block rather than separate cards.
                               ours
-                                ? `rounded-[1rem] ${startsRun ? "" : "rounded-tr-[0.3rem]"} ${endsRun ? "" : "rounded-br-[0.3rem]"}`
-                                : `rounded-[1rem] ${startsRun ? "" : "rounded-tl-[0.3rem]"} ${endsRun ? "" : "rounded-bl-[0.3rem]"}`
+                                ? `rounded-[0.5rem] ${startsRun ? "rounded-tr-none" : ""}`
+                                : `rounded-[0.5rem] ${startsRun ? "rounded-tl-none" : ""}`
                             }`}
                           >
                             {message.content}
                           </div>
 
                           {endsRun && (
-                            <div className="mt-1 flex items-center gap-1.5 px-1 text-[11px] text-text-muted">
+                            <div className="mt-0.5 flex items-center gap-1.5 px-1 text-[11px] text-text-muted">
                               <span title={exactStamp(message.createdAt)}>{clockTime(message.createdAt)}</span>
                               {state && <span className={`font-semibold ${state.tone}`}>{state.label}</span>}
                             </div>
@@ -479,6 +467,9 @@ export default async function MessagesInboxPage({
                       </div>
                     );
                   })}
+                  {/* Opens on the newest message; older ones are above it. */}
+                  <ScrollToLatest conversationId={active.id} />
+                  </div>
                 </div>
 
                 <ConversationComposer
@@ -492,11 +483,13 @@ export default async function MessagesInboxPage({
             )}
           </section>
 
-          {/* --- Context rail ----------------------------------------------- */}
+          {/* --- Context rail -----------------------------------------------
+              The grid is two columns now, so the patient card sits under the
+              thread list rather than claiming a third column of its own. */}
           {active && (
-            <aside className="hidden min-w-0 flex-col gap-3 xl:flex">
+            <aside className="hidden min-w-0 flex-col gap-3">
               <section className="flex flex-col gap-2 rounded-card border border-border bg-card px-4 py-3.5 shadow-[var(--shadow)]">
-                <p className="text-[13px] font-semibold text-heading">{activeName}</p>
+                <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] font-semibold text-heading">{activeName}</p>
                 {active.patient && context ? (
                   <>
                     {[
@@ -535,7 +528,7 @@ export default async function MessagesInboxPage({
                     </Link>
                   </>
                 ) : (
-                  <p className="text-[13px] text-text-muted">
+                  <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                     {active.lead
                       ? `An enquiry — ${active.lead.stage.toLowerCase().replace(/_/g, " ")} so far. Not a patient yet.`
                       : "We do not know this number yet."}
@@ -544,7 +537,7 @@ export default async function MessagesInboxPage({
               </section>
 
               <section className="flex flex-col gap-2 rounded-card border border-border bg-card px-4 py-3.5 shadow-[var(--shadow)]">
-                <p className="text-[13px] font-semibold text-heading">Do it from here</p>
+                <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] font-semibold text-heading">Do it from here</p>
                 {[
                   {
                     label: `Book ${firstName} a visit`,

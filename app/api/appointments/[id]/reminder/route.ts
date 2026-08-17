@@ -1,3 +1,4 @@
+import { reportError } from "@/lib/monitoring";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { queuePatientWhatsAppMessage } from "@/lib/patient-whatsapp";
@@ -42,7 +43,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     await prisma.appointment.updateMany({ where: { id: appointment.id, clinicId: user.clinicId }, data: { reminderSentAt: new Date() } });
     return NextResponse.json({ success: true, sent: true, outboxId: queued.message.id });
   } catch (error) {
-    console.error(error);
+    await reportError(error, { where: "api/appointments/[id]/reminder" });
     return NextResponse.json({ error: "Could not send the WhatsApp reminder. Check your WhatsApp configuration and phone number." }, { status: 500 });
   }
 }

@@ -12,11 +12,11 @@ export async function POST(request: Request) {
     const { user, response } = await requireApiClinicalSigner("issuePrescription");
     if (!user) return response;
     const data = prescriptionSchema.parse(await request.json());
-    const patient = await prisma.patient.findFirst({ where: { id: data.patientId, clinicId: user.clinicId, archivedAt: null }, select: { id: true, dateOfBirth: true, gender: true, medicalNotes: true, clinicalRecords: { where: { enteredInErrorAt: null, status: "FINAL" }, select: { drugAllergies: true }, orderBy: [{ visitDate: "desc" }, { updatedAt: "desc" }, { id: "desc" }], take: 20 } } });
+    const patient = await prisma.patient.findFirst({ where: { id: data.patientId, clinicId: user.clinicId, archivedAt: null }, select: { id: true, dateOfBirth: true, gender: true, medicalNotes: true, intakeRequests: { where: { drugAllergies: { not: null } }, select: { drugAllergies: true, status: true }, orderBy: [{ completedAt: "desc" }, { id: "desc" }], take: 20 } } });
     if (!patient) return NextResponse.json({ error: "Patient not found." }, { status: 404 });
     // Prescribing never waits on the visit being marked off.
     const appointment = await findVisitForDate(user.clinicId, patient.id, data.prescribedOn);
-    const allergies = allergySummaryFrom(patient.clinicalRecords, patient.medicalNotes);
+    const allergies = allergySummaryFrom(patient.intakeRequests, patient.medicalNotes);
     const age = patientAge(patient.dateOfBirth, localDate(data.prescribedOn));
     const warnings = prescriptionWarnings({ items: data.medicationItems, allergies, age });
     if (warnings.length && !data.allergyAcknowledged) return NextResponse.json({ error: "Review and acknowledge the prescription safety warnings before issuing.", warnings }, { status: 409 });

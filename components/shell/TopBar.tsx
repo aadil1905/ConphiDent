@@ -13,7 +13,6 @@ export type ShellAlert = {
 };
 
 type TopBarProps = {
-  greeting: string;
   freshness: string;
   paletteHint: string;
   alerts: ShellAlert[];
@@ -43,7 +42,6 @@ function useDismissOnOutside(onDismiss: () => void) {
 }
 
 export default function TopBar({
-  greeting,
   freshness,
   paletteHint,
   alerts,
@@ -79,7 +77,7 @@ export default function TopBar({
       .toUpperCase() || "?";
 
   return (
-    <header className="sticky top-0 z-40 flex min-h-16 flex-wrap items-center gap-3 border-b border-border bg-[rgba(247,251,252,0.9)] px-[clamp(1rem,1.5vw,2rem)] py-2.5 backdrop-blur-xl print:hidden">
+    <header className="sticky top-0 z-40 flex min-h-16 flex-wrap items-center gap-3 border-b border-border bg-[var(--topbar-bg)] px-[clamp(1rem,1.5vw,2rem)] py-2.5 backdrop-blur-xl print:hidden">
       {/* The one way into navigation, at every width, always in the same place. */}
       <button
         type="button"
@@ -91,11 +89,14 @@ export default function TopBar({
         <Menu className="h-5 w-5" aria-hidden />
       </button>
 
+      {/* Which clinic, which branch. The greeting and the "updated 3 minutes
+          ago" clock used to share this line: three unrelated facts in one
+          muted string, and the only one you can act on mid-shift is the
+          branch — it is what tells you whose day you are looking at. The
+          freshness still has a home, on the notification panel it describes. */}
       <div className="min-w-0 flex-[1_1_200px]">
         <p className="truncate text-[15px] font-semibold text-heading">{clinicName}</p>
-        <p className="truncate text-xs text-text-muted">
-          {branch} · {greeting.toLowerCase()} · {freshness.toLowerCase()}
-        </p>
+        <p className="truncate text-xs text-text-muted">{branch}</p>
       </div>
 
       <button
@@ -144,7 +145,7 @@ export default function TopBar({
                 <span className="text-[11px] text-text-muted">{freshness}</span>
               </div>
               {alerts.length === 0 ? (
-                <p className="px-3.5 py-5 text-center text-[13px] text-text-muted">
+                <p className="px-3.5 py-5 text-center text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                   Nothing needs you right now. Nice.
                 </p>
               ) : (
@@ -190,7 +191,7 @@ export default function TopBar({
           {avatarOpen && (
             <div className="absolute right-0 top-[calc(100%+8px)] w-[250px] overflow-hidden rounded-card border border-border bg-card shadow-[var(--shadow-overlay)] motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-150">
               <div className="border-b border-border px-3.5 py-3">
-                <p className="text-[13px] font-semibold text-heading">{user.fullName}</p>
+                <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] font-semibold text-heading">{user.fullName}</p>
                 <p className="text-xs text-text-muted">
                   {user.role.charAt(0) + user.role.slice(1).toLowerCase()} · {user.clinicName}
                 </p>

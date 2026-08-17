@@ -24,7 +24,7 @@ export default function WorkPage({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader title={title} sub={sub} actions={actions} />
       {context}
       {children}
@@ -45,9 +45,11 @@ export function RailCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
-      <h2 className="text-[13px] font-semibold text-heading">{title}</h2>
-      <div className="mt-2 grid gap-x-8 gap-y-2 [grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))]">
+    <section className="rounded-card border border-border bg-card px-5.5 py-5 shadow-[var(--shadow)]">
+      <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">
+        {title}
+      </h2>
+      <div className="mt-3 grid gap-x-8 gap-y-2.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] [grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))]">
         {children}
       </div>
     </section>

@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import MedicineCombobox from "@/components/clinical/MedicineCombobox";
 import { patientAge, prescriptionWarnings, type StructuredMedication } from "@/lib/prescription-core";
 import { useConfirmSubmit } from "@/components/ui/confirm-submit";
+import Pending from "@/components/ui/pending";
+import { useUnsavedGuard } from "@/components/ui/unsaved-guard";
 
 type AppointmentVisit = { id: number; appointmentDate: string | Date; appointmentTime: string; treatment: string; status: string };
 type Patient = { id: number; fullName: string; phone: string; dateOfBirth?: string | Date | null; gender?: string | null; allergySummary?: string | null; appointments?: AppointmentVisit[] };
@@ -45,13 +47,14 @@ function sentenceFor(item: StructuredMedication) {
 }
 
 function chipClass(on: boolean) {
-  return `min-h-10 cursor-pointer rounded-control border px-3 text-[13px] font-semibold whitespace-nowrap ${
+  return `min-h-11 cursor-pointer rounded-control border px-3 text-[13px] font-semibold whitespace-nowrap ${
     on ? "border-primary bg-secondary text-heading" : "border-border-strong bg-card text-heading hover:bg-muted"
   }`;
 }
 
 export default function PrescriptionForm({ patients, templates = [], initialPatientId, initialVisit, editingPrescription, prescriberReady = true }: { patients: Patient[]; templates?: Template[]; initialPatientId?: number; initialVisit?: string; editingPrescription?: EditingPrescription; prescriberReady?: boolean }) {
   const router = useRouter();
+  const { formRef: unsavedFormRef, release: releaseUnsaved, dialog: unsavedDialog } = useUnsavedGuard();
   const [saving, setSaving] = useState(false);
   const [patientId, setPatientId] = useState(editingPrescription ? String(editingPrescription.patientId) : initialPatientId ? String(initialPatientId) : "");
   const [items, setItems] = useState<StructuredMedication[]>(editingPrescription?.medicationItems.length ? editingPrescription.medicationItems : [blankMedicine()]);
@@ -111,6 +114,7 @@ export default function PrescriptionForm({ patients, templates = [], initialPati
       const response = await fetch(editingPrescription ? `/api/prescriptions/${editingPrescription.id}` : "/api/prescriptions", { method: editingPrescription ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, medicationItems: items, allergyAcknowledged: acknowledged, confirmed: true }) });
       const body = await response.json();
       if (!response.ok) { if (Array.isArray(body.warnings)) setServerWarnings(body.warnings); throw new Error(body.error || "That didn't issue — nothing was sent."); }
+      releaseUnsaved();
       toast.success(editingPrescription ? "Corrected script issued. The original stays on file." : "Script issued and signed.");
       router.push(`/dashboard/prescriptions/${body.id}/print`);
     } catch (error) { toast.error(error instanceof Error ? error.message : "That didn't save — try again."); }
@@ -118,29 +122,30 @@ export default function PrescriptionForm({ patients, templates = [], initialPati
   }
 
   return (
-    <form onSubmit={submit} className="grid items-start gap-5">
+    <form ref={unsavedFormRef} onSubmit={submit} className="grid items-start gap-5">
+      {unsavedDialog}
       {dialog}
       <div className="flex min-w-0 flex-col gap-5">
         {!prescriberReady ? (
-          <div className="flex flex-col justify-between gap-3 rounded-card border border-warning-border bg-warning-bg px-4.5 py-4 text-sm sm:flex-row sm:items-center">
+          <div className="flex flex-col justify-between gap-3 rounded-card border border-warning-border bg-warning-bg px-5.5 py-4 text-sm sm:flex-row sm:items-center">
             <div>
               <p className="font-semibold text-heading">Finish your prescriber identity first</p>
-              <p className="mt-0.5 text-[13px] text-foreground">Add your registration number before issuing. What you type here stays until you leave the page.</p>
+              <p className="mt-0.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-foreground">Add your registration number before issuing. What you type here stays until you leave the page.</p>
             </div>
             <Link href="/dashboard/prescriptions/profile" className="inline-flex min-h-11 shrink-0 items-center rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover">Add it now</Link>
           </div>
         ) : null}
 
-        <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
-          <h2 className="text-base font-semibold text-heading">Who this is for</h2>
+        <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
+          <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Who this is for</h2>
           <div className="mt-3.5 grid gap-3.5 sm:grid-cols-2">
-            <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">Patient
+            <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">Patient<span aria-hidden className="font-normal text-danger-mark"> *</span>
               <select required name="patientId" value={patientId} disabled={Boolean(editingPrescription)} onChange={(event) => { setPatientId(event.target.value); setAcknowledged(false); }} className={field}>
                 <option value="">Pick the patient</option>
                 {patients.map((entry) => <option key={entry.id} value={entry.id}>{entry.fullName} · {entry.phone}</option>)}
               </select>
             </label>
-            <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">Which visit
+            <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">Which visit<span aria-hidden className="font-normal text-danger-mark"> *</span>
               <select required name="prescribedOn" defaultValue={editingPrescription ? dateKey(editingPrescription.prescribedOn) : initialVisit || todayKey()} className={field}>
                 <option value={todayKey()}>Today</option>
                 {completedAppointments.map((appointment) => <option key={appointment.id} value={dateKey(appointment.appointmentDate)}>{formatVisit(appointment)}</option>)}
@@ -154,15 +159,15 @@ export default function PrescriptionForm({ patients, templates = [], initialPati
             </label>
           </div>
           {patientId && completedAppointments.length === 0 ? (
-            <p className="mt-3 rounded-chip bg-muted px-3 py-2 text-[13px] text-text-muted">Anything you record now attaches to today&rsquo;s visit when you save.</p>
+            <p className="mt-3 rounded-chip bg-muted px-3 py-2 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">Anything you record now attaches to today&rsquo;s visit when you save.</p>
           ) : null}
         </section>
 
-        <section className="rounded-card border border-primary/25 bg-card px-4.5 py-4 shadow-[var(--shadow)]">
+        <section className="rounded-card border border-primary/25 bg-card px-5.5 py-4 shadow-[var(--shadow)]">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-semibold text-heading">The medicines</h2>
-              <p className="mt-0.5 text-[13px] text-text-muted">Type three letters — strength, form and route come with the medicine. You only choose how often and how long.</p>
+              <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">The medicines</h2>
+              <p className="mt-0.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">Type three letters — strength, form and route come with the medicine. You only choose how often and how long.</p>
             </div>
             <button type="button" onClick={() => setItems((current) => [...current, blankMedicine()])} className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted">
               <Plus className="size-4" aria-hidden />Another medicine
@@ -218,13 +223,13 @@ export default function PrescriptionForm({ patients, templates = [], initialPati
                       {option}
                     </button>
                   ))}
-                  <label className="ml-1 flex min-h-10 items-center gap-2 text-[13px] font-semibold text-heading">
+                  <label className="ml-1 flex min-h-11 items-center gap-2 text-[13px] font-semibold text-heading">
                     <input type="checkbox" checked={Boolean(item.asNeeded)} onChange={(event) => update(index, "asNeeded", event.target.checked)} className="size-4 accent-[var(--primary)]" />
                     Only when needed
                   </label>
                 </div>
 
-                <p className="mt-3 rounded-chip bg-muted px-3 py-2 text-[13px] text-foreground">{sentenceFor(item)}</p>
+                <p className="mt-3 rounded-chip bg-muted px-3 py-2 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-foreground">{sentenceFor(item)}</p>
 
                 <details className="mt-3 rounded-control border border-border px-3 py-2.5">
                   <summary className="cursor-pointer text-[13px] font-semibold text-primary">More options — brand, quantity, exact dose, reason</summary>
@@ -256,7 +261,7 @@ export default function PrescriptionForm({ patients, templates = [], initialPati
         </section>
 
         {visibleWarnings.length ? (
-          <section role="alert" className="rounded-card border border-danger-border bg-danger-bg px-4.5 py-4">
+          <section role="alert" className="rounded-card border border-danger-border bg-danger-bg px-5.5 py-4">
             <div className="flex gap-3">
               <AlertTriangle className="mt-0.5 size-5 shrink-0 text-danger" aria-hidden />
               <div className="min-w-0">
@@ -272,10 +277,10 @@ export default function PrescriptionForm({ patients, templates = [], initialPati
             </div>
           </section>
         ) : (
-          <p className="text-[13px] text-text-muted">No allergy, duplicate or age warnings on this script. Your judgment still applies.</p>
+          <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">No allergy, duplicate or age warnings on this script. Your judgment still applies.</p>
         )}
 
-        <section className="rounded-card border border-border bg-card px-4.5 py-4 shadow-[var(--shadow)]">
+        <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
           <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">Advice printed under the medicines
             <textarea name="instructions" defaultValue={editingPrescription?.instructions ?? ""} rows={3} placeholder="Rinse with warm saline from tomorrow. Call us if the swelling gets worse." className="rounded-control border border-border bg-card p-3 text-sm font-normal text-foreground outline-none" />
           </label>
@@ -283,17 +288,17 @@ export default function PrescriptionForm({ patients, templates = [], initialPati
 
         <footer className="flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end">
           <button type="button" onClick={() => router.back()} className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted">Go back</button>
-          <button type="submit" disabled={!canSave} className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-control border border-primary bg-primary px-5 text-sm font-semibold text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60">
-            {saving ? "Issuing…" : editingPrescription ? "Issue the corrected version" : "Issue the script"}
+          <button type="submit" disabled={!canSave} aria-busy={saving} className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-control border border-primary bg-primary px-5 text-sm font-semibold text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60">
+            {saving ? <Pending label="Issuing…" /> : editingPrescription ? "Issue the corrected version" : "Issue the script"}
           </button>
         </footer>
       </div>
 
-      <aside className="flex flex-col gap-5">
+      <aside className="flex flex-col gap-6">
         {patient ? (
           <div className="rounded-card border border-danger-border bg-danger-bg px-4 py-3.5">
-            <p className="mb-1 text-[13px] font-bold text-danger">Careful with</p>
-            <p className="text-[13px] text-danger">
+            <p className="mb-1 text-[length:var(--text-body)] leading-[var(--text-body-lh)] font-bold text-danger">Careful with</p>
+            <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-danger">
               {patient.allergySummary || "No allergies on file — still ask before you issue."}
               {age !== null ? ` · ${age} years` : " · age not recorded"}
               {patient.gender ? ` · ${patient.gender}` : ""}
@@ -305,7 +310,7 @@ export default function PrescriptionForm({ patients, templates = [], initialPati
           <p className="text-[15px] font-semibold text-heading">Start from a set</p>
           <p className="text-xs text-text-muted">Your clinic&rsquo;s usual combinations. You can edit anything after.</p>
           {templates.length === 0 ? (
-            <p className="text-[13px] text-text-muted">No sets yet — save the script below and it appears here.</p>
+            <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">No sets yet — save the script below and it appears here.</p>
           ) : (
             templates.map((template) => (
               <button key={template.id} type="button" onClick={() => applyTemplate(template)} className="cursor-pointer rounded-control border border-border-strong bg-card px-3 py-2.5 text-left hover:bg-muted">
@@ -353,7 +358,7 @@ export default function PrescriptionForm({ patients, templates = [], initialPati
 
 function MedicineField({ label, value, placeholder, onChange }: { label: string; value: string; placeholder?: string; onChange: (value: string) => void }) {
   return (
-    <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">{label.replace(" *", "")}
+    <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">{label.replace(" *", "")}{label.endsWith("*") ? <span aria-hidden className="font-normal text-danger-mark"> *</span> : null}
       <input required={label.endsWith("*")} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} className={field} />
     </label>
   );

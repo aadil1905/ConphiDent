@@ -70,7 +70,6 @@ const features = [
   "inventory",
   "reports",
   "analytics",
-  "ai_coach",
 ];
 type DraftValues = Record<string, string | string[]>;
 type DraftAction = (formData: FormData) => Promise<{ draftId: string }>;
@@ -426,7 +425,10 @@ export function ClinicOnboardingWizard({
                       }
                       disabled={index > step && !completed[index]}
                       aria-current={index === step ? "step" : undefined}
-                      className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs font-semibold ${index === step ? "bg-primary text-white" : completed[index] ? "text-emerald-700 hover:bg-emerald-50" : "text-muted-foreground disabled:opacity-55"}`}
+                      // The current step is marked the way the sidebar marks its
+                      // active row — a gold rule against a muted ground. A solid
+                      // filled bar reads as a slab across the whole column.
+                      className={`relative flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold ${index === step ? "bg-muted text-heading before:absolute before:top-[20%] before:bottom-[20%] before:left-0 before:w-[2px] before:rounded-sm before:bg-[var(--gold)] before:content-['']" : completed[index] ? "text-[var(--success)] hover:bg-muted" : "text-muted-foreground disabled:opacity-55"}`}
                     >
                       {completed[index] ? (
                         <CheckCircle2 className="size-4 shrink-0" />

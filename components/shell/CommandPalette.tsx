@@ -141,7 +141,7 @@ export default function CommandPalette({ onClose }: { onClose: () => void }) {
     <div
       role="presentation"
       onClick={onClose}
-      className="fixed inset-0 z-[95] flex items-start justify-center bg-[rgba(18,59,93,0.35)] px-4 pt-[clamp(1rem,6vh,6rem)] pb-4 backdrop-blur-[4px] motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150"
+      className="fixed inset-0 z-[95] flex items-start justify-center bg-[var(--overlay)] px-4 pt-[clamp(1rem,6vh,6rem)] pb-4 backdrop-blur-[4px] motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150"
     >
       <div
         role="dialog"
@@ -173,7 +173,7 @@ export default function CommandPalette({ onClose }: { onClose: () => void }) {
 
         <div ref={listRef} id={listId} role="listbox" className="max-h-[52vh] overflow-y-auto">
           {!query.trim() && recent.length > 0 && (
-            <p className="px-4 pt-3 pb-1 text-[11px] font-semibold tracking-[0.06em] text-text-muted uppercase">
+            <p className="px-4 pt-3 pb-1 text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
               Where you were
             </p>
           )}
@@ -192,7 +192,7 @@ export default function CommandPalette({ onClose }: { onClose: () => void }) {
                 index === activeIndex ? "bg-muted" : "bg-card"
               }`}
             >
-              <span className="flex-none rounded-[0.35rem] bg-muted px-1.5 py-0.5 text-[10px] font-bold tracking-[0.08em] text-primary uppercase">
+              <span className="flex-none rounded-[0.35rem] bg-muted px-1.5 py-0.5 text-[10px] font-bold tracking-[0.14em] text-primary uppercase">
                 {row.kind}
               </span>
               <span className="min-w-0 flex-1">
@@ -211,7 +211,7 @@ export default function CommandPalette({ onClose }: { onClose: () => void }) {
               ) : failed ? (
                 <>
                   <p className="text-sm font-semibold text-heading">That search didn&rsquo;t come back</p>
-                  <p className="text-[13px] text-text-muted">
+                  <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                     Your connection dropped. Type another letter to try again.
                   </p>
                 </>
@@ -220,7 +220,7 @@ export default function CommandPalette({ onClose }: { onClose: () => void }) {
                   <p className="text-sm font-semibold text-heading">
                     Nothing matches &ldquo;{query.trim()}&rdquo;
                   </p>
-                  <p className="text-[13px] text-text-muted">
+                  <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                     Try a phone number, an invoice number, or type &ldquo;book&rdquo;.
                   </p>
                 </>

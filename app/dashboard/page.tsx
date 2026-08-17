@@ -225,11 +225,11 @@ export default async function TodayPage() {
   ].slice(0, 6);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-[22px] leading-tight font-bold text-heading">Today</h1>
-          <p className="mt-1 text-[13px] text-text-muted">
+          <h1 className="text-[length:var(--text-page)] leading-[var(--text-page-lh)] font-semibold tracking-[-0.01em] text-heading">Today</h1>
+          <p className="mt-1 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
             {now.toLocaleDateString("en-IN", {
               weekday: "long",
               day: "numeric",
@@ -265,7 +265,7 @@ export default async function TodayPage() {
       {canSeeMoney && (
         <section
           aria-labelledby="collected"
-          className="rounded-card border border-border bg-card px-4.5 pt-4 pb-4.5 shadow-[var(--shadow)]"
+          className="rounded-card border border-border bg-card px-5.5 pt-4 pb-4.5 shadow-[var(--shadow)]"
         >
           <div className="flex flex-wrap items-baseline justify-between gap-3">
             <h2 id="collected" className="text-base font-semibold text-heading">
@@ -274,7 +274,7 @@ export default async function TodayPage() {
             <span className="text-xs text-text-muted">vs last week</span>
           </div>
           <div className="mt-1.5 mb-3.5 flex flex-wrap items-baseline gap-3">
-            <span className="text-[26px] leading-none font-bold tabular-nums text-heading">
+            <span className="text-[length:var(--text-metric)] leading-[var(--text-metric-lh)] font-bold tabular-nums text-heading">
               {rupees(collectedThisWeek)}
             </span>
             {weekChange !== null && (
@@ -331,24 +331,24 @@ export default async function TodayPage() {
           aria-labelledby="risks"
           className="rounded-card border border-border bg-card shadow-[var(--shadow)]"
         >
-          <div className="px-4.5 pt-4 pb-3">
+          <div className="px-5.5 pt-4 pb-3">
             <h2 id="risks" className="text-base font-semibold text-heading">
               Could break today
             </h2>
-            <p className="mt-1 text-[13px] text-text-muted">
+            <p className="mt-1 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
               Lab work and stock that a patient in the chair depends on.
             </p>
           </div>
           {risks.map((risk) => (
             <div
               key={risk.key}
-              className={`grid grid-cols-1 items-center gap-3 border-t border-border px-4.5 py-2.5 sm:grid-cols-[minmax(0,1fr)_156px] ${
+              className={`grid grid-cols-1 items-center gap-3 border-t border-border px-5.5 py-2.5 sm:grid-cols-[minmax(0,1fr)_156px] ${
                 risk.urgent ? "border-l-[3px] border-l-danger-mark" : "border-l-[3px] border-l-warning"
               }`}
             >
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-heading">{risk.title}</p>
-                <p className="text-[13px] text-text-muted">{risk.detail}</p>
+                <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">{risk.detail}</p>
               </div>
               <Link
                 href={risk.href}

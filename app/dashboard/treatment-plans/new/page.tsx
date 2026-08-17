@@ -6,6 +6,8 @@ import { requirePermission } from "@/lib/permissions";
 import { humanTime, rupees } from "@/lib/format";
 import TreatmentPlanForm from "@/components/clinical/TreatmentPlanForm";
 import WorkPage, { RailCard } from "@/components/lists/WorkPage";
+import SafetyBanner from "@/components/clinical/SafetyBanner";
+import { patientSafety } from "@/lib/patient-safety";
 
 const appointmentSelect = {
   id: true,
@@ -32,6 +34,13 @@ export default async function NewTreatmentPlanPage({
         fullName: true,
         phone: true,
         dateOfBirth: true,
+        medicalNotes: true,
+        intakeRequests: {
+          where: { drugAllergies: { not: null } },
+          select: { drugAllergies: true, status: true },
+          orderBy: [{ completedAt: "desc" }, { id: "desc" }],
+          take: 20,
+        },
         appointments: {
           where: { status: { not: "Cancelled" }, archivedAt: null },
           select: appointmentSelect,
@@ -72,10 +81,11 @@ export default async function NewTreatmentPlanPage({
       sub="Agree the work and what it costs. It attaches to the visit you pick when you save."
       context={
         <>
+          {selectedPatient && <SafetyBanner safety={patientSafety(selectedPatient)} recordHref={`/dashboard/patients/${selectedPatient.id}/edit`} />}
           {selectedPatient && (
             <RailCard title="Who this is for">
               <p className="text-sm font-semibold text-heading">{selectedPatient.fullName}</p>
-              <p className="text-[13px] text-text-muted">{selectedPatient.phone}</p>
+              <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">{selectedPatient.phone}</p>
               <Link
                 href={`/dashboard/patients/${selectedPatient.id}?tab=Plans`}
                 className="text-xs font-semibold text-primary hover:underline"
@@ -127,7 +137,7 @@ export default async function NewTreatmentPlanPage({
           )}
 
           <RailCard title="When you save">
-            <p className="text-[13px] text-text-muted">
+            <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
               The plan attaches to the visit you picked. The rows and prices you enter here are the
               same ones that go onto the invoice.
             </p>

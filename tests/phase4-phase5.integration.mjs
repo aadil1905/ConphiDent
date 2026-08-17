@@ -100,7 +100,12 @@ test("an unrelated medicine does not warn, so the acknowledgement still means so
 test("paediatric age produces dose review caution", () => assert.ok(prescriptionWarnings({ items: [medicine()], age: 7 }).some((warning) => warning.includes("Paediatric"))));
 test("older adult age produces medication review caution", () => assert.ok(prescriptionWarnings({ items: [medicine()], age: 70 }).some((warning) => warning.includes("Older adult"))));
 test("PRN medicine without maximum is warned", () => assert.ok(prescriptionWarnings({ items: [medicine({ asNeeded: true })] }).some((warning) => warning.includes("maximum"))));
-test("prescription allergy lookups only use current FINAL clinical records deterministically", () => {
+test("prescription allergy lookups read the patient's intake answers deterministically", () => {
+  // This asserted "current FINAL clinical records" until the notes feature was
+  // removed. The requirement it encoded outlived the source it named: the
+  // allergy that goes onto a prescription must come from one place, in one
+  // fixed order, so two prescriptions written a second apart cannot disagree.
+  // That place is now the patient's own intake answers.
   const prescriptionSurfaces = [
     "app/api/prescriptions/route.ts",
     "app/api/prescriptions/[id]/route.ts",
@@ -109,8 +114,9 @@ test("prescription allergy lookups only use current FINAL clinical records deter
   ];
   for (const path of prescriptionSurfaces) {
     const contents = source(path);
-    assert.match(contents, /clinicalRecords:\s*\{\s*where:\s*\{\s*enteredInErrorAt:\s*null,\s*status:\s*"FINAL"\s*\}/);
-    assert.match(contents, /orderBy:\s*\[\s*\{\s*visitDate:\s*"desc"\s*\},\s*\{\s*updatedAt:\s*"desc"\s*\},\s*\{\s*id:\s*"desc"\s*\}\s*\]/);
+    assert.match(contents, /intakeRequests:\s*\{\s*where:\s*\{\s*drugAllergies:\s*\{\s*not:\s*null\s*\}\s*\}/);
+    assert.match(contents, /orderBy:\s*\[\s*\{\s*completedAt:\s*"desc"\s*\},\s*\{\s*id:\s*"desc"\s*\}\s*\]/);
+    assert.doesNotMatch(contents, /clinicalRecord/i);
   }
 });
 test("Indian mobile numbers normalize to WhatsApp E.164 digits", () => assert.equal(canonicalWhatsAppPhone("98765 43210"), "919876543210"));
@@ -118,11 +124,15 @@ test("invalid WhatsApp numbers are rejected", () => assert.equal(canonicalWhatsA
 test("rate limiter permits the bounded window and then rejects", () => { const key = `test-${Date.now()}`; assert.equal(consumeRateLimit(key, 2, 60_000, 1).allowed, true); assert.equal(consumeRateLimit(key, 2, 60_000, 2).allowed, true); assert.equal(consumeRateLimit(key, 2, 60_000, 3).allowed, false); });
 test("webhook normalizer retains every entry, message, and status", () => { const events = normalizeWhatsAppWebhook({ entry: [{ changes: [{ value: { metadata: { phone_number_id: "one" }, messages: [{ id: "m1" }, { id: "m2" }] } }] }, { changes: [{ value: { metadata: { phone_number_id: "two" }, statuses: [{ id: "m3", status: "delivered" }] } }] }] }); assert.equal(events.length, 2); assert.equal(events.flatMap((event) => event.messages).length, 2); assert.equal(events.flatMap((event) => event.statuses).length, 1); });
 test("imaging picker does not expose a browse list before search", () => { const picker = source("components/imaging/PatientSearchSelect.tsx"); assert.match(picker, /query\.trim\(\)\.length >= 2/); assert.doesNotMatch(picker, /initialOptions/); });
-// Phase B folded /xrays into the Files tab of Patient 360; the old route redirects there.
-test("Patient 360 carries the patient's X-rays on its Files tab", () => {
+// Phase B folded /xrays into Patient 360, and the profile later became one
+// vertical page: every former tab renders as an anchored section, so the
+// X-rays live in the always-present Files section and the old route's
+// ?tab=Files link scrolls to it.
+test("Patient 360 carries the patient's X-rays in its Files section", () => {
   const page = source("app/dashboard/patients/[id]/page.tsx");
   assert.match(page, /imagingStudy\.findMany/);
-  assert.match(page, /tab === "Files"/);
+  assert.match(page, /id="Files"/);
+  assert.match(page, /ScrollToSection/);
   assert.match(source("app/dashboard/patients/[id]/xrays/page.tsx"), /tab=Files/);
 });
 test("production schedules durable WhatsApp workers", () => { const vercel = JSON.parse(source("vercel.json")); assert.deepEqual(vercel.crons.map((cron) => cron.path).sort(), ["/api/cron/booking-reminders", "/api/cron/follow-ups", "/api/cron/whatsapp-outbox", "/api/cron/whatsapp-outbox/inbox"]); });
