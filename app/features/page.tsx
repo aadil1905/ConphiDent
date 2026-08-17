@@ -195,6 +195,14 @@ export default function Features() {
 
       <section className="mk-section">
         <div className="cf-wrap">
+          {/* The tiles below are h3. Without this the page jumped straight from
+              the h1 to an h3, which leaves a screen reader announcing a level
+              that never opened — and left the longest section on the page with
+              nothing naming it. */}
+          <Reveal>
+            <p className="mk-kicker">Every capability</p>
+            <h2 className="t-h2">Grouped the way the product groups them.</h2>
+          </Reveal>
           <Stagger className="mk-bento">
             {groups.map((group) => (
               <Lift key={group.title} className="span-3">

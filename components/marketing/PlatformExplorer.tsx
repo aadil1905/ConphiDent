@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion, EASE } from "./Motion";
+import { AnimatePresence, motion, useReducedMotion, Tilt, EASE } from "./Motion";
 import { ProductVisual, type VisualKind } from "./ProductVisuals";
 import WhatsAppThread from "./WhatsAppThread";
 
@@ -95,9 +95,17 @@ export default function PlatformExplorer() {
               exit={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.99 }}
               transition={{ duration: 0.32, ease: EASE }}
             >
+              {/* The same camera as the hero, so depth reads as a property of
+                  the product frames rather than a trick used once. The WhatsApp
+                  thread is left flat: it is a conversation being read, and
+                  rotating running text is the one thing depth must not do. */}
               {panel.visual === "whatsapp-thread"
                 ? <WhatsAppThread />
-                : <ProductVisual kind={panel.visual} caption={`Interface illustration · ${panel.label}`} />}
+                : (
+                  <Tilt className="mk-explorer-stage" max={5}>
+                    <ProductVisual kind={panel.visual} caption={`Interface illustration · ${panel.label}`} />
+                  </Tilt>
+                )}
             </motion.div>
           </AnimatePresence>
         </div>

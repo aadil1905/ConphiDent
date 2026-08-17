@@ -332,6 +332,9 @@
 
 /* --- Bento grid ---------------------------------------------------------- */
 .cf-public .mk-bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; }
+/* A bento that follows a section heading needs air between the two. */
+.cf-public .t-h2 + .mk-bento, .cf-public .mk-kicker + .mk-bento { margin-top: var(--space-4, 48px); }
+.cf-public .mk-section > .cf-wrap > .mk-bento:not(:first-child) { margin-top: var(--space-4, 48px); }
 .cf-public .mk-bento > article {
   display: flex;
   flex-direction: column;
@@ -599,7 +602,18 @@
 .cf-public .cf-footer .mk-footer-brand p { max-width: 300px; margin: 0; font-size: 14.5px; }
 .cf-public .cf-footer .mk-footer-brand span { display: block; margin-top: 14px; color: #7d939b; font-size: 12px; }
 .cf-public .cf-footer b { color: var(--c-ink); font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
-.cf-public .cf-footer a { color: #5c757e; font-size: 14px; text-decoration: none; }
+/* A footer link was a 22px-tall strip with 11px of grid gap either side, which
+   is under the 24px WCAG target minimum and far under the 44px a thumb wants.
+   The padding rather than a min-height keeps the link box and its hit area the
+   same shape, so the hover and focus ring still match what is being pressed. */
+.cf-public .cf-footer a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  color: #5c757e;
+  font-size: 14px;
+  text-decoration: none;
+}
 .cf-public .cf-footer a:hover { color: var(--c-primary); }
 .cf-public .cf-footer small { grid-column: 1 / -1; border-top: 1px solid var(--c-border); padding: 22px 0; color: #7d939b; font-size: 12.5px; }
 
@@ -826,6 +840,13 @@
   .cf-public .cf-form > * { grid-column: 1 !important; }
   .cf-public .cf-footer .mk-footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
   .cf-public .cf-footer .mk-footer-brand { grid-column: 1 / -1; }
+  /* Touch: the full 44px, and the column gap drops because the padding now
+     supplies the separation. */
+  .cf-public .cf-footer .mk-footer-grid > div { gap: 2px; }
+  .cf-public .cf-footer a { min-height: 44px; }
+  /* An inline "read more" link in running text is a phrase, not a button — it
+     gets vertical padding for the thumb without becoming a block. */
+  .cf-public .mk-text-link { min-height: 44px; }
   .cf-public .mk-thread { min-height: 0; }
   /* Pinning fights the scroll on a phone, so the stacked equivalent takes over. */
   .cf-public .mk-journey { display: none; }
@@ -878,4 +899,17 @@
   .cf-public .mk-hero-frame .mk-visual,
   .cf-public .mk-hero-frame .mk-window-bar,
   .cf-public .mk-hero-frame .mk-visual-body { transform: none; }
+}
+
+/* The explorer panel gets the same two planes as the hero, at a shallower
+   angle — it sits mid-page beside body copy, where a deep tilt would read as
+   the page being crooked rather than the card having depth. */
+.cf-public .mk-explorer-stage .mk-visual { transform-style: preserve-3d; }
+.cf-public .mk-explorer-stage .mk-window-bar { transform: translateZ(8px); }
+.cf-public .mk-explorer-stage .mk-visual-body { transform: translateZ(20px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-public .mk-explorer-stage .mk-visual,
+  .cf-public .mk-explorer-stage .mk-window-bar,
+  .cf-public .mk-explorer-stage .mk-visual-body { transform: none; }
 }
