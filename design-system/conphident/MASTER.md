@@ -21,7 +21,56 @@ on 16 August 2026, then corrected — the deviations are recorded below with rea
 | Background `#ECFEFF` | `#F4FBFC` | The generated tint is too saturated across full-bleed sections. |
 | Border `#A5F3FC` | `#D5E8ED` | Saturated cyan borders vibrate against white cards. |
 
-## Revision — heritage institutional (16 Aug 2026)
+## Revision — modern SaaS (17 Aug 2026) — CURRENT
+
+The heritage direction below was reversed. Aadil was asked twice whether to keep
+it and chose to move to a modern SaaS register. Everything in the heritage
+section that follows is kept for its reasoning and its contrast maths, which
+were the starting point for the palette here — it is history, not the target.
+
+**Switched at the token layer, deliberately.** The site is nine pages driven by
+one variable block in `app/marketing.css`, so the register moved by changing
+values, not pages. No page file was edited. That is also why `--c-gold` still
+exists: it now holds a teal accent. Renaming it would have meant touching every
+section label on the site for no visual gain.
+
+| | Heritage (16 Aug) | Modern SaaS (17 Aug) |
+|---|---|---|
+| Ground | `#FAF9F6` warm paper | `#F7F9FC` cool |
+| Ink | `#10262E` | `#0B1B2B` |
+| Body | `#4A5B61` | `#475A6B` |
+| Primary | `#0E6379` | `#0E7490` |
+| Accent (`--c-gold`) | `#8A6A2F` gold | `#0F766E` teal |
+| Border | `#E4E6E3` | `#DCE5EE` |
+| Headings | Source Serif 4 | Plus Jakarta Sans |
+| Body type | Source Sans 3 | Inter |
+| Display tracking | `-0.018em` | `-0.032em` |
+| Radius (control/card/tile) | 8 / 10 / 14 | 10 / 16 / 20 |
+| Elevation | single soft shadow | two-part, crisp contact edge |
+
+**Contrast, verified again for the new palette.** Lowest measured pair is
+5.08:1. Checked in the browser against computed styles, not just on paper:
+display heading 17.41:1, lead 7.14:1, section label 5.47:1, primary button
+5.36:1, trust line 4.87:1, footer link 4.63:1. **All pass AA.**
+
+**Three mistakes from the first cyan attempt are not repeated** — they are the
+reason this palette is not the generated one: the ground is `#F7F9FC` rather
+than a saturated `#ECFEFF`; borders are cool grey rather than `#A5F3FC`, which
+shimmered against white cards; and text on primary is white on deep teal rather
+than black on cyan.
+
+**Tracking had to move with the family.** A book serif sits near `-0.012em`; a
+grotesque at display size wants roughly `-0.03em`. Leaving the old values would
+have left every heading looking untouched but loose.
+
+**The clinic dashboard's headings followed.** `brandFontVariables` sits on
+`<html>` in `app/layout.tsx` and `globals.css` applies `--font-display` to all
+`h1`–`h4`, which was an intentional link. So the app's headings are now Plus
+Jakarta Sans too. Its palette is untouched — only the typeface moved. To
+decouple, set an explicit `font-family` on the dashboard scope rather than
+reverting `lib/fonts.ts`.
+
+## Superseded — heritage institutional (16 Aug 2026)
 
 The first pass shipped a cyan "modern SaaS" direction. The brief was then
 sharpened to *premium, as if the company had 35+ years behind it*, which is a
