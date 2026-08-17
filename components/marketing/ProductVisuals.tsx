@@ -190,49 +190,103 @@ function PatientsVisual() {
 
 function ClinicalVisual() {
   const reduced = useReducedMotion();
-  // Findings keyed by tooth index so the legend and the chart cannot disagree.
-  const findings: Record<number, string> = { 3: "caries", 6: "restored", 11: "caries", 20: "watch", 26: "restored" };
-  const tone = { caries: "#b3454f", restored: "#0e7490", watch: "#c08a2e" };
 
-  const tooth = (index: number, row: "upper" | "lower") => {
-    const state = findings[index];
-    const x = (index % 16) * 30 + 12;
-    const y = row === "upper" ? 14 : 78;
-    // A gentle arch: teeth at the ends sit slightly lower than the centre.
-    const lift = Math.abs(index % 16 - 7.5) * 1.6;
+  /**
+   * A dental chart, drawn as one.
+   *
+   * The previous version marked findings on rounded rectangles. It read as a
+   * bar chart of a mouth rather than a mouth, which is a poor showing for the
+   * one screen that is unmistakably dental. Teeth now carry a silhouette that
+   * changes with position — molars wide with a marked occlusal table,
+   * premolars narrower, canines pointed, incisors flat — and each is labelled
+   * with its real FDI code.
+   *
+   * FDI numbering runs 18→11 across the upper right, 21→28 upper left, then
+   * 48→41 and 31→38 below, which is why the codes are generated rather than
+   * listed: an index cannot disagree with itself.
+   */
+  const fdi = (index: number) => {
+    // Reading order across the page is quadrant 1, 2 on top and 4, 3 below —
+    // the patient's right appears on the viewer's left.
+    const q = [1, 2, 4, 3][Math.floor(index / 8)];
+    const position = index % 8;
+    // Quadrants 1 and 4 sit left of the midline and count towards it, so their
+    // codes descend across the page: 18..11 and 48..41. Two and three ascend.
+    // Deriving this from `q` rather than a second quadrant variable is the
+    // whole fix — the two disagreed and the lower arch came out mirrored.
+    const n = q === 1 || q === 4 ? 8 - position : position + 1;
+    return q * 10 + n;
+  };
+
+  /** Keyed by FDI code so a finding cannot drift onto the wrong tooth. */
+  const findings: Record<number, "caries" | "restored" | "watch"> = {
+    16: "restored", 26: "caries", 21: "watch", 36: "restored", 47: "caries",
+  };
+  const tone = { caries: "#a04552", restored: "#0e7490", watch: "#b07d22" };
+
+  const tooth = (index: number, upper: boolean) => {
+    const code = fdi(index);
+    const state = findings[code];
+    const col = index % 16;
+    const x = col * 30 + 14;
+    const y = upper ? 26 : 96;
+    // Distance from the midline decides the crown's shape.
+    const fromMidline = Math.abs(col - 7.5);
+    const molar = fromMidline > 4.5;
+    const premolar = fromMidline > 2.5 && !molar;
+    const w = molar ? 21 : premolar ? 17 : fromMidline > 1.5 ? 13 : 15;
+    const h = molar ? 22 : premolar ? 20 : 24;
+    const fill = state ? tone[state] : "#fff";
+    const stroke = state ? tone[state] : "#b9cbd8";
+
     return (
       <motion.g
-        key={`${row}-${index}`}
-        initial={reduced ? false : { opacity: 0, y: row === "upper" ? -6 : 6 }}
+        key={code}
+        initial={reduced ? false : { opacity: 0, y: upper ? -5 : 5 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
-        transition={{ duration: 0.35, delay: (index % 16) * 0.025, ease: EASE }}
+        transition={{ duration: 0.32, delay: col * 0.02, ease: EASE }}
       >
         <rect
-          x={x}
-          y={y + (row === "upper" ? lift : -lift)}
-          width={22}
-          height={26}
-          rx={7}
-          fill={state ? tone[state as keyof typeof tone] : "#eef6f8"}
-          stroke={state ? "none" : "#cfe2e7"}
-          strokeWidth={1}
+          x={x - w / 2} y={upper ? y - h : y}
+          width={w} height={h}
+          rx={molar ? 5 : premolar ? 6 : 3}
+          fill={fill} stroke={stroke} strokeWidth={1.3}
         />
+        {/* The occlusal table: molars and premolars have a chewing surface,
+            incisors have an edge. Restorations are marked on it. */}
+        {(molar || premolar) && (
+          <line
+            x1={x - w / 2 + 4} x2={x + w / 2 - 4}
+            y1={upper ? y - h / 2 : y + h / 2}
+            y2={upper ? y - h / 2 : y + h / 2}
+            stroke={state ? "rgba(255,255,255,.75)" : "#d7e3ec"}
+            strokeWidth={1.3} strokeLinecap="round"
+          />
+        )}
+        <text
+          x={x} y={upper ? y + 12 : y - 5}
+          textAnchor="middle" className="mk-vs-fdi"
+        >
+          {code}
+        </text>
       </motion.g>
     );
   };
 
   return (
     <div className="mk-vs-stack">
-      <svg viewBox="0 0 500 130" className="mk-vs-arch" role="img" aria-label="Dental chart illustration with example findings marked">
-        {Array.from({ length: 16 }, (_, i) => tooth(i, "upper"))}
-        {Array.from({ length: 16 }, (_, i) => tooth(i + 16, "lower"))}
+      <svg viewBox="0 0 500 150" className="mk-vs-arch" role="img" aria-label="Dental chart illustration: teeth numbered in FDI notation with example findings marked on 16, 21, 26, 36 and 47">
+        {/* Midline, so the quadrants read as quadrants. */}
+        <line x1="250" y1="4" x2="250" y2="146" stroke="#e3ebf2" strokeWidth="1" strokeDasharray="3 4" />
+        {Array.from({ length: 16 }, (_, i) => tooth(i, true))}
+        {Array.from({ length: 16 }, (_, i) => tooth(i + 16, false))}
       </svg>
       <div className="mk-vs-legend">
         <span><i style={{ background: tone.caries }} />Caries</span>
         <span><i style={{ background: tone.restored }} />Restored</span>
         <span><i style={{ background: tone.watch }} />Watch</span>
-        <span><i style={{ background: "#eef6f8", border: "1px solid #cfe2e7" }} />Healthy</span>
+        <span><i style={{ background: "#fff", border: "1px solid #b9cbd8" }} />Healthy</span>
       </div>
       <div className="mk-vs-note">
         <b>Clinical note · 12 Aug</b>

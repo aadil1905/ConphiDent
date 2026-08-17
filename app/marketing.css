@@ -1050,3 +1050,13 @@
   .cf-public .mk-gate { grid-template-columns: 34px minmax(0, 1fr); gap: 14px; padding: 18px; }
   .cf-public .mk-gate-code { grid-column: 2; justify-self: start; margin-top: 10px; }
 }
+
+/* FDI codes under each tooth. Small by design — they are labels on a chart,
+   not body copy, and the chart carries an aria-label for anyone not reading it
+   visually. */
+.cf-public .mk-vs-fdi {
+  fill: #6b8199;
+  font-family: var(--font-body), Inter, sans-serif;
+  font-size: 7.5px;
+  font-weight: 600;
+}
