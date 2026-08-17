@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import JourneyStory from "@/components/marketing/JourneyStory";
-import { Aurora, Reveal, WordReveal } from "@/components/marketing/Motion";
+import { Aurora, Parallax, Reveal, Tilt, WordReveal } from "@/components/marketing/Motion";
+import { ProductVisual } from "@/components/marketing/ProductVisuals";
 import PublicShell, { SETUP_URL } from "@/components/marketing/PublicShell";
 
 export const metadata: Metadata = {
@@ -33,6 +34,19 @@ export default function Product() {
               </div>
             </Reveal>
           </div>
+
+          {/* The page named "Platform" had a hero of pure copy — the one screen
+              on the site where a visitor is explicitly asking to see the
+              software. `insights` deliberately: the other seven screens appear
+              in the journey below, and reporting built from connected records
+              is the claim the headline is making. Its presence is also what
+              switches this hero into two columns, since the split layout keys
+              off `:has(> .mk-hero-frame)`. */}
+          <Parallax className="mk-hero-frame" distance={26}>
+            <Tilt max={6}>
+              <ProductVisual kind="insights" caption="Interface illustration · reporting built from connected records" />
+            </Tilt>
+          </Parallax>
         </div>
       </section>
 

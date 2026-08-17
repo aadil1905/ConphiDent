@@ -57,7 +57,13 @@
   --s-6: 96px;
   --s-7: 128px;
 
-  --section: clamp(72px, 9vw, 128px);
+  /* Section padding is applied to both edges, so this figure is HALF the gap a
+     visitor sees between two sections. At the old clamp(72px, 9vw, 128px) that
+     was 256px of empty ground between every pair of sections on a desktop —
+     measured, not estimated, across all seven sections of /whatsapp. Reduced so
+     the site still breathes at ~180px between sections without scrolling past
+     air to reach the next idea. */
+  --section: clamp(56px, 6.2vw, 92px);
   --ease: cubic-bezier(.22, 1, .36, 1);
 
   background: var(--c-surface);
@@ -258,7 +264,7 @@
 /* --- Hero ---------------------------------------------------------------- */
 .cf-public .mk-hero {
   position: relative;
-  padding: clamp(64px, 8vw, 108px) 0 clamp(80px, 9vw, 120px);
+  padding: clamp(48px, 5.6vw, 80px) 0 clamp(56px, 6.6vw, 96px);
   background: linear-gradient(180deg, #fff 0%, var(--c-tint) 100%);
 }
 .cf-public .mk-hero .cf-wrap { position: relative; z-index: 2; }
@@ -280,7 +286,7 @@
   background: #fff;
   box-shadow: var(--e-3);
 }
-.cf-public .mk-hero-frame { width: min(1280px, 100%); margin: clamp(44px, 5vw, 72px) auto 0; }
+.cf-public .mk-hero-frame { width: min(1280px, 100%); margin: clamp(32px, 4vw, 56px) auto 0; }
 
 /* Two columns once there is room for them.
    Stacked, the hero measured 1374px tall on a 1440x900 screen: the copy took
@@ -288,20 +294,30 @@
    right — and the product frame began at y=743, so a visitor saw a screen of
    text and roughly 150px of product. The brief asks the first seconds to say
    "serious software", and the software was below the fold.
-   Side by side, both land above it. */
+   Side by side, both land above it.
+
+   `:has(> .mk-hero-frame)` is not decoration. The homepage is the ONLY hero
+   with two children; every other page's hero wrap holds a single block. A bare
+   `.mk-hero .cf-wrap` selector therefore made those pages a two-column grid
+   with nothing in column two — /whatsapp's hero measured 280px and 275px of
+   columns inside a 1360px container, wrapping a 68px headline over six lines
+   against a completely empty right half. Heroes without a frame stay a normal
+   full-width block, which is what they were before this rule existed. A browser
+   with no `:has()` drops the rule and gets that same stacked hero, so the
+   fallback is the correct layout rather than the broken one. */
 @media (min-width: 1100px) {
-  .cf-public .mk-hero .cf-wrap {
+  .cf-public .mk-hero .cf-wrap:has(> .mk-hero-frame) {
     display: grid;
     grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
     align-items: center;
     gap: clamp(32px, 4vw, 64px);
   }
-  .cf-public .mk-hero-copy { max-width: 620px; }
-  .cf-public .mk-hero-copy .t-lead { max-width: 560px; }
+  .cf-public .cf-wrap:has(> .mk-hero-frame) .mk-hero-copy { max-width: 620px; }
+  .cf-public .cf-wrap:has(> .mk-hero-frame) .mk-hero-copy .t-lead { max-width: 560px; }
   /* The frame stops being a centred full-width block and becomes the right column. */
   .cf-public .mk-hero-frame { width: 100%; margin: 0; }
   /* The trust line sits under the buttons rather than stretching the column. */
-  .cf-public .mk-hero-copy .mk-trust-line { max-width: 560px; }
+  .cf-public .cf-wrap:has(> .mk-hero-frame) .mk-hero-copy .mk-trust-line { max-width: 560px; }
 }
 .cf-public .mk-frame > img { display: block; width: 100%; height: auto; }
 .cf-public .mk-window-bar {
@@ -474,17 +490,44 @@
 .cf-public .is-good > div svg { color: var(--c-success); }
 
 /* --- WhatsApp thread demo ------------------------------------------------ */
+/* The height is FIXED, not a minimum, and that is the whole point.
+   With `min-height` the box grew as each bubble arrived — measured at 420px →
+   1364px over one replay, which pushed the hero 359px taller and opened a gap
+   that visibly widened as you scrolled past it. The inner `overflow-y: auto`
+   could never fire, because a flex column with no resolved height just grows.
+   A real conversation panel is a fixed window you scroll inside; so is this. */
 .cf-public .mk-thread {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  min-height: 420px;
+  height: 480px;
+  /* A conversation is a narrow thing. Filling the 791px column made every
+     bubble a paragraph-width slab and stopped it reading as a chat at all. */
+  width: 100%;
+  max-width: 540px;
+  margin-inline: auto;
   border: 1px solid var(--c-border);
   border-radius: var(--r-tile);
   background: #eef7f5;
   padding: 20px;
   box-shadow: var(--e-2);
 }
+/* `min-height: 0` is load-bearing: without it a flex child refuses to shrink
+   below its content, so the scroller would push the fixed box open again. */
+.cf-public .mk-thread-scroll {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  /* Bubbles scrolling under the header hard-clipped against it. The mask fades
+     the top 28px instead, so the thread reads as continuing above the fold. */
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 28px);
+  mask-image: linear-gradient(180deg, transparent 0, #000 28px);
+}
+.cf-public .mk-thread-scroll::-webkit-scrollbar { width: 0; height: 0; }
 .cf-public .on-ink .mk-thread { border-color: rgba(255, 255, 255, .12); background: rgba(255, 255, 255, .04); }
 .cf-public .mk-thread-head {
   display: flex;
@@ -906,7 +949,7 @@
   /* An inline "read more" link in running text is a phrase, not a button — it
      gets vertical padding for the thumb without becoming a block. */
   .cf-public .mk-text-link { min-height: 44px; }
-  .cf-public .mk-thread { min-height: 0; }
+  .cf-public .mk-thread { height: 420px; }
   /* Pinning fights the scroll on a phone, so the stacked equivalent takes over. */
   .cf-public .mk-journey { display: none; }
   .cf-public .mk-journey-stacked { display: block; }

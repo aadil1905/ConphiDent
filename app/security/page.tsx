@@ -151,7 +151,10 @@ export default function SecurityPage() {
         </div>
       </section>
 
-      <section className="mk-section">
+      {/* Tinted so it does not run into "The details underneath." above it —
+          two plain sections in a row leave 178px of undifferentiated white
+          where a section boundary is supposed to be. */}
+      <section className="mk-section on-tint">
         <div className="cf-wrap cf-wrap-narrow">
           <Reveal>
             <div className="mk-section-heading">

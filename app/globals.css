@@ -9,7 +9,13 @@
   --color-foreground: var(--foreground);
   --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "SFMono-Regular", Consolas, monospace;
-  --font-heading: var(--font-sans);
+  /* The brand display face, not the OS default.
+     This resolved to --font-sans, which is the system stack — so every
+     `font-heading` consumer rendered in Segoe UI on Windows. That is CardTitle,
+     DialogTitle and SheetTitle, i.e. the most repeated heading in the product,
+     and none of them is an h1–h4 so none was caught by the rule that does set
+     the display face. The workspace read as unbranded for exactly this reason. */
+  --font-heading: var(--font-display), "Plus Jakarta Sans", system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -337,19 +343,29 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-synthesis: none;
-    font-family: var(--font-body), "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-body), Inter, ui-sans-serif, system-ui, sans-serif;
     line-height: 1.5;
   }
   html {
     @apply font-sans;
     overflow-x: clip;
   }
-  /* Headings carry the serif everywhere. .cf-public and .cf-portal declare the
-     same pair, so this simply extends it to the clinic workspace. Serifs want
-     far less negative tracking than a grotesque. */
+  /* Headings carry the display face everywhere. .cf-public and .cf-portal
+     declare the same pair, so this extends it to the clinic workspace.
+
+     The fallback used to be "Source Serif 4", Georgia, serif — the heritage
+     pairing retired on 2026-08-17. A failed webfont load therefore dropped the
+     whole workspace back into the old register's serif rather than something
+     close to Plus Jakarta Sans.
+
+     Tracking was -.012em, which lib/fonts.ts records as the *serif* value:
+     "a grotesque at display size wants roughly -0.03em … headings look
+     untouched but loose if the old values are left behind." That is what had
+     happened. Workspace headings run 20–30px rather than the site's 42–68px,
+     so they take a softer -.02em rather than the site's full -.026/-.032em. */
   h1, h2, h3, h4 {
-    font-family: var(--font-display), "Source Serif 4", Georgia, serif;
-    letter-spacing: -.012em;
+    font-family: var(--font-display), "Plus Jakarta Sans", system-ui, sans-serif;
+    letter-spacing: -.02em;
   }
 }
 
@@ -1037,10 +1053,15 @@ main.conphident-marketing { background: #ffffff !important; color: #123b5d; }
   background: #123b5d;
 }
 
-/* Marketing product system — intentionally scoped so the clinical application is untouched. */
-.cf-public{--ink:#123b5d;--blue:#176b87;--aqua:#ddf3f4;--paper:#f7fbfc;--line:#d7e6e8;--muted:#59727e;font-family:Arial,sans-serif;overflow:hidden}.cf-public .cf-wrap{width:min(1180px,calc(100% - 48px))}.cf-public .cf-nav{position:sticky;inset:0 0 auto;background:rgba(255,255,255,.92);border-bottom:1px solid var(--line);backdrop-filter:blur(16px)}.cf-public .cf-nav .cf-wrap{height:76px}.cf-public .cf-button{margin:0;border-radius:10px;min-height:44px;padding:0 17px;background:var(--blue);box-shadow:none;transition:background .2s,transform .2s}.cf-public .cf-button:hover{background:#123b5d;transform:translateY(-1px)}.cf-public .cf-nav a{font-weight:650}.premium-hero{padding:92px 0 80px;background:radial-gradient(circle at 76% 26%,#d5eff0 0,transparent 26%),linear-gradient(180deg,#fff,#f7fbfc)}.premium-hero-grid,.story-grid{display:grid;grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);gap:72px;align-items:center}.premium-hero h1,.product-hero h1{max-width:680px;margin:16px 0 20px;color:var(--ink);font-size:clamp(44px,5.3vw,72px);line-height:1.01;letter-spacing:-.072em}.premium-hero h1 em{font-style:normal;color:var(--blue)}.premium-hero p:not(.cf-eyebrow),.product-hero p{max-width:590px;color:var(--muted);font-size:18px;line-height:1.68}.cf-actions{display:flex;align-items:center;gap:22px;margin-top:30px}.hero-proof{display:flex;flex-wrap:wrap;gap:18px;margin-top:25px;color:var(--muted);font-size:13px}.hero-proof span{display:flex;align-items:center;gap:6px}.hero-proof svg{width:16px;color:#208a77}.product-visual{position:relative;margin:0}.product-window{overflow:hidden;border:1px solid #cfe2e5;border-radius:16px;background:white;box-shadow:0 25px 70px rgba(18,59,93,.16)}.product-window-bar{display:flex;align-items:center;gap:6px;height:32px;padding:0 13px;border-bottom:1px solid #e2edef;color:#728a92;font-size:10px;font-weight:700}.product-window-bar i{width:6px;height:6px;border-radius:50%;background:#c5d8da}.product-window-bar span{margin-left:5px}.product-window img{display:block;width:100%;height:auto}.product-visual figcaption{margin-top:12px;color:#6d8791;font-size:12px;line-height:1.5}.product-focus-list{display:grid;gap:10px;margin-top:15px}.product-focus-list>div{display:flex;align-items:flex-start;gap:9px;color:var(--muted);font-size:12px;line-height:1.45}.product-focus-list b{display:grid;place-items:center;flex:0 0 24px;height:24px;border-radius:50%;background:var(--aqua);color:var(--blue);font-size:10px}.product-focus-list strong{display:block;color:var(--ink);font-size:12px}.hero-product .product-focus-list{position:absolute;left:-32px;bottom:-43px;max-width:230px;padding:14px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.94);box-shadow:0 16px 35px rgba(18,59,93,.11)}.intro-band{padding:100px 0;background:var(--ink);text-align:center}.intro-band .cf-wrap{max-width:780px}.intro-band .cf-eyebrow{color:#a6d8db}.intro-band h2,.section-lead h2,.story-section h2,.whatsapp-section h2{margin:14px 0;color:var(--ink);font-size:clamp(34px,4.2vw,56px);line-height:1.06;letter-spacing:-.06em}.intro-band h2{color:#fff}.intro-band p:last-child,.section-lead>p:last-child,.story-section p:not(.cf-eyebrow),.whatsapp-section p:not(.cf-eyebrow){color:var(--muted);font-size:16px;line-height:1.72}.intro-band p:last-child{color:#cae1e3}.cf-public .cf-tour{padding:110px 0;background:#fff}.cf-public .cf-tour .cf-wrap>h2{font-size:clamp(34px,4.2vw,56px)}.cf-public .cf-tour-preview{border-radius:16px}.cf-public .cf-real-product{border-radius:12px}.journey-section{padding:105px 0;background:var(--paper)}.section-lead{max-width:720px}.journey-flow{display:grid;grid-template-columns:repeat(9,1fr);gap:0;margin-top:42px;overflow:auto}.journey-flow div{position:relative;min-width:106px;padding:14px 10px;border-top:1px solid #bdd8db;color:var(--ink)}.journey-flow div:not(:last-child):after{content:'→';position:absolute;right:-6px;top:-12px;color:var(--blue);font-size:20px}.journey-flow b{display:block;color:#c4a46c;font-size:10px}.journey-flow span{display:block;margin-top:8px;font-size:13px;font-weight:750}.story-section{padding:120px 0}.story-tint{background:var(--paper)}.story-grid.reverse{grid-template-columns:minmax(0,1.18fr) minmax(0,.82fr)}.story-section h2,.whatsapp-section h2{max-width:530px}.cf-public .cf-checks{color:var(--muted)}.product-steps{display:grid;gap:16px;margin:30px 0 0;padding:0;list-style:none}.product-steps li{display:flex;gap:14px}.product-steps b{color:#c4a46c;font-size:12px}.product-steps strong{color:var(--ink);font-size:14px}.product-steps p{margin:4px 0 0!important;font-size:13px!important}.whatsapp-section{padding:120px 0;background:#eaf5f5}.message-flow{display:flex;flex-wrap:wrap;gap:7px;margin:27px 0}.message-flow span{padding:9px 11px;border-radius:999px;background:#fff;color:var(--blue);font-size:12px;font-weight:750}.message-flow span:not(:last-child):after{content:' →';color:#83aab0}.operations-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:45px}.operations-grid .product-window{border-radius:13px}.product-hero{padding:105px 0 86px;background:radial-gradient(circle at 78% 0,#dff3f4,transparent 30%),var(--paper)}.capability-section{padding:95px 0}.capability-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.capability-grid article{padding:28px;border:1px solid var(--line);border-radius:14px;background:#fff}.capability-grid article>span{display:grid;place-items:center;width:41px;height:41px;border-radius:10px;background:var(--aqua);color:var(--blue)}.capability-grid svg{width:20px}.capability-grid .cf-eyebrow{margin:24px 0 6px}.capability-grid h2{margin:0;color:var(--ink);font-size:22px;letter-spacing:-.04em}.capability-grid ul{display:grid;gap:10px;margin:20px 0 0;padding:0;list-style:none;color:var(--muted);font-size:14px;line-height:1.4}.capability-grid li:before{content:'✓';margin-right:8px;color:#208a77}.cf-public .cf-final{padding:110px 0}.cf-public .cf-final h2{max-width:700px;font-size:clamp(34px,4.3vw,56px);letter-spacing:-.06em}.cf-public .cf-final p{color:#d2e3e5}.cf-public .cf-footer .cf-wrap{display:grid;grid-template-columns:1.5fr repeat(3,.7fr);gap:28px;padding:55px 0}.cf-public .cf-footer .cf-logo{margin-bottom:15px}.cf-public .cf-footer b{font-size:13px}.cf-public .cf-footer a{display:block;margin-top:10px}.cf-public .cf-footer small{grid-column:1/-1;margin-top:16px}
-@media(max-width:900px){.premium-hero-grid,.story-grid,.story-grid.reverse{grid-template-columns:1fr;gap:42px}.hero-product .product-focus-list{position:static;max-width:none;margin-top:15px}.operations-grid,.capability-grid{grid-template-columns:1fr 1fr}.journey-flow{grid-template-columns:repeat(5,1fr)}.cf-public .cf-footer .cf-wrap{grid-template-columns:1fr 1fr}.cf-public .cf-footer .cf-wrap>div:first-child{grid-column:1/-1}}
-@media(max-width:600px){.cf-public .cf-wrap{width:min(100% - 32px,1180px)}.cf-public .cf-nav nav{display:none}.cf-public .cf-nav .cf-wrap{height:64px}.cf-public .cf-logo{height:37px}.premium-hero,.product-hero{padding:62px 0}.premium-hero h1,.product-hero h1{font-size:44px}.premium-hero p:not(.cf-eyebrow),.product-hero p{font-size:16px}.cf-actions{gap:16px}.intro-band,.story-section,.whatsapp-section,.journey-section,.capability-section{padding:75px 0}.cf-public .cf-tour{padding:75px 0}.operations-grid,.capability-grid{grid-template-columns:1fr}.journey-flow{grid-template-columns:repeat(3,1fr);margin-top:30px}.journey-flow div{min-width:0}.product-window{border-radius:11px}.cf-public .cf-footer .cf-wrap{padding:40px 0}.cf-public .cf-nav-actions>a:first-child{display:none}.cf-public .cf-button{min-height:40px;padding:0 13px;font-size:13px}}
+/* The retired heritage public-site system used to sit here: a compressed
+ .cf-public block plus its two media queries, ~11KB. The comment above it
+ claimed it had already been deleted; it had not. Nothing rendered its
+ .premium-hero / .story-grid / .capability-grid selectors any more, but its
+ bare .cf-public, .cf-nav, .cf-wrap and .cf-footer rules still matched the
+ live site and were only losing the cascade because app/marketing.css is
+ imported after globals.css. Removed after proving, by computed-style diff
+ across the nav, hero, buttons, tiles, sections and every footer element,
+ that taking it out changes nothing on the rendered page. */
 
 /* Living hero stage, safe fictional clinic data. */
 

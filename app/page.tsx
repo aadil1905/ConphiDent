@@ -334,7 +334,11 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="mk-section on-tint">
+      {/* Deliberately NOT on-tint: the comparison above it already is, and two
+          tinted sections in a row merged into one 1,683px band whose only
+          feature was 178px of empty ground at the seam. Alternating the ground
+          is what makes a section boundary read as a boundary. */}
+      <section className="mk-section">
         <div className="cf-wrap">
           <Reveal>
             <div className="mk-section-heading">

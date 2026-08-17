@@ -2,7 +2,7 @@
 
 import { MessageCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion, EASE } from "./Motion";
+import { AnimatePresence, motion, useInView, useReducedMotion, EASE } from "./Motion";
 
 /**
  * A replay of the reception flow the webhook actually runs: language selection,
@@ -49,17 +49,24 @@ const TURNS: Turn[] = [
 
 export default function WhatsAppThread() {
   const reduced = useReducedMotion();
-  const [shown, setShown] = useState(reduced ? TURNS.length : 0);
+  // Starts at 1, not 0: on /whatsapp the thread IS the hero visual, and an
+  // empty panel for the first 900ms is the first thing a visitor sees. A
+  // conversation exists because a patient wrote something, so that message is
+  // simply there, and the reply is what animates.
+  const [shown, setShown] = useState(reduced ? TURNS.length : 1);
   const [typing, setTyping] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  // Two deliberate changes from the first version, both about not being
+  // annoying. It waits until the panel is actually on screen, so a visitor
+  // never arrives to a conversation already half-played or reset to empty. And
+  // it plays exactly once: the old build looped back to zero every six seconds,
+  // which emptied the panel in front of anyone still reading it.
+  const started = useInView(panel, { once: true, margin: "0px 0px -20% 0px" });
 
   useEffect(() => {
-    if (reduced) return;
-    if (shown >= TURNS.length) {
-      // Hold the finished thread, then replay so a returning eye still catches it.
-      const restart = setTimeout(() => setShown(0), 6000);
-      return () => clearTimeout(restart);
-    }
+    if (reduced || !started) return;
+    if (shown >= TURNS.length) return;
 
     const next = TURNS[shown];
     if (next.from === "clinic") {
@@ -75,14 +82,14 @@ export default function WhatsAppThread() {
 
     const pause = setTimeout(() => setShown((value) => value + 1), 900);
     return () => clearTimeout(pause);
-  }, [shown, reduced]);
+  }, [shown, reduced, started]);
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: reduced ? "auto" : "smooth" });
   }, [shown, typing, reduced]);
 
   return (
-    <div className="mk-thread">
+    <div className="mk-thread" ref={panel}>
       <div className="mk-thread-head">
         <span className="mk-avatar"><MessageCircle /></span>
         <div>
@@ -91,11 +98,7 @@ export default function WhatsAppThread() {
         </div>
       </div>
 
-      <div
-        ref={scroller}
-        style={{ display: "flex", flexDirection: "column", gap: 10, overflowY: "auto", flex: 1 }}
-        aria-live="off"
-      >
+      <div ref={scroller} className="mk-thread-scroll" aria-live="off">
         {TURNS.slice(0, shown).map((turn, index) => (
           <motion.div
             key={`${index}-${turn.text.slice(0, 12)}`}
