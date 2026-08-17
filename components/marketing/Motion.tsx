@@ -289,12 +289,10 @@ export function Tilt({
  *
  * Two things here are load-bearing, and both were live bugs.
  *
- * **It must not wait for a scroll.** The hero's figures use this, and gating
- * purely on `useInView` left them reading "0 visits today, 0 new patients, ₹0
- * collected" until the visitor happened to scroll — the first frame of the site
- * advertised an empty product. Anything already inside the viewport when it
- * mounts starts immediately, so the observer only ever has to catch the
- * counters further down the page.
+ * **It must never show a zero.** The hero's figures use this, and every
+ * visibility test tried here failed in a way that put "0 visits today, 0 new
+ * patients, ₹0 collected" on the first screen of the site. The reasoning for
+ * dropping them entirely is in the effect below.
  *
  * **It must settle on the real number when motion is reduced.** `useReducedMotion`
  * resolves after the first render, so seeding state with `reduced ? to : 0` ran
@@ -315,20 +313,24 @@ export function Counter({
   duration?: number;
 }) {
   const reduced = useReducedMotion();
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: "0px 0px -15% 0px" });
   const [counted, setCounted] = useState(0);
 
+  // Starts on mount. Not when it scrolls into view, and not from a measurement
+  // taken at mount either — both were tried and both left a zero on screen.
+  //
+  // The observer excluded a band near the fold. Measuring on mount replaced
+  // that with a subtler failure: the reading is taken before the webfont
+  // swaps, the hero copy is a different height with the fallback, and a figure
+  // that settles just inside the fold a moment later has already been judged
+  // off-screen. Both bugs looked identical to a visitor — "0 visits today,
+  // 0 new patients, ₹0 collected" on the first screen of the site.
+  //
+  // So there is no visibility test left to get wrong. A figure below the fold
+  // finishes counting before anyone reaches it and is simply correct when they
+  // do; the only thing given up is a flourish nobody was there to watch. The
+  // hero's figures, which are the ones that matter, still animate.
   useEffect(() => {
     if (reduced) return;
-    const node = ref.current;
-    if (!node) return;
-    // Measured here rather than held in state: an element already on screen at
-    // mount must start now, and asking the DOM costs one read against a
-    // cascading render.
-    const box = node.getBoundingClientRect();
-    const onScreenNow = box.top < window.innerHeight && box.bottom > 0;
-    if (!inView && !onScreenNow) return;
     let frame = 0;
     const started = performance.now();
     const tick = (now: number) => {
@@ -339,14 +341,14 @@ export function Counter({
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [inView, reduced, to, duration]);
+  }, [reduced, to, duration]);
 
   // Derived, not stored: with motion reduced the figure is simply the figure,
   // and there is no render in which it is zero.
   const shown = reduced ? to : counted;
 
   return (
-    <span ref={ref}>
+    <span>
       {prefix}
       {shown.toLocaleString("en-IN")}
       {suffix}
