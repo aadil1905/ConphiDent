@@ -20,7 +20,7 @@
  * unscoped query is the conservative half, and it is the half that catches the
  * mistake people actually make.
  *
- * Three ways out, all explicit:
+ * Four ways out, all explicit:
  *
  *  - Models with no `clinicId` column are not tenant-scoped and are skipped.
  *    Child rows (`InvoiceLineItem`, `PrescriptionItem`, …) reach tenancy through
@@ -28,6 +28,10 @@
  *  - `findUnique`/`findUniqueOrThrow` by primary key are allowed, because the
  *    caller cannot express a `clinicId` in a unique filter. Those call sites
  *    must still check ownership on the row they get back.
+ *  - `update`/`delete` addressed by primary key are reported but never refused,
+ *    for the same reason and at real cost if they were — see SINGLE_ROW_WRITES.
+ *    They log as `tenant.unverified-row-write`, which is a backlog to work
+ *    through, not an incident.
  *  - Platform administration genuinely works across clinics. It says so with
  *    `crossTenant()`, which is greppable, rather than by omission.
  */
@@ -78,6 +82,40 @@ export const GUARDED_ACTIONS = new Set([
  * check the clinic on the row they get back — several already do.
  */
 const UNIQUE_ACTIONS = new Set(["findUnique", "findUniqueOrThrow"]);
+
+/**
+ * Single-row writes addressed by primary key. Reported, never refused.
+ *
+ * The same argument that exempts `findUnique` applies to `update` and `delete`
+ * by `id`, and it was not carried across. The cost was not theoretical: 57 call
+ * sites across 28 files write this way, roughly 47 of them on tenant-scoped
+ * models, and every one threw under `enforce`. That is sign-in, invoice void,
+ * payment receipting, appointment status, patient archive, prescription and
+ * treatment-plan cancellation, lab cases, inventory and the scheduled-WhatsApp
+ * dispatcher — i.e. most of the product's write paths.
+ *
+ * Refusing them is also worse than it looks, because several callers wrap the
+ * write in `try/catch` and report "your connection dropped". Enforcing would
+ * degrade the clinic behind a misleading error rather than failing loudly.
+ *
+ * So this class never throws, in either mode, and always reports. The signal
+ * that lets these be worked through one by one survives; the clinic keeps
+ * working while that happens. Nearly all of them already load the row with a
+ * `clinicId` filter and bail before writing, which the guard cannot see.
+ *
+ * `updateMany` and `deleteMany` are deliberately NOT here: they take arbitrary
+ * filters and are the shape that actually leaks across clinics. Nor is
+ * `upsert`, which can create a row rather than address an existing one.
+ */
+const SINGLE_ROW_WRITES = new Set(["update", "delete"]);
+
+/** True when this filter addresses one row by primary key rather than searching. */
+export function addressesOneRow(where: unknown): boolean {
+  if (!where || typeof where !== "object" || Array.isArray(where)) return false;
+  const id = (where as Record<string, unknown>).id;
+  // `{ id: { in: [...] } }` is a search, not an address.
+  return (typeof id === "number" || typeof id === "string" || typeof id === "bigint");
+}
 
 /** True when `clinicId` appears anywhere in this filter, at any depth. */
 export function mentionsClinicId(where: unknown, depth = 0): boolean {
@@ -153,6 +191,19 @@ export function allowCrossTenantForThisRequest() {
  * Flip it with `TENANT_GUARD_MODE=enforce` once a week of traffic has produced
  * no `tenant.unscoped-query` events. That is one environment variable, no
  * deploy of code, and it is the last step of this piece of work.
+ *
+ * That advice was unreachable as originally written, and this is the correction.
+ * `update`/`delete` by primary key used to raise `tenant.unscoped-query` too,
+ * from ~47 legitimate call sites, so the "no events" condition could never be
+ * met and flipping the flag anyway would have broken sign-in on the first
+ * request. Those now report as `tenant.unverified-row-write` and never throw,
+ * so `tenant.unscoped-query` means what the sentence above assumes it means:
+ * a query that genuinely names no clinic, which is a bug.
+ *
+ * Watch `tenant.unverified-row-write` separately. It is not an incident — it is
+ * the list of single-row writes whose ownership check the guard cannot see. Most
+ * already load the row with a `clinicId` filter first; any that do not are a
+ * real cross-tenant write waiting to happen, and that is the backlog.
  */
 export type TenantGuardMode = "enforce" | "report";
 
@@ -180,14 +231,21 @@ export function tenantGuard() {
             // carries the clinic on the row itself.
             && !(operation === "upsert" && mentionsClinicId(args?.create))
           ) {
-            if (tenantGuardMode() === "enforce") {
+            // A single-row write addressed by primary key is reported in both
+            // modes and refused in neither — see SINGLE_ROW_WRITES above for
+            // why. It gets its own event name so the two can be told apart in
+            // the logs: one is a backlog to work through, the other is a bug.
+            const byPrimaryKey =
+              SINGLE_ROW_WRITES.has(operation) && addressesOneRow(args?.where);
+
+            if (!byPrimaryKey && tenantGuardMode() === "enforce") {
               throw new MissingTenantScopeError(model, operation);
             }
             // Deliberately not `reportError`: that module is server-only and
             // importing it here would drag the guard into places this file has
             // to stay loadable from. Same JSON shape, same log stream.
             console.error(JSON.stringify({
-              event: "tenant.unscoped-query",
+              event: byPrimaryKey ? "tenant.unverified-row-write" : "tenant.unscoped-query",
               at: new Date().toISOString(),
               model,
               operation,

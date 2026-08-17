@@ -65,14 +65,20 @@ export async function loginAction(formData: FormData) {
     !verifyPassword(password, user.passwordHash)
   ) {
     if (user && user.active && user.clinic.status === "ACTIVE" && !locked) {
+      // `clinicId` is carried on every write below, not for filtering — the id
+      // already identifies the row — but because lib/tenant-guard.ts refuses an
+      // `update` that cannot name a clinic. It exempts `findUnique` on the
+      // grounds that a unique filter cannot express one; `update` was never
+      // given the same exemption, so these three writes threw under
+      // TENANT_GUARD_MODE=enforce and took sign-in down with them.
       const failed = await prisma.user.update({
-        where: { id: user.id },
+        where: { id: user.id, clinicId: user.clinicId },
         data: { failedLoginCount: { increment: 1 } },
         select: { failedLoginCount: true },
       });
       if (failed.failedLoginCount >= 5) {
         await prisma.user.update({
-          where: { id: user.id },
+          where: { id: user.id, clinicId: user.clinicId },
           data: {
             failedLoginCount: 0,
             lockedUntil: new Date(Date.now() + 15 * 60 * 1000),
@@ -92,7 +98,7 @@ export async function loginAction(formData: FormData) {
     redirect("/login?error=invalid");
   }
   await prisma.user.update({
-    where: { id: user.id },
+    where: { id: user.id, clinicId: user.clinicId },
     data: { failedLoginCount: 0, lockedUntil: null, lastLoginAt: new Date() },
   });
   await createSession(user.id, formData.get("remember") === "on");
@@ -176,8 +182,18 @@ export async function resetPasswordAction(formData: FormData) {
         where: { id: reset.id, tokenHash, expiresAt: { gt: now } },
       });
       if (claim.count !== 1) return null;
-      const user = await tx.user.update({
+      // The token identifies the user but says nothing about their clinic, so
+      // unlike the sign-in writes above there is no clinicId in scope to carry.
+      // `findUnique` is the one action the tenant guard exempts, so reading the
+      // clinic first is what lets the update name one. Inside the same
+      // Serializable transaction, so it cannot race the write it scopes.
+      const owner = await tx.user.findUnique({
         where: { id: reset.userId },
+        select: { clinicId: true },
+      });
+      if (!owner) return null;
+      const user = await tx.user.update({
+        where: { id: reset.userId, clinicId: owner.clinicId },
         data: { passwordHash, mustChangePassword: false },
         select: { id: true, clinicId: true },
       });
@@ -229,7 +245,7 @@ export async function changePasswordAction(formData: FormData) {
     );
   await prisma.$transaction([
     prisma.user.update({
-      where: { id: user.id },
+      where: { id: user.id, clinicId: user.clinicId },
       data: { passwordHash: hashPassword(password), mustChangePassword: false },
     }),
     prisma.passwordResetToken.deleteMany({ where: { userId: user.id } }),

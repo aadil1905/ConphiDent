@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
 
-import { GUARDED_ACTIONS, NOT_TENANT_SCOPED, mentionsClinicId, tenantGuardMode } from "../lib/tenant-guard.ts";
+import { GUARDED_ACTIONS, NOT_TENANT_SCOPED, addressesOneRow, mentionsClinicId, tenantGuardMode } from "../lib/tenant-guard.ts";
 
 const read = (file) => readFileSync(resolve(process.cwd(), file), "utf8").replace(/\r\n/g, "\n");
 
@@ -28,6 +28,35 @@ test("every legitimate way of naming the clinic is accepted", () => {
   assert.ok(mentionsClinicId({ AND: [{ archivedAt: null }, { clinicId: 1 }] }));
   assert.ok(mentionsClinicId({ OR: [{ clinicId: 1 }, { clinicId: 2 }] }));
   assert.ok(mentionsClinicId({ NOT: { clinicId: 3 } }));
+});
+
+test("a single-row write addressed by primary key is recognised", () => {
+  // This is the class that is reported but never refused. It must match an
+  // address — one row, named by its id — and nothing that searches.
+  assert.ok(addressesOneRow({ id: 7 }));
+  assert.ok(addressesOneRow({ id: "abc" }));
+  assert.ok(addressesOneRow({ id: 7, status: "Confirmed" }));
+});
+
+test("anything that searches rather than addresses stays guarded", () => {
+  // `{ id: { in: [...] } }` is a filter wearing an id's clothes. If this ever
+  // returns true, `deleteMany` over an unscoped id list stops throwing, which
+  // is precisely the shape that empties another clinic's table.
+  assert.ok(!addressesOneRow({ id: { in: [1, 2] } }));
+  assert.ok(!addressesOneRow({ id: { not: 3 } }));
+  assert.ok(!addressesOneRow({ status: "DRAFT" }));
+  assert.ok(!addressesOneRow(undefined));
+  assert.ok(!addressesOneRow(null));
+  assert.ok(!addressesOneRow([{ id: 1 }]));
+});
+
+test("the bulk write actions are never exempted by primary key", () => {
+  // The exemption is keyed on the operation as well as the filter. updateMany
+  // and deleteMany take arbitrary filters and are the actual leak vector, so
+  // they must stay guarded even when a caller passes a scalar id.
+  for (const action of ["updateMany", "deleteMany", "upsert"]) {
+    assert.ok(GUARDED_ACTIONS.has(action), `${action} is not guarded`);
+  }
 });
 
 test("the guard covers reads and writes, not just reads", () => {
