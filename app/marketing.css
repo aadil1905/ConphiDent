@@ -857,3 +857,25 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* --- Depth ---------------------------------------------------------------
+   The hero frame is the one place on the site with a real camera. The card
+   sits forward of its own shadow and the stat tiles sit forward of the card,
+   so a tilt reveals genuine parallax between them rather than rotating a flat
+   picture. Only the frame opts in; `preserve-3d` is not inherited by accident.
+   Everything here is transform-only, so none of it costs paint or layout. */
+.cf-public .mk-hero-frame .mk-visual { transform-style: preserve-3d; }
+/* Three planes that actually exist in the markup: the frame itself at rest,
+   its title bar just proud of it, and the body of the card forward again. The
+   stat tiles are deliberately not layered — Framer Motion writes an inline
+   `transform` on them when their entrance settles, and a rule here could only
+   win with !important, which would mean fighting the animation library for a
+   third plane nobody would notice. */
+.cf-public .mk-hero-frame .mk-window-bar { transform: translateZ(10px); }
+.cf-public .mk-hero-frame .mk-visual-body { transform: translateZ(28px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-public .mk-hero-frame .mk-visual,
+  .cf-public .mk-hero-frame .mk-window-bar,
+  .cf-public .mk-hero-frame .mk-visual-body { transform: none; }
+}

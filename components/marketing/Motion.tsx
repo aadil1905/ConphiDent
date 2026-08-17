@@ -14,6 +14,7 @@ import {
   motion,
   useInView,
   useReducedMotion,
+  useMotionValue,
   useScroll,
   useSpring,
   useTransform,
@@ -194,6 +195,92 @@ export function Lift({
     >
       {children}
     </Tag>
+  );
+}
+
+/**
+ * Real depth, on the compositor, for a decorative product frame.
+ *
+ * This is genuine 3D — a perspective camera and rotation about X and Y — done
+ * with CSS transforms rather than WebGL. That is a deliberate choice, not a
+ * shortcut: a three.js scene is roughly 150KB before anything is drawn, and the
+ * guidance for it is that desktop-to-mobile GPU ratios run about 10:1. The
+ * audience here is dental practices on mid-range Android phones. Transform and
+ * opacity are the only two properties the browser can animate without paint or
+ * layout, so this costs effectively nothing and still tilts in real space.
+ *
+ * Three refusals are built in:
+ *
+ *  - **Pointer-fine only.** On a touch screen there is no hover, and a tilt that
+ *    fires on tap reads as a bug. Coarse pointers get the flat card.
+ *  - **Reduced motion gets nothing.** Not a smaller tilt — none.
+ *  - **`will-change` is set while tilting and dropped on leave**, so an idle
+ *    page is not holding a compositor layer per card.
+ *
+ * Children can layer themselves in the same space with `translateZ`; the
+ * container establishes `transform-style: preserve-3d`.
+ */
+export function Tilt({
+  children,
+  className,
+  /** Maximum rotation in degrees. Above about 10 the illusion turns into a gimmick. */
+  max = 7,
+  perspective = 1200,
+}: {
+  children: ReactNode;
+  className?: string;
+  max?: number;
+  perspective?: number;
+}) {
+  const reduced = useReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
+  const [enabled, setEnabled] = useState(false);
+
+  // Pointer offset from the centre of the card, -0.5 to 0.5 on each axis.
+  const px = useMotionValue(0);
+  const py = useMotionValue(0);
+  const spring = { stiffness: 150, damping: 20, mass: 0.5 };
+  const rotateX = useSpring(useTransform(py, [-0.5, 0.5], [max, -max]), spring);
+  const rotateY = useSpring(useTransform(px, [-0.5, 0.5], [-max, max]), spring);
+
+  useEffect(() => {
+    if (reduced) return;
+    // A tilt that needs a hover has no meaning where hover does not exist.
+    const fine = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const sync = () => setEnabled(fine.matches);
+    sync();
+    fine.addEventListener("change", sync);
+    return () => fine.removeEventListener("change", sync);
+  }, [reduced]);
+
+  if (reduced || !enabled) {
+    return <div className={className}>{children}</div>;
+  }
+
+  return (
+    <div
+      ref={ref}
+      className={className}
+      style={{ perspective }}
+      onPointerMove={(event) => {
+        const box = event.currentTarget.getBoundingClientRect();
+        px.set((event.clientX - box.left) / box.width - 0.5);
+        py.set((event.clientY - box.top) / box.height - 0.5);
+      }}
+      onPointerLeave={() => {
+        px.set(0);
+        py.set(0);
+      }}
+    >
+      <motion.div
+        style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
+        // Held only while the pointer is inside, so an untouched page keeps no
+        // extra compositor layers alive.
+        whileHover={{ willChange: "transform" }}
+      >
+        {children}
+      </motion.div>
+    </div>
   );
 }
 

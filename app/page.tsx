@@ -5,7 +5,7 @@ import {
   Activity, ArrowRight, BarChart3, CalendarDays, Check, CheckCircle2, FlaskConical,
   IndianRupee, MessagesSquare, Package, Scan, ShieldCheck, Sprout, UsersRound, X,
 } from "lucide-react";
-import { Aurora, Lift, Parallax, Reveal, Stagger, StaggerChild, WordReveal } from "@/components/marketing/Motion";
+import { Aurora, Lift, Parallax, Reveal, Stagger, StaggerChild, Tilt, WordReveal } from "@/components/marketing/Motion";
 import PlatformExplorer from "@/components/marketing/PlatformExplorer";
 import { ProductVisual } from "@/components/marketing/ProductVisuals";
 import PublicShell, { SETUP_URL } from "@/components/marketing/PublicShell";
@@ -143,8 +143,13 @@ export default async function Home() {
             </Reveal>
           </div>
 
+          {/* Two axes of depth on the one element that earns it: the scroll
+              gives it distance from the copy, the pointer gives it a camera.
+              Both are decorative — no text or control is moved by either. */}
           <Parallax className="mk-hero-frame" distance={26}>
-            <ProductVisual kind="today" caption="Interface illustration · the day as the clinic opens it" />
+            <Tilt max={6}>
+              <ProductVisual kind="today" caption="Interface illustration · the day as the clinic opens it" />
+            </Tilt>
           </Parallax>
         </div>
       </section>
