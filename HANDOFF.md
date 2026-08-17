@@ -1,7 +1,8 @@
 # Handoff — where to pick up
 
-Branch `phase-b-redesign`. `npm run verify` (17 steps, 156 tests) and `npm run build`
-both exit 0. Nothing committed, nothing deployed.
+Branch `phase-b-redesign`, committed at `8a59d3d`. `npm run verify` (18 steps,
+161 tests) and `npm run build` both exit 0. **Not yet deployed** — the deploy
+command was blocked by a permission guard and needs Aadil to run or approve it.
 
 **One migration is written and deliberately NOT applied**, and it destroys data:
 `CLINICAL_RECORD_REMOVAL_MIGRATION.sql` in the repository root. Read it before
@@ -233,27 +234,84 @@ Verified against the running app: every notes route 404s, and Patient 360, both
 prescription screens, treatment plans, the chart page, billing and exports all
 still return 200 with the safety banner rendering from its new source.
 
+### 8. Tenant isolation now has a backstop
+
+The largest liability in the codebase was that tenancy lived entirely in 709
+hand-written `clinicId:` clauses with nothing underneath them. Forget one and
+that screen serves another clinic's patients: nothing fails, nothing logs.
+
+`lib/tenant-guard.ts` is a Prisma client extension every query passes through.
+On a clinic-scoped model it requires the filter to name a clinic — directly,
+through a relation, or inside an `AND`/`OR`/`NOT`. Proven against the live
+database: three unscoped queries refused, six legitimate ones untouched.
+
+Three deliberate limits, all written down in the file:
+
+- **It refuses, it does not inject.** Injecting a tenant needs one threaded
+  through webhooks and cron too, and a wrong guess there writes one clinic's
+  data under another's id — worse than the bug being fixed.
+- **`findUnique` is exempt**, because a unique filter cannot carry a `clinicId`.
+  Those callers must still check the clinic on the row they get back.
+- **It ships in `report` mode in production.** Enforcing everywhere on the first
+  deploy would risk taking a working screen away from a real clinic to prevent
+  a leak that has not happened, and the paths hardest to exercise beforehand
+  (platform admin, cron, the webhook) are exactly the ones that legitimately
+  cross clinics. Reporting is not a placebo — an unscoped query reaches the
+  error webhook in seconds. **Set `TENANT_GUARD_MODE=enforce` once a week of
+  traffic has produced no `tenant.unscoped-query` events. That is the last step
+  of this work.**
+
+Cross-tenant paths are marked rather than exempted by omission:
+`requirePlatformAdmin()` lifts the guard once, after proving the caller is a
+platform administrator, using `AsyncLocalStorage` so the lift cannot escape the
+request — an earlier draft used a module-level counter, which would have opened
+a hole for any clinic request served concurrently. The four cron sweeps use
+`crossTenant()`, which is greppable.
+
+### 9. A failure can no longer go unnoticed
+
+There were 30 `console.error` calls and no reader, so a 500 at 9pm on a Saturday
+was invisible until somebody rang the clinic. `lib/monitoring.ts` reports every
+one as a structured JSON line and, when `ERROR_WEBHOOK_URL` is set, POSTs it to
+any Slack or Discord incoming webhook. Client-side crashes report through
+`/api/client-error`, which is rate-limited and unauthenticated on purpose: the
+boundary most worth hearing from is the one that fired because the session
+itself broke.
+
+**Never put patient data in an error report.** Identifiers and counts only; the
+types enforce the shape and the comment says why.
+
+No hosted SDK, deliberately: that needs an account, a DSN, and a decision about
+whether patient data leaves the country — none of which are mine to make for a
+clinic. `ERROR_WEBHOOK_URL` gets the signal out of the black hole and leaves
+that choice open.
+
 ---
 
 ## Next, in priority order
 
-1. **Decide the drop migration.** `CLINICAL_RECORD_REMOVAL_MIGRATION.sql` is
+1. **Deploy.** Everything below is committed and green but not live; production
+   still runs the old code. `npx vercel deploy --prod` from this folder. The
+   deploy is safe with respect to data — no file was placed in
+   `prisma/migrations/`, so `prisma migrate deploy` has nothing to apply.
+
+2. **Decide the drop migration.** `CLINICAL_RECORD_REMOVAL_MIGRATION.sql` is
    written and unapplied. Until it runs the app ignores the table and the rows
    are still there, so the removal is reversible. Running it is not.
 
-2. **Nothing records that the allergy question was asked.** "No allergies" and
+3. **Nothing records that the allergy question was asked.** "No allergies" and
    "nobody asked" are still indistinguishable, because no field stamps when the
    question was put. Needs a `Patient`-level "last confirmed" column, so it is a
    migration and waits with the others.
 
-3. **The two structural gaps in `npm run verify` remain.** The six orphaned
+4. **One structural gap in `npm run verify` remains.** The six orphaned
    source-test files are fixed and wired in, which took it to 156 assertions
    across 17 steps. But the database integration tests still SKIP against
    production, and `verify:security` is still 97 `String.includes()` greps over
    source text rather than behaviour. There is no separate dev database and no
    error monitoring anywhere in the codebase.
 
-4. **The role-gating policy change in `document-discovery-no-role`.** Phase B
+5. **The role-gating policy change in `document-discovery-no-role`.** Phase B
    moved the patient record and workspace search onto "entitlement AND role",
    against a test asserting "entitlement only". I retargeted the test, because
    the change is restrictive rather than permissive. Confirm that was intended.
