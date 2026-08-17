@@ -65,6 +65,11 @@
   font-family: var(--font-body), Inter, system-ui, sans-serif;
   font-size: 16px;
   line-height: 1.6;
+  /* `clip` is Safari 16+, and a Safari that does not know it drops the
+     declaration — taking away the only thing preventing sideways scroll.
+     `hidden` first is the floor; `clip` then wins where it is understood,
+     and unlike `hidden` it does not create a scroll container. */
+  overflow-x: hidden;
   overflow: clip;
 }
 
@@ -197,6 +202,11 @@
   z-index: 100;
   border-bottom: 1px solid transparent;
   background: rgba(255, 255, 255, .82);
+  /* Safari has never shipped this unprefixed. Without the -webkit- line the
+     sticky header loses its blur there and the page scrolls visibly through a
+     translucent bar. The unprefixed property stays second so every other
+     engine takes the standard one. */
+  -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
   transition: border-color .3s var(--ease), background .3s var(--ease);
 }
@@ -271,6 +281,28 @@
   box-shadow: var(--e-3);
 }
 .cf-public .mk-hero-frame { width: min(1280px, 100%); margin: clamp(44px, 5vw, 72px) auto 0; }
+
+/* Two columns once there is room for them.
+   Stacked, the hero measured 1374px tall on a 1440x900 screen: the copy took
+   the top 671px at 880px wide — leaving about 490px of empty aurora to its
+   right — and the product frame began at y=743, so a visitor saw a screen of
+   text and roughly 150px of product. The brief asks the first seconds to say
+   "serious software", and the software was below the fold.
+   Side by side, both land above it. */
+@media (min-width: 1100px) {
+  .cf-public .mk-hero .cf-wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    align-items: center;
+    gap: clamp(32px, 4vw, 64px);
+  }
+  .cf-public .mk-hero-copy { max-width: 620px; }
+  .cf-public .mk-hero-copy .t-lead { max-width: 560px; }
+  /* The frame stops being a centred full-width block and becomes the right column. */
+  .cf-public .mk-hero-frame { width: 100%; margin: 0; }
+  /* The trust line sits under the buttons rather than stretching the column. */
+  .cf-public .mk-hero-copy .mk-trust-line { max-width: 560px; }
+}
 .cf-public .mk-frame > img { display: block; width: 100%; height: auto; }
 .cf-public .mk-window-bar {
   display: flex;
