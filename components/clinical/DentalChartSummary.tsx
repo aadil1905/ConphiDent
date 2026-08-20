@@ -1,90 +1,94 @@
+import {
+  DENTITION_STAGE_LABELS,
+  dentitionForFdiCode,
+  pronounceFdiCode,
+  toothRowsForStage,
+  type DentitionStage,
+} from "@/lib/dentition";
+
 type Entry = { toothNumber: string; condition: string; notes: string | null };
 
-const upperTeeth = ["18", "17", "16", "15", "14", "13", "12", "11", "21", "22", "23", "24", "25", "26", "27", "28"];
-const lowerTeeth = ["48", "47", "46", "45", "44", "43", "42", "41", "31", "32", "33", "34", "35", "36", "37", "38"];
-
 const conditionLabels: Record<string, string> = {
-  HEALTHY: "Healthy",
-  CARIES: "Caries",
-  FILLING: "Filling",
-  CROWN: "Crown",
-  ROOT_CANAL: "Root canal",
-  MISSING: "Missing",
-  IMPLANT: "Implant",
-  WATCH: "Watch",
+  HEALTHY: "Healthy", CARIES: "Caries", FILLING: "Filling", CROWN: "Crown",
+  ROOT_CANAL: "Root canal", MISSING: "Missing", IMPLANT: "Implant", WATCH: "Watch",
 };
 
-const conditionShortLabels: Record<string, string> = {
-  HEALTHY: "H.",
-  CARIES: "Ca.",
-  FILLING: "Fi.",
-  CROWN: "Cr.",
-  ROOT_CANAL: "RC",
-  MISSING: "M.",
-  IMPLANT: "I.",
-  WATCH: "W.",
-};
+const NEEDS_WORK = new Set(["CARIES", "WATCH"]);
+const TREATED = new Set(["FILLING", "CROWN", "ROOT_CANAL", "IMPLANT"]);
 
-const conditionClasses: Record<string, string> = {
-  HEALTHY: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  CARIES: "border-rose-200 bg-rose-50 text-rose-700",
-  FILLING: "border-sky-200 bg-sky-50 text-sky-700",
-  CROWN: "border-violet-200 bg-violet-50 text-violet-700",
-  ROOT_CANAL: "border-amber-200 bg-amber-50 text-amber-700",
-  MISSING: "border-slate-200 bg-slate-100 text-slate-500",
-  IMPLANT: "border-cyan-200 bg-cyan-50 text-cyan-700",
-  WATCH: "border-orange-200 bg-orange-50 text-orange-700",
-};
-
-function ToothRow({ title, teeth, entries }: { title: string; teeth: string[]; entries: Map<string, Entry> }) {
-  return (
-    <div>
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{title}</p>
-        <p className="text-xs text-slate-400">FDI numbering</p>
-      </div>
-      <div className="grid grid-cols-8 gap-2 sm:grid-cols-16">
-        {teeth.map((tooth) => {
-          const condition = entries.get(tooth)?.condition || "HEALTHY";
-          return (
-            <div
-              key={tooth}
-              className={`inline-flex min-h-[58px] min-w-0 flex-col items-center justify-center rounded-xl border px-1 py-2 text-center shadow-sm ${conditionClasses[condition] || conditionClasses.HEALTHY}`}
-              title={`Tooth ${tooth}: ${conditionLabels[condition] || "Healthy"}`}
-            >
-              <span className="w-full text-center text-sm font-bold leading-none">{tooth}</span>
-              <span className="mt-1 w-full text-center text-[10px] font-semibold leading-none opacity-80">
-                {conditionShortLabels[condition] || "H."}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+/** Same three states as the chart you write on: needs work, treated, nothing. */
+function toothClass(condition: string) {
+  if (condition === "MISSING") return "border-border bg-muted text-text-muted line-through";
+  if (NEEDS_WORK.has(condition)) return "border-danger-border bg-danger-bg text-danger";
+  if (TREATED.has(condition)) return "border-primary bg-secondary text-heading";
+  return "border-border bg-card text-heading";
 }
 
-export default function DentalChartSummary({ entries }: { entries: Entry[] }) {
+function inferredStage(entries: Entry[]): DentitionStage {
+  const types = new Set(entries.map((entry) => dentitionForFdiCode(entry.toothNumber)).filter(Boolean));
+  if (types.size > 1) return "MIXED";
+  if (types.has("PRIMARY")) return "PRIMARY";
+  if (types.has("PERMANENT")) return "PERMANENT";
+  return "NOT_ASSESSED";
+}
+
+export default function DentalChartSummary({ entries, dentitionStage }: { entries: Entry[]; dentitionStage?: DentitionStage }) {
   const entryMap = new Map(entries.map((entry) => [entry.toothNumber, entry]));
-  const importantEntries = entries.filter((entry) => entry.condition !== "HEALTHY");
+  const stage = dentitionStage || inferredStage(entries);
+  const rows = toothRowsForStage(stage);
+  const marked = entries.filter((entry) => entry.condition !== "HEALTHY");
+
+  if (stage === "NOT_ASSESSED") {
+    return (
+      <div className="rounded-control border border-dashed border-warning-border bg-warning-bg px-4 py-3.5 text-[13px] text-heading">
+        Nobody has said which teeth this patient has yet. Open the chart and pick adult, child or mixed
+        first.
+      </div>
+    );
+  }
 
   return (
-    <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
-      <div className="mb-4 flex flex-wrap gap-2">
-        {Object.entries(conditionLabels).map(([key, label]) => (
-          <span key={key} className={`rounded-full border px-2.5 py-1 text-xs font-medium ${conditionClasses[key]}`}>
-            {label}
-          </span>
+    <div className="rounded-control border border-border bg-muted p-3.5">
+      <div className="mb-3 flex flex-wrap items-center gap-3 text-xs text-text-muted">
+        <span className="rounded-pill bg-card px-2.5 py-0.5 font-semibold text-heading">
+          {DENTITION_STAGE_LABELS[stage]}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-[2px] bg-danger-mark" />Needs work
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-[2px] bg-primary" />Treated
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-4">
+        {rows.map((row) => (
+          <div key={row.id}>
+            <p className="mb-1.5 text-xs font-semibold text-text-muted">{row.title}</p>
+            <div className={`grid gap-1.5 ${row.teeth.length <= 10 ? "grid-cols-5 sm:grid-cols-10" : "grid-cols-4 sm:grid-cols-8 xl:grid-cols-16"}`}>
+              {row.teeth.map((tooth) => {
+                const condition = entryMap.get(tooth)?.condition || "HEALTHY";
+                return (
+                  <div
+                    key={tooth}
+                    title={`Tooth ${tooth} · ${conditionLabels[condition] || condition}`}
+                    aria-label={`Tooth ${pronounceFdiCode(tooth)}: ${conditionLabels[condition] || condition}`}
+                    className={`inline-flex min-h-12 min-w-0 flex-col items-center justify-center rounded-chip border px-1 py-1.5 text-center ${toothClass(condition)}`}
+                  >
+                    <span className="text-[13px] leading-none font-semibold tabular-nums">{tooth}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         ))}
       </div>
-      <ToothRow title="Upper jaw" teeth={upperTeeth} entries={entryMap} />
-      <div className="my-5 border-t border-dashed border-slate-200" />
-      <ToothRow title="Lower jaw" teeth={lowerTeeth} entries={entryMap} />
-      {importantEntries.length > 0 && (
-        <p className="mt-4 text-xs font-medium text-slate-500">
-          Marked teeth:{" "}
-          {importantEntries
-            .map((entry) => `Tooth ${entry.toothNumber} - ${conditionLabels[entry.condition] || entry.condition}`)
+
+      {marked.length > 0 && (
+        <p className="mt-3.5 text-xs text-text-muted">
+          Recorded:{" "}
+          {marked
+            .map((entry) => `${entry.toothNumber} — ${(conditionLabels[entry.condition] || entry.condition).toLowerCase()}`)
             .join(", ")}
         </p>
       )}

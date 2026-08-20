@@ -1,6 +1,6 @@
-import PatientForm from "@/components/patients/PatientForm";
-import PageIntro from "@/components/dashboard/PageIntro";
+import { redirect } from "next/navigation";
 
+/** Adding a patient is a sheet on the list now, so old links land in the right place. */
 export default function NewPatientPage() {
-  return <div className="mx-auto max-w-5xl space-y-6"><PageIntro eyebrow="Patients" title="Add patient" description="Create a patient profile for your clinic." /><PatientForm /></div>;
+  redirect("/dashboard/patients?add=1");
 }

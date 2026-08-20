@@ -54,5 +54,5 @@ export function ConnectWhatsAppButton() {
     }, { config_id: configId, response_type: "code", override_default_response_type: true, extras: { setup: {}, sessionInfoVersion: "3" } });
   };
 
-  return <div className="space-y-3"><button type="button" onClick={connect} disabled={loading} className="rounded-xl bg-[#1877f2] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#166fe5] disabled:opacity-60">{loading ? "Connecting…" : "Connect WhatsApp"}</button>{message && <p role="status" className="text-sm text-muted-foreground">{message}</p>}</div>;
+  return <div className="space-y-3"><button type="button" onClick={connect} disabled={loading} className="rounded-control bg-[#1877f2] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#166fe5] disabled:opacity-60">{loading ? "Connecting…" : "Connect WhatsApp"}</button>{message && <p role="status" className="text-[13px] text-text-muted">{message}</p>}</div>;
 }

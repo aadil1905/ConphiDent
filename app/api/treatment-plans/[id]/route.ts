@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { treatmentPlanSchema } from "@/lib/validations";
 import { ZodError } from "zod";
 import { requireApiPermission } from "@/lib/tenant";
-import { findCompletedAppointment, localDate } from "@/lib/clinical-appointments";
+import { localDate } from "@/lib/clinical-appointments";
+import { isFdiAllowedForStage, isStandardFdiCode, type DentitionStage } from "@/lib/dentition";
 
 async function getId(params: Promise<{ id: string }>) {
   const { id } = await params;
@@ -18,13 +19,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const id = await getId(params);
     if (!id) return NextResponse.json({ error: "Invalid plan id." }, { status: 400 });
 
-    const existingPlan = await prisma.treatmentPlan.findFirst({ where: { id, patient: { clinicId: user.clinicId } } });
+    const existingPlan = await prisma.treatmentPlan.findFirst({ where: { id, clinicId: user.clinicId, cancelledAt: null } });
     if (!existingPlan) return NextResponse.json({ error: "Plan not found." }, { status: 404 });
 
-    const { patientId: requestedPatientId, serviceId, toothNumber, toothNumbers, unitPrice, estimatedCost, notes, visitDate, items, ...data } = treatmentPlanSchema.partial().parse(await request.json());
-    const patientId = requestedPatientId ?? existingPlan.patientId;
+    const raw = await request.json();
+    const dentitionStage = String(raw.dentitionStage || "NOT_ASSESSED") as DentitionStage;
+    if (raw.confirmed !== true) return NextResponse.json({ error: "Confirm the treatment plan update." }, { status: 400 });
+    const { patientId: requestedPatientId, serviceId, toothNumber, toothNumbers, unitPrice, estimatedCost, notes, visitDate, items, ...data } = treatmentPlanSchema.partial().parse(raw);
     if (requestedPatientId) {
-      const patient = await prisma.patient.findFirst({ where: { id: requestedPatientId, clinicId: user.clinicId }, select: { id: true } });
+      const patient = await prisma.patient.findFirst({ where: { id: requestedPatientId, clinicId: user.clinicId, archivedAt: null }, select: { id: true } });
       if (!patient) return NextResponse.json({ error: "Patient not found." }, { status: 404 });
     }
     if (serviceId) {
@@ -37,20 +40,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       if (!service) return NextResponse.json({ error: "One of the selected services was not found." }, { status: 404 });
     }
 
-    if (visitDate) {
-      const appointment = await findCompletedAppointment(user.clinicId, patientId, visitDate);
-      if (!appointment) {
-        return NextResponse.json(
-          { error: "Select one of this patient's completed appointment dates." },
-          { status: 400 },
-        );
-      }
-    }
 
     const selectedToothNumbers = toothNumbers ? Array.from(new Set([...toothNumbers, toothNumber || ""].map((tooth) => tooth.trim()).filter(Boolean))) : undefined;
-    const plan = await prisma.treatmentPlan.update({
-      where: { id },
-      data: {
+    if (selectedToothNumbers?.some((tooth) => !isStandardFdiCode(tooth)) || (toothNumber && !isStandardFdiCode(toothNumber))) return NextResponse.json({ error: "Use valid two-digit FDI tooth codes." }, { status: 400 });
+    if (selectedToothNumbers?.length && (!["PRIMARY", "MIXED", "PERMANENT"].includes(dentitionStage) || selectedToothNumbers.some((tooth) => !isFdiAllowedForStage(tooth, dentitionStage)))) return NextResponse.json({ error: "Selected FDI teeth do not match the confirmed dentition stage." }, { status: 400 });
+    const plan = await prisma.$transaction(async (tx) => {
+      const updated = await tx.treatmentPlan.update({ where: { id }, data: {
         ...data,
         visitDate: visitDate ? localDate(visitDate) : undefined,
         serviceId: serviceId === "" ? null : serviceId,
@@ -60,7 +55,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         estimatedCost: items ? items.reduce((sum, item) => sum + item.price, 0) : estimatedCost === "" ? null : estimatedCost,
         selectedTeeth: selectedToothNumbers ? { deleteMany: {}, create: selectedToothNumbers.map((toothNumber) => ({ toothNumber })) } : undefined,
         items: items ? { deleteMany: {}, create: items.map((item) => ({ serviceId: item.serviceId || null, name: item.name, price: item.price })) } : undefined,
-      },
+        version: { increment: 1 },
+      } });
+      await tx.auditLog.create({ data: { clinicId: user.clinicId, userId: user.id, patientId: updated.patientId, actorRole: user.role, action: "TREATMENT_PLAN_UPDATED", entityType: "TREATMENT_PLAN", entityId: String(updated.id), reason: "Updated after user confirmation", beforeState: { version: existingPlan.version, status: existingPlan.status }, afterState: { version: updated.version, status: updated.status } } });
+      return updated;
     });
     return NextResponse.json(plan);
   } catch (error) {
@@ -69,15 +67,22 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 }
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
     const { user, response } = await requireApiPermission("manageClinical");
   if (!user) return response;
   const id = await getId(params);
   if (!id) return NextResponse.json({ error: "Invalid plan id." }, { status: 400 });
   try {
-    const result = await prisma.treatmentPlan.deleteMany({ where: { id, patient: { clinicId: user.clinicId } } });
-    if (!result.count) return NextResponse.json({ error: "Plan not found." }, { status: 404 });
-    return NextResponse.json({ success: true });
+    const body = await request.json().catch(() => ({})) as { confirmed?: unknown };
+    if (body.confirmed !== true) return NextResponse.json({ error: "Confirm this action." }, { status: 400 });
+    const reason = "Cancelled after user confirmation";
+    const plan = await prisma.treatmentPlan.findFirst({ where: { id, clinicId: user.clinicId, cancelledAt: null }, select: { id: true, patientId: true } });
+    if (!plan) return NextResponse.json({ error: "Plan not found." }, { status: 404 });
+    await prisma.$transaction([
+      prisma.treatmentPlan.update({ where: { id: plan.id }, data: { status: "Cancelled", cancelledAt: new Date(), cancellationReason: reason } }),
+      prisma.auditLog.create({ data: { clinicId: user.clinicId, userId: user.id, patientId: plan.patientId, actorRole: user.role, action: "TREATMENT_PLAN_CANCELLED", entityType: "TREATMENT_PLAN", entityId: String(plan.id), reason } }),
+    ]);
+    return NextResponse.json({ success: true, cancelled: true });
   } catch {
     return NextResponse.json({ error: "Plan not found." }, { status: 404 });
   }

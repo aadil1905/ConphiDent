@@ -1,7 +1,8 @@
 import { formatClinicInformation, getClinicConfiguration } from "./clinic-config";
+import { currentWhatsAppClinicId } from "./whatsapp-context";
 
 export async function getConversionCoachPrompt() {
-  const clinic = await getClinicConfiguration();
+  const clinic = await getClinicConfiguration(currentWhatsAppClinicId());
   const services = clinic?.services.map((service) => `${service.name}${service.description ? `: ${service.description}` : ""}${service.price !== null ? ` (listed price: INR ${service.price})` : ""}`).join("\n") || "No approved service list has been configured.";
   const faqs = clinic?.faqs.map((faq) => `Q: ${faq.question}\nApproved answer: ${faq.answer}`).join("\n\n") || "No approved FAQ answers have been configured.";
   const clinicInformation = formatClinicInformation(clinic);

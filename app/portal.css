@@ -1,0 +1,366 @@
+/* ==========================================================================
+   Operator portal theme.
+
+   setup.conphident.live shows two things to two audiences: the public signup
+   pages, and this portal behind login. They should look like one product, so
+   the portal borrows the public site's heritage palette and type.
+
+   Scoped to .cf-portal on purpose. The colour utilities in globals.css resolve
+   through var(--heading), var(--card) and friends, so redefining those inside
+   this scope re-themes the portal without touching the clinic dashboard, which
+   shares the same token names at :root.
+
+   Palette source of truth: design-system/conphident/MASTER.md
+   ========================================================================== */
+
+.cf-portal {
+  --background: #faf9f6;
+  --foreground: #4a5b61;
+  --card: #ffffff;
+  --card-foreground: #10262e;
+  --heading: #10262e;
+
+  --primary: #0e6379;
+  --primary-hover: #0a4e60;
+  --primary-foreground: #ffffff;
+  --primary-soft: rgba(14, 99, 121, .07);
+
+  --muted: #f1f0ec;
+  --muted-foreground: #5f7178;
+  --text-muted: #5f7178;
+
+  --border: #e4e6e3;
+  --border-strong: #cfd3ce;
+
+  /* The logo's smile arc, kept in the system so the mark is never orphaned.
+     4.77:1 on paper and 8.27:1 on ink — both pass AA as text. */
+  --gold: #8a6a2f;
+  --gold-on-ink: #d9b877;
+
+  --success: #0f6b4f;
+  --success-bg: #eef6f2;
+  --success-border: rgba(15, 107, 79, .28);
+
+  --danger: #8d1c1c;
+  --danger-bg: #fdf4f3;
+  --danger-border: rgba(141, 28, 28, .26);
+
+  /* Restrained elevation — an established brand does not float. */
+  --shadow: 0 1px 2px rgba(16, 38, 46, .04), 0 8px 24px rgba(16, 38, 46, .05);
+  --shadow-overlay: 0 12px 32px rgba(16, 38, 46, .09);
+
+  background: var(--background);
+  color: var(--foreground);
+  /* Set directly rather than through --font-sans: globals.css declares its
+     fonts inside @theme inline, so Tailwind inlines the literal stack and a
+     scoped custom-property override would never reach the utility. */
+  font-family: var(--font-body), Inter, system-ui, sans-serif;
+}
+
+/* Headings carry the display face — Source Serif 4, the same one the clinic
+   workspace runs, because sign-in is the workspace's front door and the two
+   are looked at within a second of each other. `--font-display` is repointed
+   for this scope only (lib/fonts.ts explains the split), so the rules further
+   down that already say `var(--font-display), Georgia, serif` now get the
+   serif they were written for rather than a grotesque with a serif fallback.
+
+   Tracking matches: a serif at this size range wants about -.012em, not the
+   -.02em a grotesque wants. */
+.cf-portal {
+  --font-display: var(--font-workspace-display);
+}
+
+.cf-portal h1,
+.cf-portal h2,
+.cf-portal h3,
+.cf-portal h4 {
+  color: var(--heading);
+  font-family: var(--font-workspace-display), Georgia, serif;
+  font-weight: 600;
+  letter-spacing: -.012em;
+}
+
+/* The ruled small-caps label from the public site, so section furniture
+   matches across the login boundary. */
+.cf-portal .portal-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: #8a6a2f;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+.cf-portal .portal-kicker::before {
+  width: 28px;
+  height: 1px;
+  background: currentColor;
+  opacity: .55;
+  content: "";
+}
+/* On the ink panel the same label needs the lighter gold to stay readable. */
+.cf-portal .on-ink .portal-kicker,
+.cf-portal .portal-kicker.on-ink { color: var(--gold-on-ink); }
+
+/* The ink panel used by the sign-in split and other dark surfaces. */
+.cf-portal .portal-ink { background: var(--heading); color: rgba(255, 255, 255, .78); }
+.cf-portal .portal-ink h1,
+.cf-portal .portal-ink h2,
+.cf-portal .portal-ink h3 { color: #fff; }
+
+/* Tabular figures everywhere a count or a date is compared down a column. */
+.cf-portal .tabular-nums { font-variant-numeric: tabular-nums; }
+
+/* ==========================================================================
+   Control Center redesign.
+
+   globals.css carries the structural Control Center CSS (the off-canvas
+   transforms, the 5rem topbar, the overlay z-index) and the platform test
+   suite pins those declarations, so none of it is edited there. What follows
+   overrides only the *visual* language, at higher specificity, inside this
+   scope — which leaves the clinic dashboard on its own look untouched.
+
+   The direction it replaces was blue radial gradients, navy drop shadows and
+   cyan accents. This is the institutional one: flat warm paper, hairline
+   rules instead of shadows, serif titles, and gold used sparingly.
+   ========================================================================== */
+
+/* --- Shell ---------------------------------------------------------------- */
+.cf-portal.platform-shell,
+.cf-portal .platform-shell { background: var(--background); }
+
+.cf-portal .platform-shell__content > main { animation: none; }
+
+/* --- Sidebar -------------------------------------------------------------- */
+.cf-portal .platform-sidebar {
+  border-right: 1px solid var(--border);
+  background: #fff;
+  box-shadow: 24px 0 60px rgba(16, 38, 46, .10);
+}
+.cf-portal .platform-sidebar__brand { min-height: 5rem; border-bottom: 1px solid var(--border); padding: 1.25rem 1.25rem; }
+.cf-portal .platform-sidebar__close { border-radius: 8px; }
+.cf-portal .platform-sidebar__group > p {
+  color: var(--gold);
+  font-size: .625rem;
+  font-weight: 600;
+  letter-spacing: .18em;
+}
+.cf-portal .platform-sidebar__group a,
+.cf-portal .platform-sidebar__footer button {
+  min-height: 2.75rem;
+  border-radius: 8px;
+  font-size: .875rem;
+  font-weight: 500;
+}
+/* The active row is marked by a gold rule, not a filled tint — quieter, and it
+   survives being read at a glance down a long list. */
+.cf-portal .platform-sidebar__group a.is-active {
+  position: relative;
+  background: var(--muted);
+  box-shadow: none;
+  color: var(--heading);
+  font-weight: 600;
+}
+.cf-portal .platform-sidebar__group a.is-active::before {
+  position: absolute;
+  left: 0;
+  top: 20%;
+  bottom: 20%;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--gold);
+  content: "";
+}
+.cf-portal .platform-sidebar__operator p { font-weight: 600; }
+.cf-portal .platform-sidebar__privacy {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: .625rem;
+  font-weight: 600;
+  letter-spacing: .12em;
+}
+
+/* --- Topbar --------------------------------------------------------------- */
+.cf-portal .platform-topbar {
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--background) 88%, transparent);
+}
+.cf-portal .platform-topbar__context p { font-weight: 600; }
+.cf-portal .platform-topbar__icon,
+.cf-portal .platform-search-trigger { border-radius: 8px; box-shadow: none; }
+.cf-portal .platform-topbar__icon:hover { background: var(--muted); color: var(--primary); box-shadow: none; }
+.cf-portal .platform-topbar__status {
+  border: 1px solid var(--success-border);
+  background: var(--success-bg);
+  color: var(--success);
+  font-weight: 600;
+}
+/* A flat mark, not a gradient chip. */
+.cf-portal .platform-topbar__avatar {
+  border-radius: 8px;
+  background: var(--heading);
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 600;
+  box-shadow: none;
+}
+.cf-portal .platform-topbar__menu { border-radius: 10px; box-shadow: var(--shadow-overlay); }
+.cf-portal .platform-topbar__menu a { border-radius: 6px; font-weight: 500; }
+
+/* --- Page masthead -------------------------------------------------------- */
+/* The header was a gradient card floating above the page. An established
+   product states the page name and rules it off. */
+.cf-portal .platform-shell__content > main > header:first-child,
+.cf-portal .platform-page-header {
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  padding: 0 0 1.5rem;
+}
+.cf-portal .platform-shell__content header > h1,
+.cf-portal .platform-page-header h1 {
+  color: var(--heading);
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(1.75rem, 2.6vw, 2.25rem);
+  font-weight: 600;
+  letter-spacing: -.012em;
+  line-height: 1.15;
+}
+.cf-portal .platform-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--gold);
+  font-size: .6875rem;
+  font-weight: 600;
+  letter-spacing: .18em;
+}
+.cf-portal .platform-eyebrow::before {
+  width: 26px;
+  height: 1px;
+  background: currentColor;
+  opacity: .55;
+  content: "";
+}
+.cf-portal .platform-page-description { font-size: .9375rem; line-height: 1.65; }
+.cf-portal .platform-page-actions > :is(a, button) { border-radius: 8px; }
+
+/* --- Cards ---------------------------------------------------------------- */
+.cf-portal .platform-card,
+.cf-portal .platform-shell__content :is(section, article).rounded-xl,
+.cf-portal .platform-shell__content :is(section, article).rounded-2xl,
+.cf-portal .platform-shell__content :is(section, article).rounded-3xl {
+  border-color: var(--border);
+  border-radius: 10px;
+  background-color: var(--card);
+  box-shadow: var(--shadow);
+}
+.cf-portal .platform-card__header {
+  border-bottom: 1px solid var(--border);
+  background: none;
+  padding: 1.125rem 1.25rem 1rem;
+}
+.cf-portal .platform-card__header h2 {
+  color: var(--heading);
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -.008em;
+}
+.cf-portal .platform-card__icon { border-radius: 7px; background: var(--muted); color: var(--primary); }
+
+/* --- Status pills --------------------------------------------------------- */
+.cf-portal .platform-status {
+  border-radius: 6px;
+  font-size: .6875rem;
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+.cf-portal .platform-status--success { border-color: var(--success-border); background: var(--success-bg); color: var(--success); }
+.cf-portal .platform-status--warning { border-color: rgba(138, 106, 47, .3); background: #faf6ee; color: var(--gold); }
+.cf-portal .platform-status--danger { border-color: var(--danger-border); background: var(--danger-bg); color: var(--danger); }
+.cf-portal .platform-status--info { border-color: rgba(14, 99, 121, .22); background: #eef4f6; color: var(--primary); }
+.cf-portal .platform-status--neutral { border-color: var(--border); background: var(--muted); color: var(--text-muted); }
+
+/* --- Empty and error states ---------------------------------------------- */
+.cf-portal .platform-state {
+  border: 1px dashed var(--border-strong);
+  border-radius: 10px;
+  background: var(--muted);
+}
+.cf-portal .platform-state__icon { border-radius: 8px; background: #fff; color: var(--primary); }
+.cf-portal .platform-state--error .platform-state__icon { background: var(--danger-bg); color: var(--danger); }
+.cf-portal .platform-state--offline .platform-state__icon { background: #faf6ee; color: var(--gold); }
+.cf-portal .platform-state--success .platform-state__icon { background: var(--success-bg); color: var(--success); }
+.cf-portal .platform-state p { font-weight: 600; }
+
+/* --- Buttons -------------------------------------------------------------- */
+.cf-portal .platform-button { border-radius: 8px; font-weight: 600; }
+.cf-portal .platform-button--primary {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+  box-shadow: none;
+}
+.cf-portal .platform-button--primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); box-shadow: none; }
+.cf-portal .platform-button--secondary { border-color: var(--border-strong); background: #fff; color: var(--heading); }
+.cf-portal .platform-button--secondary:hover { background: var(--muted); }
+/* Lifting a button on hover reads as a toy; colour alone carries the state. */
+.cf-portal .platform-shell__content button:not(:disabled):hover,
+.cf-portal .platform-button:hover { transform: none; }
+
+/* --- Tables --------------------------------------------------------------- */
+.cf-portal .platform-shell__content table thead { background: var(--muted); }
+.cf-portal .platform-shell__content table th {
+  color: var(--text-muted);
+  font-size: .6875rem;
+  font-weight: 600;
+  letter-spacing: .09em;
+}
+.cf-portal .platform-shell__content table :is(th, td) { padding-block: .8rem; }
+/* Figures compared down a column must align on the decimal. */
+.cf-portal .platform-shell__content table td { font-variant-numeric: tabular-nums; }
+.cf-portal .platform-shell__content table tbody tr:hover { background: var(--muted); }
+
+/* --- Inputs --------------------------------------------------------------- */
+.cf-portal .platform-shell__content :is(input:not([type="checkbox"]):not([type="radio"]), select),
+.cf-portal .platform-shell__content textarea { border-radius: 8px; border-color: var(--border-strong); }
+.cf-portal .platform-shell__content :is(input, select, textarea):focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+/* --- Search dialog -------------------------------------------------------- */
+.cf-portal .platform-search-dialog { border-radius: 12px; box-shadow: 0 32px 80px rgba(16, 38, 46, .26); }
+.cf-portal .platform-search-panel { border-color: var(--border); border-radius: 12px; }
+.cf-portal .platform-search-heading { border-bottom: 1px solid var(--border); background: var(--muted); }
+.cf-portal .platform-search-heading h2 {
+  color: var(--heading);
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 600;
+}
+.cf-portal .platform-search-field,
+.cf-portal .platform-dialog-close { border-radius: 8px; }
+
+/* --- Progress and skeletons ---------------------------------------------- */
+.cf-portal .platform-progress { background: linear-gradient(90deg, var(--primary), var(--gold)); }
+.cf-portal .platform-skeleton { border-radius: 8px; background: var(--muted); }
+.cf-portal .platform-loading-pill { border-radius: 8px; border-color: var(--border); box-shadow: var(--shadow-overlay); }
+
+/* --- Error page ----------------------------------------------------------- */
+.cf-portal .platform-error {
+  border-color: var(--border);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+.cf-portal .platform-error__icon { border-radius: 10px; background: var(--danger-bg); color: var(--danger); }
+.cf-portal .platform-error h1 {
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 600;
+  letter-spacing: -.012em;
+}

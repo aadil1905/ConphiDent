@@ -1,12 +1,18 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/auth";
+import { requireFeature } from "@/lib/features";
 import PrescriptionForm from "@/components/clinical/PrescriptionForm";
 import PageIntro from "@/components/dashboard/PageIntro";
+import type { StructuredMedication } from "@/lib/prescription-core";
+import { allergySummaryFrom } from "@/lib/prescription-core";
 
 export default async function EditPrescriptionPage({ params }: { params: Promise<{ id: string }> }) {
-  const user = await requireUser(); const id = Number((await params).id);
-  const [prescription, patients] = await Promise.all([prisma.prescription.findFirst({ where: { id, patient: { clinicId: user.clinicId } } }), prisma.patient.findMany({ where: { clinicId: user.clinicId }, select: { id: true, fullName: true, phone: true, appointments: { where: { status: "Completed" }, select: { id: true, appointmentDate: true, appointmentTime: true, treatment: true, status: true }, orderBy: [{ appointmentDate: "desc" }, { appointmentTime: "desc" }] } }, orderBy: { fullName: "asc" } })]);
+  const user = await requireFeature("clinical"); const id = Number((await params).id);
+  const [prescription, patients, templates] = await Promise.all([prisma.prescription.findFirst({ where: { id, clinicId: user.clinicId, status: "ISSUED", cancelledAt: null }, include: { medicationItems: { orderBy: { sortOrder: "asc" } } } }), prisma.patient.findMany({ where: { clinicId: user.clinicId, archivedAt: null }, select: { id: true, fullName: true, phone: true, dateOfBirth: true, gender: true, medicalNotes: true, intakeRequests: { where: { drugAllergies: { not: null } }, select: { drugAllergies: true, status: true }, orderBy: [{ completedAt: "desc" }, { id: "desc" }], take: 20 }, appointments: { where: { status: { not: "Cancelled" }, archivedAt: null }, select: { id: true, appointmentDate: true, appointmentTime: true, treatment: true, status: true }, orderBy: [{ appointmentDate: "desc" }, { appointmentTime: "desc" }] } }, orderBy: { fullName: "asc" } }), prisma.prescriptionTemplate.findMany({ where: { clinicId: user.clinicId, active: true, reviewedAt: { not: null } }, select: { id: true, name: true, diagnosis: true, items: true }, orderBy: { name: "asc" } })]);
   if (!prescription) notFound();
-  return <div className="mx-auto max-w-5xl space-y-6"><PageIntro eyebrow="Prescriptions" title="Continue prescription" description="Update the saved prescription without creating a duplicate." /><PrescriptionForm patients={patients} editingPrescription={prescription} /></div>;
+  const patientOptions = patients.map(({ intakeRequests, medicalNotes, ...patient }) => ({ ...patient, allergySummary: allergySummaryFrom(intakeRequests, medicalNotes) }));
+  const reviewedTemplates = templates.map((template) => ({ ...template, items: template.items as unknown as StructuredMedication[] }));
+  const editingPrescription = { ...prescription, medicationItems: prescription.medicationItems.map((item) => ({ id: item.id, genericName: item.genericName, brandName: item.brandName || undefined, formulation: item.formulation || undefined, strength: item.strength, dosageForm: item.dosageForm, dose: item.dose, doseUnit: item.doseUnit, route: item.route, frequency: item.frequency, timing: item.timing || undefined, mealRelation: item.mealRelation || undefined, startDate: item.startDate ? item.startDate.toISOString().slice(0, 10) : "", duration: item.duration, endDate: item.endDate ? item.endDate.toISOString().slice(0, 10) : "", quantity: item.quantity || undefined, asNeeded: item.asNeeded, maxDose: item.maxDose || undefined, indication: item.indication || undefined, instructions: item.instructions || undefined, substitutionAllowed: item.substitutionAllowed })) };
+  return <div className="flex flex-col gap-6"><div className="flex flex-wrap items-start justify-between gap-3"><PageIntro title="Correct this script" description="The original stays on file with its number. The patient gets the corrected one." /><Link href={`/dashboard/prescriptions/${prescription.id}/print`} target="_blank" className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted">See the printed script</Link></div><PrescriptionForm patients={patientOptions} templates={reviewedTemplates} editingPrescription={editingPrescription} prescriberReady={Boolean(user.fullName.trim() && user.registrationNumber?.trim())} /></div>;
 }

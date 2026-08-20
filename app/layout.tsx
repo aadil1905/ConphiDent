@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
+import AdministrativeActionConfirmation from "@/components/AdministrativeActionConfirmation";
+import { brandFontVariables } from "@/lib/fonts";
 import "./marketing.css";
+import "./portal.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://www.conphident.live"),
@@ -19,8 +22,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased">
+    // The font variables live on the root so every surface can reach them —
+    // the clinic workspace, the Control Center and the public site alike.
+    <html lang="en" className={`h-full antialiased ${brandFontVariables}`}>
       <body className="min-h-full flex flex-col">
+        <AdministrativeActionConfirmation />
         {children}
 
         <Toaster

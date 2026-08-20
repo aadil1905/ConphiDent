@@ -1,3 +1,4 @@
+import { crossTenant } from "@/lib/tenant-guard";
 import { NextRequest, NextResponse } from "next/server";
 import { processScheduledWhatsAppMessages } from "@/lib/scheduled-whatsapp";
 
@@ -8,7 +9,7 @@ export async function GET(request: NextRequest) {
   }
   const startedAt = Date.now();
   try {
-    const result = await processScheduledWhatsAppMessages();
+    const result = await crossTenant(() => processScheduledWhatsAppMessages());
     console.info(JSON.stringify({ event: "cron.completed", job: "whatsapp-outbox", ...result, durationMs: Date.now() - startedAt }));
     return NextResponse.json({ success: true, ...result });
   } catch (error) {

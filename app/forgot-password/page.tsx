@@ -1,8 +1,67 @@
 import Link from "next/link";
 import { requestPasswordResetAction } from "@/app/login/actions";
+import { brandFontVariables } from "@/lib/fonts";
 import { PLATFORM_NAME } from "@/lib/platform";
 
-export default async function ForgotPasswordPage({ searchParams }: { searchParams: Promise<{ sent?: string; expired?: string }> }) {
+export default async function ForgotPasswordPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sent?: string; expired?: string }>;
+}) {
   const { sent, expired } = await searchParams;
-  return <main className="login-screen grid min-h-screen place-items-center bg-slate-50 p-5"><section className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-900/10"><p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-700">{PLATFORM_NAME}</p><h1 className="mt-3 text-3xl font-bold text-slate-950">Reset password</h1>{sent ? <p className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-emerald-800">If the email belongs to an active staff account, a reset link has been sent. Check inbox and spam.</p> : <><p className="mt-2 text-sm leading-6 text-slate-500">Enter your staff email. The secure link expires in 30 minutes.</p>{expired && <p className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm text-amber-800">That link expired. Request a new one.</p>}<form action={requestPasswordResetAction} className="mt-7"><label className="text-sm font-semibold text-slate-800">Email address<input name="email" type="email" required autoComplete="email" className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 outline-none focus:border-cyan-600 focus:ring-4 focus:ring-cyan-100" /></label><button className="mt-5 h-12 w-full rounded-xl bg-cyan-700 font-semibold text-white hover:bg-cyan-800">Email reset link</button></form></>}<Link href="/login" className="mt-7 inline-block text-sm font-semibold text-cyan-700 hover:underline">Back to sign in</Link></section></main>;
+
+  return (
+    <main className={`cf-portal ${brandFontVariables} grid min-h-screen place-items-center p-5`}>
+      <section className="w-full max-w-md rounded-card border border-border bg-card p-8 shadow-[var(--shadow-overlay)]">
+        <p className="portal-kicker">{PLATFORM_NAME}</p>
+        <h1 className="mt-3 text-[27px] leading-tight font-semibold text-heading">
+          Forgotten your password?
+        </h1>
+
+        {sent ? (
+          <p className="mt-5 rounded-card border border-success-border bg-success-bg p-4 text-[13px] leading-6 text-success">
+            If that email belongs to a staff account, the link is on its way. Have a look in your
+            inbox, and in spam if it is not there.
+          </p>
+        ) : (
+          <>
+            <p className="mt-2 text-[13px] leading-6 text-text-muted">
+              Tell us your staff email and we will send you a link. It works for 30 minutes.
+            </p>
+            {expired && (
+              <p
+                role="alert"
+                className="mt-4 rounded-card border border-warning-border bg-warning-bg p-4 text-[13px] font-semibold text-warning"
+              >
+                That link has run out. Ask for a fresh one below.
+              </p>
+            )}
+            <form action={requestPasswordResetAction} className="mt-7">
+              <label className="text-[13px] font-semibold text-heading">
+                Email address
+                <input
+                  name="email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  placeholder="name@clinic.com"
+                  className="mt-2 h-12 w-full rounded-control border border-border bg-card px-4 text-[15px] text-foreground outline-none transition-colors placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-[var(--focus-ring)]"
+                />
+              </label>
+              <button className="mt-5 min-h-12 w-full cursor-pointer rounded-control bg-primary text-[13px] font-semibold text-white hover:bg-primary-hover">
+                Send me the link
+              </button>
+            </form>
+          </>
+        )}
+
+        <Link
+          href="/login"
+          className="mt-7 inline-block text-[13px] font-semibold text-primary hover:underline"
+        >
+          ← Back to sign in
+        </Link>
+      </section>
+    </main>
+  );
 }

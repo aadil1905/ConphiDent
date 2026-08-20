@@ -1,8 +1,84 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, HeartPulse, Layers3, Workflow } from "lucide-react";
-import MarketingMotion from "@/components/marketing/MarketingMotion";
-import PublicShell from "@/components/marketing/PublicShell";
+import { Aurora, Lift, Reveal, Stagger, WordReveal } from "@/components/marketing/Motion";
+import PublicShell, { SETUP_URL } from "@/components/marketing/PublicShell";
 
-export const metadata: Metadata = { title: "About ConphiDent", description: "ConphiDent is the connected operating system for modern dental clinics.", alternates: { canonical: "/about" } };
-export default function About() { return <PublicShell><MarketingMotion/><section className="mk-page-hero"><div className="cf-wrap" data-reveal><p className="mk-kicker">About ConphiDent</p><h1>Built for the operational reality of dental care.</h1><p>ConphiDent gives dental teams one calmer, more connected way to manage the work around every patient visit.</p></div></section><section className="mk-about"><div className="cf-wrap"><div className="mk-section-heading" data-reveal><p className="mk-kicker">Our product principle</p><h2>Better clinic software should reduce handoffs—not create more of them.</h2><p>A conversation should become an appointment. Clinical work should connect to treatment and billing. Lab, inventory and follow-up work should remain visible. That connected operating model is the purpose of ConphiDent.</p></div><div className="mk-about-grid">{[[Workflow,"One connected operating view","Conversations, appointments, clinical activity, payments and follow-ups build on each other."],[HeartPulse,"Designed around practical care","The platform supports day-to-day workflows while clinicians retain professional judgement."],[Layers3,"Ready for independent and growing clinics","Each clinic has its own data, configuration, staff access and operational setup."]].map(([Icon,title,copy]) => { const I = Icon as typeof Workflow; return <article key={title as string} data-reveal><I/><h3>{title as string}</h3><p>{copy as string}</p></article>; })}</div></div></section><section className="mk-final"><div className="cf-wrap" data-reveal><h2>Explore a more connected clinic workflow.</h2><Link href="/demo" className="mk-button">Book a personalised demo <ArrowRight/></Link></div></section></PublicShell>; }
+export const metadata: Metadata = {
+  title: "About ConphiDent",
+  description: "Why ConphiDent exists: dental software should reduce handoffs between the people caring for a patient, not create more of them.",
+  alternates: { canonical: "/about" },
+};
+
+const principles = [
+  { icon: Workflow, title: "One record, not many tools", copy: "A conversation should become an appointment. Clinical work should reach the bill. Lab, imaging and follow-up work should stay visible. That connected model is the whole point of the product." },
+  { icon: HeartPulse, title: "Software supports, clinicians decide", copy: "The product organises the work around care. It does not diagnose, does not prescribe on its own and does not pretend to hold clinical judgement." },
+  { icon: Layers3, title: "Built for independent practices", copy: "Each clinic gets its own data, configuration, staff access and setup — whether it is one chair or several locations." },
+];
+
+export default function About() {
+  return (
+    <PublicShell>
+      <section className="mk-hero">
+        <Aurora />
+        <div className="cf-wrap">
+          <div className="mk-hero-copy">
+            <Reveal><p className="mk-kicker">About</p></Reveal>
+            <WordReveal className="t-display" text="Built for the operational reality of dental care." />
+            <Reveal delay={0.12}>
+              <p className="t-lead">
+                Most dental software solves one moment well and leaves the clinic to carry the
+                context between moments by hand. ConphiDent exists because that carrying is where
+                the day actually goes.
+              </p>
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
+      <section className="mk-section">
+        <div className="cf-wrap cf-wrap-narrow">
+          <Reveal>
+            <div className="mk-section-heading">
+              <p className="mk-kicker">Our product principle</p>
+              <h2 className="t-h2">Better clinic software should remove handoffs, not add them.</h2>
+              <p className="t-lead">
+                Every time a receptionist retypes something a dentist already wrote, or a bill is
+                raised by asking someone what happened in the chair, the clinic pays for the gap
+                between two tools. We would rather close the gap than sell another tool.
+              </p>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      <section className="mk-section on-tint">
+        <div className="cf-wrap">
+          <Stagger className="mk-grid-3">
+            {principles.map((item) => (
+              <Lift key={item.title}>
+                <span className="mk-tile-icon"><item.icon /></span>
+                <h3>{item.title}</h3>
+                <p>{item.copy}</p>
+              </Lift>
+            ))}
+          </Stagger>
+        </div>
+      </section>
+
+      <section className="mk-final">
+        <Aurora />
+        <div className="cf-wrap">
+          <Reveal>
+            <p className="mk-kicker">Come and look</p>
+            <h2 className="t-h2">The fastest way to judge it is to see it.</h2>
+            <div className="mk-actions">
+              <Link href="/demo" className="mk-button">Book a demo <ArrowRight /></Link>
+              <a href={SETUP_URL} className="mk-button-ghost">Start onboarding</a>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+    </PublicShell>
+  );
+}

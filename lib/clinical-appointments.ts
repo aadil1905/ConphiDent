@@ -15,14 +15,31 @@ function localDayRange(value: string | Date) {
   };
 }
 
-export async function findCompletedAppointment(clinicId: number, patientId: number, value: string | Date) {
+/** Seen first, then confirmed, then whatever else is on the books that day. */
+function visitRank(status: string) {
+  if (status === "Completed") return 0;
+  if (status === "Confirmed") return 1;
+  return 2;
+}
+
+/**
+ * The visit a piece of clinical work belongs to. Nothing is gated on
+ * appointment status: whatever is on the books for that day is the visit, and
+ * when the day is empty the work still saves — it just stands on its own
+ * encounter instead of hanging off an appointment.
+ */
+export async function findVisitForDate(clinicId: number, patientId: number, value: string | Date) {
   const range = localDayRange(value);
-  return prisma.appointment.findFirst({
+  const visits = await prisma.appointment.findMany({
     where: {
       clinicId,
       patientId,
-      status: "Completed",
+      archivedAt: null,
+      status: { not: "Cancelled" },
       appointmentDate: { gte: range.start, lte: range.end },
     },
+    orderBy: { appointmentTime: "asc" },
   });
+  if (visits.length === 0) return null;
+  return visits.slice().sort((a, b) => visitRank(a.status) - visitRank(b.status))[0];
 }

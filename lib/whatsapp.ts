@@ -2,38 +2,40 @@ import { isWhatsAppContactOptedOut, recordOutboundMessage } from "./whatsapp-con
 import { currentWhatsAppClinicId, runWithWhatsAppClinic } from "./whatsapp-context";
 import { decryptWhatsAppToken } from "./whatsapp-connection";
 import { prisma } from "./prisma";
+import { canonicalWhatsAppPhone } from "./phone";
+
+export class WhatsAppDeliveryUncertainError extends Error {}
+export class WhatsAppTemplateRequiredError extends Error {}
 
 async function sendRequest(payload: Record<string, unknown>) {
   const clinicId = currentWhatsAppClinicId();
-  const connection = clinicId ? await prisma.clinicWhatsAppConnection.findUnique({ where: { clinicId } }) : null;
+  if (!clinicId) throw new Error("A clinic-scoped WhatsApp context is required.");
+  const connection = clinicId ? await prisma.clinicWhatsAppConnection.findFirst({ where: { clinicId, disconnectedAt: null, clinic: { status: "ACTIVE" } } }) : null;
   // Legacy credentials are explicitly scoped to the established clinic only; new clinics must use Embedded Signup.
   const legacyClinicId = Number(process.env.LEGACY_WHATSAPP_CLINIC_ID);
-  const mayUseLegacyConnection = !clinicId || (Number.isInteger(legacyClinicId) && clinicId === legacyClinicId);
+  const tenant = clinicId ? await prisma.clinic.findUnique({ where: { id: clinicId }, select: { status: true, featureEntitlements: { where: { featureKey: "whatsapp" }, select: { enabled: true }, take: 1 } } }) : null;
+  if (clinicId && (!tenant || tenant.status !== "ACTIVE" || tenant.featureEntitlements[0]?.enabled === false)) throw new Error("WhatsApp is disabled for this clinic.");
+  const mayUseLegacyConnection = Number.isInteger(legacyClinicId) && clinicId === legacyClinicId && tenant?.status === "ACTIVE";
   const phoneNumberId = connection?.phoneNumberId ?? (mayUseLegacyConnection ? process.env.PHONE_NUMBER_ID : undefined);
   const token = connection ? decryptWhatsAppToken(connection) : (mayUseLegacyConnection ? process.env.WHATSAPP_TOKEN : undefined);
   if (!phoneNumberId || !token) throw new Error("No WhatsApp connection is available for this clinic.");
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    let response: Response;
-    try {
-      response = await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/messages`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-    } catch (error) {
-      if (attempt === 0) continue;
-      if (connection) await prisma.whatsAppConnectionLog.create({ data: { clinicId: connection.clinicId, connectionId: connection.id, event: "MESSAGE_SEND_FAILED", detail: "Message delivery request failed after retry" } }).catch(() => undefined);
-      throw error;
-    }
-    const data: unknown = await response.json().catch(() => null);
-    if (response.ok) return data;
-    // Retry only transient provider failures. Do not retry validation/authentication errors.
-    if ((response.status === 429 || response.status >= 500) && attempt === 0) continue;
-    const message = getErrorMessage(data) || "Failed to send WhatsApp message";
-    if (connection) await prisma.whatsAppConnectionLog.create({ data: { clinicId: connection.clinicId, connectionId: connection.id, event: "MESSAGE_SEND_FAILED", detail: `Meta returned HTTP ${response.status}: ${message.slice(0, 180)}` } });
-    throw new Error(message);
+  let response: Response;
+  try {
+    response = await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(12_000),
+    });
+  } catch {
+    if (connection) await prisma.whatsAppConnectionLog.create({ data: { clinicId: connection.clinicId, connectionId: connection.id, event: "MESSAGE_OUTCOME_UNKNOWN", detail: "Provider request ended without a definitive response; automatic resend is blocked" } }).catch(() => undefined);
+    throw new WhatsAppDeliveryUncertainError("WhatsApp provider outcome is unknown. Verify delivery before retrying.");
   }
-  throw new Error("Failed to send WhatsApp message");
+  const data: unknown = await response.json().catch(() => null);
+  if (response.ok) return data;
+  const message = getErrorMessage(data) || "Failed to send WhatsApp message";
+  if (connection) await prisma.whatsAppConnectionLog.create({ data: { clinicId: connection.clinicId, connectionId: connection.id, event: "MESSAGE_SEND_FAILED", detail: `Meta returned HTTP ${response.status}: ${message.slice(0, 180)}` } });
+  throw new Error(message);
 }
 
 function providerMessageId(result: unknown) {
@@ -56,9 +58,25 @@ async function withinClinic<T>(clinicId: number | undefined, work: () => Promise
   return clinicId ? runWithWhatsAppClinic(clinicId, work) : work();
 }
 
-async function ensureContactCanReceiveWhatsApp(phone: string) {
+async function ensureContactCanReceiveWhatsApp(phone: string, requireOpenCustomerWindow = true) {
   if (await isWhatsAppContactOptedOut(phone)) {
     throw new Error("This WhatsApp contact has opted out. Ask them to send START before messaging again.");
+  }
+  if (!requireOpenCustomerWindow) return;
+  const clinicId = currentWhatsAppClinicId();
+  if (!clinicId) throw new Error("A clinic-scoped WhatsApp context is required.");
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const recentInbound = await prisma.whatsAppMessage.findFirst({
+    where: {
+      direction: "INBOUND",
+      createdAt: { gte: cutoff },
+      conversation: { clinicId, phone },
+    },
+    select: { id: true },
+    orderBy: { createdAt: "desc" },
+  });
+  if (!recentInbound) {
+    throw new WhatsAppTemplateRequiredError("The 24-hour WhatsApp customer-service window is closed. Send an approved template instead.");
   }
 }
 
@@ -66,20 +84,23 @@ export async function sendTextMessage(
   to: string,
   message: string,
   clinicId?: number,
+  recordedContent?: string,
 ) {
   return withinClinic(clinicId, async () => {
-  await ensureContactCanReceiveWhatsApp(to);
+  const canonicalTo = canonicalWhatsAppPhone(to);
+  if (!canonicalTo) throw new Error("The recipient WhatsApp number is invalid.");
+  await ensureContactCanReceiveWhatsApp(canonicalTo);
   const result = await sendRequest({
     messaging_product: "whatsapp",
     recipient_type: "individual",
-    to,
+    to: canonicalTo,
     type: "text",
     text: {
       preview_url: false,
       body: message,
     },
   });
-  await recordOutboundSafely(to, message, "TEXT", providerMessageId(result));
+  await recordOutboundSafely(canonicalTo, recordedContent || message, "TEXT", providerMessageId(result));
   return result;
   });
 }
@@ -92,11 +113,13 @@ export async function sendTemplateMessage(
   clinicId?: number,
 ) {
   return withinClinic(clinicId, async () => {
-  await ensureContactCanReceiveWhatsApp(to);
+  const canonicalTo = canonicalWhatsAppPhone(to);
+  if (!canonicalTo) throw new Error("The recipient WhatsApp number is invalid.");
+  await ensureContactCanReceiveWhatsApp(canonicalTo, false);
   const result = await sendRequest({
     messaging_product: "whatsapp",
     recipient_type: "individual",
-    to,
+    to: canonicalTo,
     type: "template",
     template: {
       name: templateName,
@@ -118,7 +141,7 @@ export async function sendTemplateMessage(
         : {}),
     },
   });
-  await recordOutboundSafely(to, `Template: ${templateName}`, "TEMPLATE", providerMessageId(result));
+  await recordOutboundSafely(canonicalTo, `Template: ${templateName}`, "TEMPLATE", providerMessageId(result));
   return result;
   });
 }
@@ -133,11 +156,13 @@ export async function sendReplyButtons(
   clinicId?: number,
 ) {
   return withinClinic(clinicId, async () => {
-  await ensureContactCanReceiveWhatsApp(to);
+  const canonicalTo = canonicalWhatsAppPhone(to);
+  if (!canonicalTo) throw new Error("The recipient WhatsApp number is invalid.");
+  await ensureContactCanReceiveWhatsApp(canonicalTo);
   const result = await sendRequest({
     messaging_product: "whatsapp",
     recipient_type: "individual",
-    to,
+    to: canonicalTo,
     type: "interactive",
     interactive: {
       type: "button",
@@ -155,7 +180,7 @@ export async function sendReplyButtons(
       },
     },
   });
-  await recordOutboundSafely(to, bodyText, "INTERACTIVE", providerMessageId(result));
+  await recordOutboundSafely(canonicalTo, bodyText, "INTERACTIVE", providerMessageId(result));
   return result;
   });
 }
@@ -175,11 +200,13 @@ export async function sendListMessage(
   clinicId?: number,
 ) {
   return withinClinic(clinicId, async () => {
-  await ensureContactCanReceiveWhatsApp(to);
+  const canonicalTo = canonicalWhatsAppPhone(to);
+  if (!canonicalTo) throw new Error("The recipient WhatsApp number is invalid.");
+  await ensureContactCanReceiveWhatsApp(canonicalTo);
   const result = await sendRequest({
     messaging_product: "whatsapp",
     recipient_type: "individual",
-    to,
+    to: canonicalTo,
     type: "interactive",
     interactive: {
       type: "list",
@@ -203,7 +230,7 @@ export async function sendListMessage(
       },
     },
   });
-  await recordOutboundSafely(to, bodyText, "INTERACTIVE", providerMessageId(result));
+  await recordOutboundSafely(canonicalTo, bodyText, "INTERACTIVE", providerMessageId(result));
   return result;
   });
 }

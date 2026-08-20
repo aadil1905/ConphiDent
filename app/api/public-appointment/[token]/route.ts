@@ -1,3 +1,4 @@
+import { reportError } from "@/lib/monitoring";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -61,7 +62,7 @@ export async function POST(request: Request, context: { params: Promise<{ token:
     return NextResponse.json({ success: true, status: input.response });
   } catch (error) {
     if (error instanceof z.ZodError) return NextResponse.json({ error: error.issues[0]?.message || "Please check your response." }, { status: 400 });
-    console.error("Public appointment response failed", error);
+    await reportError(error, { where: "api/public-appointment" });
     return NextResponse.json({ error: "Your response could not be saved. Please try again." }, { status: 500 });
   }
 }

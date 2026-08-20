@@ -1,3 +1,5 @@
-import FeatureLoading from "@/components/dashboard/FeatureLoading";
+import PageSkeleton from "@/components/dashboard/PageSkeleton";
 
-export default function Loading() { return <FeatureLoading title="Loading revenue" columns={3} />; }
+export default function Loading() {
+  return <PageSkeleton shape="list" />;
+}

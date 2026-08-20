@@ -1,17 +1,38 @@
-import { notFound } from "next/navigation";
-import Image from "next/image";
-import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/permissions";
-import { buildInvoiceDocument } from "@/lib/billing-document";
+export const dynamic = "force-dynamic";
 
-const money = (value: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
+import { notFound } from "next/navigation";
+import { InvoiceDocument } from "@/components/documents/B6ClinicalDocuments";
+import { PrintActions } from "@/components/documents/PrintActions";
+import { requireFeature } from "@/lib/features";
+import { buildInvoiceDocument } from "@/lib/billing-document";
+import { prisma } from "@/lib/prisma";
 
 export default async function PrintInvoicePage({ params }: { params: Promise<{ id: string }> }) {
-  const user = await requirePermission("manageBilling");
-  const { id } = await params;
-  const invoice = await prisma.invoice.findFirst({ where: { id: Number(id), patient: { clinicId: user.clinicId } }, include: { patient: true, payments: { orderBy: { paidAt: "asc" } } } });
-  const clinic = await prisma.clinic.findUnique({ where: { id: user.clinicId }, select: { name: true, brandName: true, logoUrl: true, address: true, phone: true, email: true, gstin: true, registrationNumber: true, invoiceFooter: true, paymentDetails: true } });
+  const user = await requireFeature("billing");
+  const id = Number((await params).id);
+  if (!Number.isInteger(id)) notFound();
+
+  const [invoice, clinic] = await Promise.all([
+    prisma.invoice.findFirst({
+      where: { id, clinicId: user.clinicId, voidedAt: null },
+      include: {
+        patient: true,
+        lineItems: { orderBy: { sortOrder: "asc" } },
+        payments: { where: { status: "POSTED" }, orderBy: { paidAt: "asc" } },
+      },
+    }),
+    prisma.clinic.findUnique({
+      where: { id: user.clinicId },
+      select: { name: true, brandName: true, logoUrl: true, accentColor: true, address: true, phone: true, email: true, gstin: true, registrationNumber: true, invoiceFooter: true, paymentDetails: true },
+    }),
+  ]);
   if (!invoice || !clinic) notFound();
+
   const document = buildInvoiceDocument({ clinic, invoice });
-  return <main className="mx-auto max-w-4xl bg-white p-6 text-slate-900 print:max-w-none print:p-0"><div className="mb-8 flex items-start justify-between border-b-2 border-slate-900 pb-6"><div>{document.logoUrl ? <Image src={document.logoUrl} alt="Clinic logo" width={192} height={56} unoptimized className="mb-3 h-14 max-w-48 object-contain" /> : null}<h1 className="text-2xl font-bold">{document.brandName}</h1><p className="mt-1 whitespace-pre-line text-sm text-slate-600">{[document.address, document.phone, document.email].filter(Boolean).join("\n")}</p>{document.gstin ? <p className="mt-2 text-xs">GSTIN: {document.gstin}</p> : null}{document.registrationNumber ? <p className="text-xs">Registration: {document.registrationNumber}</p> : null}</div><div className="text-right"><p className="text-xs font-bold uppercase tracking-[.16em] text-slate-500">Tax invoice</p><p className="mt-2 text-2xl font-bold">{document.documentNumber}</p><p className="mt-2 text-sm">Issued: {document.issuedAt.toLocaleDateString("en-IN")}</p>{document.dueAt ? <p className="text-sm">Due: {document.dueAt.toLocaleDateString("en-IN")}</p> : null}</div></div><section className="grid gap-6 border-b pb-6 sm:grid-cols-2"><div><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Bill to</p><p className="mt-2 font-semibold">{document.patient.fullName}</p><p className="text-sm text-slate-600">{document.patient.phone}{document.patient.email ? ` · ${document.patient.email}` : ""}</p></div><div className="sm:text-right"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Status</p><p className="mt-2 font-semibold">{document.status}</p></div></section><section className="py-6"><table className="w-full text-sm"><thead className="border-y bg-slate-50 text-left"><tr><th className="px-3 py-3">Description</th><th className="px-3 py-3 text-right">Amount</th></tr></thead><tbody><tr className="border-b"><td className="px-3 py-4">Treatment and clinical services</td><td className="px-3 py-4 text-right font-semibold">{money(document.totalAmount)}</td></tr></tbody></table><div className="ml-auto mt-5 max-w-xs space-y-2 text-sm"><div className="flex justify-between"><span>Total</span><strong>{money(document.totalAmount)}</strong></div><div className="flex justify-between"><span>Paid</span><strong>{money(document.paidAmount)}</strong></div><div className="flex justify-between border-t pt-2 text-base"><span>Outstanding</span><strong>{money(document.outstandingAmount)}</strong></div></div></section>{document.notes ? <section className="border-t py-5 text-sm"><p className="font-semibold">Notes</p><p className="mt-1 whitespace-pre-line text-slate-600">{document.notes}</p></section> : null}{document.paymentDetails ? <section className="border-t py-5 text-sm"><p className="font-semibold">Payment details</p><p className="mt-1 whitespace-pre-line text-slate-600">{document.paymentDetails}</p></section> : null}<footer className="border-t pt-5 text-center text-xs text-slate-500">{document.footer}</footer></main>;
+  return (
+    <main className="min-h-screen bg-slate-100 px-3 py-6 text-slate-950 print:bg-white print:p-0">
+      <PrintActions backHref={`/dashboard/billing/${invoice.id}`} backLabel="Back to invoice" />
+      <InvoiceDocument document={document} />
+    </main>
+  );
 }

@@ -1,56 +1,26 @@
 import { NextResponse } from "next/server";
-import { clinicDisplayName, formatClinicInformation, getClinicConfiguration } from "@/lib/clinic-config";
+import { clinicDisplayName } from "@/lib/clinic-config";
 import { prisma } from "@/lib/prisma";
-import { sendTextMessage } from "@/lib/whatsapp";
-import { requireApiPermission } from "@/lib/tenant";
+import { queueSecureWhatsAppDocument, SecureWhatsAppDeliveryError } from "@/lib/secure-whatsapp";
+import { processScheduledWhatsAppMessages } from "@/lib/scheduled-whatsapp";
+import { requireApiFeatures } from "@/lib/tenant";
 
-export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
+export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const { user, response } = await requireApiPermission("manageBilling");
+    const { user, response } = await requireApiFeatures(["billing", "whatsapp"]);
     if (!user) return response;
-    const { id } = await context.params;
-    const invoiceId = Number(id);
+    const invoiceId = Number((await context.params).id);
     if (!Number.isInteger(invoiceId)) return NextResponse.json({ error: "Invalid invoice." }, { status: 400 });
-
-    const [invoice, clinic] = await Promise.all([
-      prisma.invoice.findFirst({
-        where: { id: invoiceId, patient: { clinicId: user.clinicId } },
-        include: {
-          patient: true,
-          treatmentPlan: { include: { selectedTeeth: { orderBy: { toothNumber: "asc" } } } },
-          payments: true,
-        },
-      }),
-      getClinicConfiguration(user.clinicId),
-    ]);
-
+    const body = await request.json().catch(() => ({})) as { consentConfirmed?: unknown };
+    const invoice = await prisma.invoice.findFirst({ where: { id: invoiceId, clinicId: user.clinicId, voidedAt: null }, include: { patient: true } });
     if (!invoice) return NextResponse.json({ error: "Invoice not found." }, { status: 404 });
-    if (!invoice.patient.phone) return NextResponse.json({ error: "Patient phone number is missing." }, { status: 400 });
-
-    const paid = invoice.payments.reduce((sum, payment) => sum + payment.amount, 0);
-    const outstanding = invoice.totalAmount - paid;
-    const teeth = invoice.treatmentPlan?.selectedTeeth.length ? invoice.treatmentPlan.selectedTeeth.map((tooth) => tooth.toothNumber).join(", ") : invoice.treatmentPlan?.toothNumber;
-    const treatmentLine = invoice.treatmentPlan ? `Treatment: ${invoice.treatmentPlan.title}${teeth ? ` (Teeth ${teeth})` : ""}` : "Treatment: Dental services";
-    const dueLine = invoice.dueDate ? `Due date: ${invoice.dueDate.toLocaleDateString("en-IN")}` : "Due date: Not set";
-    const message = [
-      `Hello ${invoice.patient.fullName},`,
-      `Your invoice ${invoice.invoiceNumber} from ${clinic ? clinicDisplayName(clinic) : "your clinic"} is ready.`,
-      treatmentLine,
-      `Total: Rs. ${invoice.totalAmount.toLocaleString("en-IN")}`,
-      `Paid: Rs. ${paid.toLocaleString("en-IN")}`,
-      `Outstanding: Rs. ${outstanding.toLocaleString("en-IN")}`,
-      dueLine,
-      "",
-      formatClinicInformation(clinic),
-      "",
-      "Please reply here if you need any help.",
-    ].join("\n");
-
-    await sendTextMessage(invoice.patient.phone, message, user.clinicId);
-    await prisma.auditLog.create({ data: { clinicId: user.clinicId, userId: user.id, action: "INVOICE_WHATSAPP_SENT", entityType: "INVOICE", entityId: String(invoice.id), detail: `Invoice ${invoice.invoiceNumber} sent to the patient WhatsApp contact` } });
-    return NextResponse.json({ success: true });
+    const outcome = await queueSecureWhatsAppDocument({ clinicId: user.clinicId, clinicName: clinicDisplayName(user.clinic), patientId: invoice.patientId, patientName: invoice.patient.fullName, phone: invoice.patient.phone, documentType: "INVOICE", documentId: invoice.id, documentLabel: `${invoice.documentType.replaceAll("_", " ").toLowerCase()} ${invoice.invoiceNumber}`, purpose: "BILLING_DOCUMENTS", sourceType: "INVOICE", actorUserId: user.id, actorRole: user.role, auditAction: "INVOICE_WHATSAPP_QUEUED", consentConfirmed: body.consentConfirmed === true, preferredTemplateName: process.env.WHATSAPP_INVOICE_TEMPLATE, preferredTemplateLanguage: process.env.WHATSAPP_INVOICE_TEMPLATE_LANG || "en" });
+    const delivery = await processScheduledWhatsAppMessages(new Date(), outcome.messageId);
+    return NextResponse.json({ success: true, ...outcome, delivery });
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: "Could not send the invoice on WhatsApp. Check WhatsApp configuration and the patient phone number." }, { status: 500 });
+    if (error instanceof SecureWhatsAppDeliveryError) return NextResponse.json({ error: error.message }, { status: error.status });
+    const correlationId = crypto.randomUUID();
+    console.error("Secure invoice delivery failed", { correlationId, error });
+    return NextResponse.json({ error: "Could not queue the secure invoice link.", correlationId }, { status: 500 });
   }
 }

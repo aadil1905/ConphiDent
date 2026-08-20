@@ -4,9 +4,9 @@ export default function EditAppointmentButton({ appointmentId }: { appointmentId
   return (
     <Link
       href={`/dashboard/appointments/${appointmentId}/edit`}
-      className="inline-flex h-11 items-center justify-center rounded-xl bg-sky-600 px-5 text-sm font-bold text-white shadow-sm hover:bg-sky-700"
+      className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted"
     >
-      Edit appointment
+      Change day or time
     </Link>
   );
 }

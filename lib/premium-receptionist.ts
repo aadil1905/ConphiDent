@@ -1,6 +1,6 @@
 import { formatClinicInformation, getClinicConfiguration } from "./clinic-config";
-import { primaryClinic } from "./whatsapp-conversations";
 import { prisma } from "./prisma";
+import { currentWhatsAppClinicId } from "./whatsapp-context";
 
 function normalise(value: string) {
   return value.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
@@ -21,15 +21,14 @@ function matchesFaq(message: string, question: string) {
 
 export async function premiumReceptionReply(message: string) {
   const text = normalise(message);
-  const clinic = await getClinicConfiguration();
+  const clinic = await getClinicConfiguration(currentWhatsAppClinicId());
   if (!clinic) return null;
 
   if (/\b(contact|address|location|where|phone|number|timing|time|hours|open|close|kab|kaha|kitne baje)\b/.test(text)) return formatClinicInformation(clinic);
   if (/\b(invoice|bill|payment|paid|due|balance|receipt|upi|refund)\b/.test(text)) return "I can help with billing. To protect your privacy, I can’t share invoice or payment details in this chat automatically. Please type “human” and the clinic team can verify and assist you here.";
 
   if (/\b(doctor|dr |available|availability|kaun|which doctor)\b/.test(text)) {
-    const primary = await primaryClinic();
-    const providers = primary ? await prisma.clinicProvider.findMany({ where: { clinicId: primary.id, active: true }, select: { name: true }, orderBy: { name: "asc" }, take: 8 }) : [];
+    const providers = await prisma.clinicProvider.findMany({ where: { clinicId: clinic.id, active: true }, select: { name: true }, orderBy: { name: "asc" }, take: 8 });
     const names = providers.map((provider) => provider.name);
     return names.length ? `Our available clinical team includes ${names.join(", ")}. Doctor schedules can change, so please book an appointment and the clinic will confirm the right doctor and time.` : "Doctor schedules can change. Please book an appointment and the clinic will confirm the right doctor and time for your visit.";
   }

@@ -1,3 +1,4 @@
+import { reportError } from "@/lib/monitoring";
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
       if (existingPatient) return NextResponse.json({ ...existingPatient, existed: true });
       return NextResponse.json({ error: "A patient with this phone number already exists." }, { status: 409 });
     }
-    console.error(error);
+    await reportError(error, { where: "api/patients" });
     return NextResponse.json({ error: "Failed to create patient." }, { status: 500 });
   }
 }
@@ -42,6 +43,6 @@ export async function GET(request: Request) {
   if (!user) return response;
   const phone = new URL(request.url).searchParams.get("phone")?.replace(/\D/g, "").slice(-10) || "";
   if (phone.length !== 10) return NextResponse.json({ patient: null });
-  const patient = await prisma.patient.findUnique({ where: { clinicId_phone: { clinicId: user.clinicId, phone } }, select: { id: true, fullName: true, phone: true } });
-  return NextResponse.json({ patient });
+  const patient = await prisma.patient.findUnique({ where: { clinicId_phone: { clinicId: user.clinicId, phone } }, select: { id: true, fullName: true, phone: true, archivedAt: true } });
+  return NextResponse.json({ patient: patient?.archivedAt ? null : patient });
 }

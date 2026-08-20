@@ -1,5 +1,5 @@
-import FeatureLoading from "@/components/dashboard/FeatureLoading";
+import PageSkeleton from "@/components/dashboard/PageSkeleton";
 
-export default function LoadingLaunch() {
-  return <FeatureLoading title="Loading launch checks" />;
+export default function Loading() {
+  return <PageSkeleton shape="detail" />;
 }

@@ -1,9 +1,11 @@
+import { reportError } from "@/lib/monitoring";
 import { randomBytes } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireUser } from "@/lib/auth";
+import { requireApiFeature, requireApiPermission } from "@/lib/tenant";
 import { prisma } from "@/lib/prisma";
-import { sendTemplateMessage, sendTextMessage } from "@/lib/whatsapp";
+import { PatientWhatsAppPolicyError, queuePatientWhatsAppMessage } from "@/lib/patient-whatsapp";
+import { processScheduledWhatsAppMessages } from "@/lib/scheduled-whatsapp";
 
 const patientSchema = z.object({
   fullName: z.string().trim().min(2).max(160),
@@ -12,6 +14,7 @@ const patientSchema = z.object({
   dateOfBirth: z.union([z.literal(""), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)]).optional().default(""),
   gender: z.union([z.literal(""), z.enum(["Female", "Male", "Non-binary", "Prefer not to say"])]).optional().default(""),
   address: z.string().trim().max(500).optional().default(""),
+  consentConfirmed: z.literal(true),
 });
 
 const finalizeSchema = z.object({
@@ -26,7 +29,8 @@ function patientLink(request: NextRequest, token: string) {
 }
 
 export async function POST(request: NextRequest) {
-  const user = await requireUser();
+  const { user, response } = await requireApiFeature("whatsapp", "sendWhatsApp");
+  if (!user) return response;
   try {
     const input = patientSchema.parse(await request.json());
     const token = randomBytes(32).toString("hex");
@@ -71,26 +75,32 @@ export async function POST(request: NextRequest) {
     let warning = "";
 
     try {
-      const whatsappTo = `91${input.phone}`;
-      if (process.env.WHATSAPP_INTAKE_TEMPLATE) {
-        await sendTemplateMessage(
-          whatsappTo,
-          process.env.WHATSAPP_INTAKE_TEMPLATE,
-          process.env.WHATSAPP_INTAKE_TEMPLATE_LANG || "en",
-          [input.fullName, link],
-          user.clinicId,
-        );
-      } else {
-        await sendTextMessage(
-          whatsappTo,
-          `Hello ${input.fullName}, ${user.clinic.brandName || user.clinic.name} has sent your secure patient-intake form. Please complete your medical history, consent, and signature within 48 hours:\n\n${link}`,
-          user.clinicId,
-        );
-      }
-      await prisma.patientIntakeRequest.update({
-        where: { id: intake.id },
-        data: { status: "SENT", sentAt: new Date() },
+      const queued = await queuePatientWhatsAppMessage({
+        clinicId: user.clinicId,
+        patientId: patient.id,
+        phone: patient.phone,
+        content: `Hello ${input.fullName}, ${user.clinic.brandName || user.clinic.name} has sent your secure patient-intake form. Please complete your medical history, consent, and signature within 48 hours:\n\n${link}`,
+        purpose: "PATIENT_INTAKE",
+        sourceType: "PATIENT_INTAKE",
+        sourceId: String(intake.id),
+        idempotencyKey: `patient-intake:${intake.id}`,
+        actorUserId: user.id,
+        actorRole: user.role,
+        consentConfirmed: input.consentConfirmed,
+        consentEvidence: "Staff confirmed the patient agreed to receive the private intake link on this WhatsApp number",
+        auditAction: "PATIENT_INTAKE_WHATSAPP_QUEUED",
+        preferredTemplateName: process.env.WHATSAPP_INTAKE_TEMPLATE,
+        preferredTemplateLanguage: process.env.WHATSAPP_INTAKE_TEMPLATE_LANG || "en",
+        templateParameters: [input.fullName, link],
+        redactContent: true,
       });
+      await processScheduledWhatsAppMessages(new Date(), queued.message.id);
+      const delivered = await prisma.scheduledWhatsAppMessage.findFirst({ where: { id: queued.message.id, clinicId: user.clinicId }, select: { status: true, failureReason: true } });
+      if (delivered?.status === "SENT") {
+        await prisma.patientIntakeRequest.update({ where: { id: intake.id }, data: { status: "SENT", sentAt: new Date() } });
+      } else {
+        warning = delivered?.failureReason || "The secure link is queued and awaiting WhatsApp delivery.";
+      }
     } catch (error) {
       warning = error instanceof Error ? error.message : "WhatsApp could not send the link.";
     }
@@ -107,13 +117,15 @@ export async function POST(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues[0]?.message || "Please check the patient details." }, { status: 400 });
     }
-    console.error("Create patient intake failed", error);
+    if (error instanceof PatientWhatsAppPolicyError) return NextResponse.json({ error: error.message }, { status: error.status });
+    await reportError(error, { where: "api/patient-intake.create" });
     return NextResponse.json({ error: "The intake request could not be created." }, { status: 500 });
   }
 }
 
 export async function GET(request: NextRequest) {
-  const user = await requireUser();
+  const { user, response } = await requireApiPermission("managePatients");
+  if (!user) return response;
   const id = Number(request.nextUrl.searchParams.get("id"));
   if (!Number.isInteger(id)) return NextResponse.json({ error: "Invalid intake request." }, { status: 400 });
 
@@ -134,7 +146,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const user = await requireUser();
+  const { user, response } = await requireApiPermission("editClinicalDraft");
+  if (!user) return response;
   try {
     const input = finalizeSchema.parse(await request.json());
     const intake = await prisma.patientIntakeRequest.findFirst({
@@ -147,14 +160,6 @@ export async function PATCH(request: NextRequest) {
     }
 
     await prisma.$transaction([
-      prisma.clinicalRecord.updateMany({
-        where: { patientId: intake.patientId, chiefComplaint: "Initial patient intake" },
-        data: {
-          treatmentDone: input.treatmentDone || null,
-          estimateAmount: input.estimateAmount === "" ? null : input.estimateAmount,
-          clinicalNotes: "Secure WhatsApp patient-intake form reviewed by clinic staff.",
-        },
-      }),
       prisma.patientIntakeRequest.update({
         where: { id: intake.id },
         data: {
@@ -172,7 +177,7 @@ export async function PATCH(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues[0]?.message || "Please check the estimate." }, { status: 400 });
     }
-    console.error("Finalize intake failed", error);
+    await reportError(error, { where: "api/patient-intake.finalize" });
     return NextResponse.json({ error: "The intake could not be finalized." }, { status: 500 });
   }
 }

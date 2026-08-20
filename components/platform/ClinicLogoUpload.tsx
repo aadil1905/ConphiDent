@@ -35,7 +35,7 @@ export function ClinicLogoUpload({ clinicId, currentLogoUrl, clinicName }: { cli
 
   return <div className="rounded-xl border bg-muted/20 p-4 sm:col-span-2">
     <div className="flex items-center gap-4">
-      <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-background text-lg font-bold text-slate-500">
+      <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-background text-lg font-bold text-text-muted">
         {preview ? <Image src={preview} alt={`${clinicName} logo`} width={64} height={64} className="size-full object-contain" unoptimized /> : clinicName.slice(0, 1).toUpperCase()}
       </div>
       <div className="min-w-0"><p className="text-sm font-semibold">Clinic logo</p><p className="text-xs text-muted-foreground">PNG, JPEG, WebP, SVG, or icon. Maximum 2 MB.</p>

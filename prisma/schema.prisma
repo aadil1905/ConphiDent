@@ -9,30 +9,32 @@ datasource db {
 }
 
 model Appointment {
-  id              Int       @id @default(autoincrement())
-  clinicId        Int
-  phone           String
-  createdAt       DateTime  @default(now())
-  appointmentDate DateTime
-  appointmentTime String
-  notes           String?
-  patientName     String
-  source          String    @default("WhatsApp")
-  status          String    @default("Pending")
-  reminderSentAt  DateTime?
-  treatment       String
-  patientId       Int?
-  locationId      Int?
-  providerId      Int?
-  chairId         Int?
-  archivedAt      DateTime?
-  clinic          Clinic    @relation(fields: [clinicId], references: [id], onDelete: Restrict)
-  location        ClinicLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
-  patient         Patient?  @relation(fields: [patientId], references: [id], onDelete: SetNull)
-  provider        ClinicProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
-  chair           ClinicChair? @relation(fields: [chairId], references: [id], onDelete: SetNull)
-  lead            Lead?
+  id                  Int                             @id @default(autoincrement())
+  clinicId            Int
+  phone               String
+  createdAt           DateTime                        @default(now())
+  appointmentDate     DateTime
+  appointmentTime     String
+  notes               String?
+  patientName         String
+  source              String                          @default("WhatsApp")
+  status              String                          @default("Pending")
+  reminderSentAt      DateTime?
+  treatment           String
+  patientId           Int?
+  locationId          Int?
+  providerId          Int?
+  chairId             Int?
+  archivedAt          DateTime?
+  clinic              Clinic                          @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  location            ClinicLocation?                 @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  patient             Patient?                        @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  provider            ClinicProvider?                 @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  chair               ClinicChair?                    @relation(fields: [chairId], references: [id], onDelete: SetNull)
+  lead                Lead?
   selfServiceRequests AppointmentSelfServiceRequest[]
+  encounter           Encounter?
+  labCases            LabCase[]
 
   @@index([clinicId, archivedAt, appointmentDate])
   @@index([clinicId, status, appointmentDate, appointmentTime])
@@ -43,149 +45,213 @@ model Appointment {
 }
 
 model Patient {
-  id                 Int                    @id @default(autoincrement())
-  clinicId           Int
-  fullName           String
-  phone              String
-  email              String?
-  dateOfBirth        DateTime?
-  gender             String?
-  address            String?
-  medicalNotes       String?
-  createdAt          DateTime               @default(now())
-  updatedAt          DateTime               @updatedAt
-  appointments       Appointment[]
-  clinicalRecords    ClinicalRecord[]
-  treatmentPlans     TreatmentPlan[]
-  invoices           Invoice[]
-  prescriptions      Prescription[]
-  dentalChartEntries DentalChartEntry[]
-  labCases           LabCase[]
-  leads              Lead[]                 @relation("PatientLeads")
-  conversations      WhatsAppConversation[] @relation("PatientConversations")
-  followUpTasks      FollowUpTask[]         @relation("PatientFollowUps")
-  intakeRequests     PatientIntakeRequest[]
-  portalAccess       PatientPortalAccess?
-  clinic             Clinic                 @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  id                      Int                      @id @default(autoincrement())
+  clinicId                Int
+  fullName                String
+  phone                   String
+  email                   String?
+  dateOfBirth             DateTime?
+  gender                  String?
+  address                 String?
+  medicalNotes            String?
+  archivedAt              DateTime?
+  archiveReason           String?
+  archivedByUserId        Int?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  appointments            Appointment[]
+  treatmentPlans          TreatmentPlan[]
+  invoices                Invoice[]
+  prescriptions           Prescription[]
+  dentalChartEntries      DentalChartEntry[]
+  labCases                LabCase[]
+  leads                   Lead[]                   @relation("PatientLeads")
+  conversations           WhatsAppConversation[]   @relation("PatientConversations")
+  followUpTasks           FollowUpTask[]           @relation("PatientFollowUps")
+  intakeRequests          PatientIntakeRequest[]
+  portalAccess            PatientPortalAccess?
+  encounters              Encounter[]
+  dentitionAssessments    DentitionAssessment[]
+  patientTeeth            PatientTooth[]
+  dentalFindings          DentalFinding[]
+  timelineEvents          PatientTimelineEvent[]
+  imagingStudies          ImagingStudy[]
+  imagingComparisons      ImagingComparison[]
+  auditLogs               AuditLog[]               @relation("PatientAuditLogs")
+  clinic                  Clinic                   @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  imagingMatchResolutions ImagingMatchResolution[]
 
   @@unique([clinicId, phone])
   @@index([clinicId, fullName])
-  @@index([clinicId, createdAt])
+  @@index([clinicId, archivedAt, createdAt])
   @@index([fullName])
 }
 
 model Invoice {
-  id              Int            @id @default(autoincrement())
-  invoiceNumber   String         @unique
-  patientId       Int
-  treatmentPlanId Int?
-  issueDate       DateTime       @default(now())
-  dueDate         DateTime?
-  totalAmount     Int
-  status          String         @default("Unpaid")
-  notes           String?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  patient         Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  treatmentPlan   TreatmentPlan? @relation(fields: [treatmentPlanId], references: [id], onDelete: SetNull)
-  payments        Payment[]
+  id                Int               @id @default(autoincrement())
+  publicId          String            @unique @default(cuid())
+  invoiceNumber     String
+  documentType      String            @default("TAX_INVOICE")
+  currency          String            @default("INR")
+  patientId         Int
+  treatmentPlanId   Int?
+  clinicId          Int
+  encounterId       Int?
+  issueDate         DateTime          @default(now())
+  dueDate           DateTime?
+  totalAmount       Int
+  subtotalAmount    Int?
+  discountAmount    Int               @default(0)
+  taxAmount         Int               @default(0)
+  status            String            @default("Unpaid")
+  notes             String?
+  terms             String?
+  immutableSnapshot Json?
+  finalizedAt       DateTime?
+  parentInvoiceId   Int?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  voidedAt          DateTime?
+  voidReason        String?
+  patient           Patient           @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  treatmentPlan     TreatmentPlan?    @relation(fields: [treatmentPlanId], references: [id], onDelete: SetNull)
+  clinic            Clinic            @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  encounter         Encounter?        @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+  payments          Payment[]
+  lineItems         InvoiceLineItem[]
+  parentInvoice     Invoice?          @relation("InvoiceAdjustments", fields: [parentInvoiceId], references: [id], onDelete: SetNull)
+  adjustments       Invoice[]         @relation("InvoiceAdjustments")
 
+  @@unique([clinicId, invoiceNumber])
   @@index([patientId, status])
   @@index([dueDate])
+  @@index([clinicId, status, issueDate])
+  @@index([encounterId])
+  @@index([clinicId, documentType, issueDate])
+  @@index([parentInvoiceId])
+}
+
+model InvoiceLineItem {
+  id          Int     @id @default(autoincrement())
+  invoiceId   Int
+  description String
+  quantity    Int     @default(1)
+  unitPrice   Int
+  discount    Int     @default(0)
+  taxPercent  Int     @default(0)
+  lineTotal   Int
+  sortOrder   Int     @default(0)
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@index([invoiceId, sortOrder])
 }
 
 model Payment {
-  id        Int      @id @default(autoincrement())
-  invoiceId Int
-  amount    Int
-  method    String
-  paidAt    DateTime @default(now())
-  notes     String?
-  recordedBy String?
-  createdAt DateTime @default(now())
-  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  id               Int        @id @default(autoincrement())
+  invoiceId        Int
+  clinicId         Int
+  encounterId      Int?
+  amount           Int
+  method           String
+  paidAt           DateTime   @default(now())
+  notes            String?
+  receiptNumber    String?
+  referenceNumber  String?
+  recordedBy       String?
+  createdAt        DateTime   @default(now())
+  status           String     @default("POSTED")
+  reversedAt       DateTime?
+  reversalReason   String?
+  recordedByUserId Int?
+  invoice          Invoice    @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  clinic           Clinic     @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  encounter        Encounter? @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+  recordedByUser   User?      @relation("PaymentRecorder", fields: [recordedByUserId], references: [id], onDelete: SetNull)
 
+  @@unique([clinicId, receiptNumber])
   @@index([invoiceId, paidAt])
+  @@index([clinicId, status, paidAt])
+  @@index([encounterId])
 }
 
-model ClinicalRecord {
-  id                Int       @id @default(autoincrement())
-  patientId         Int
-  visitDate         DateTime  @default(now())
-  chiefComplaint    String
-  diagnosis         String?
-  clinicalNotes     String?
-  medicalHistory    String?
-  drugAllergies     String?
-  medications       String?
-  otherHistory      String?
-  bloodPressure     String?
-  weightKg          String?
-  dentalHistory     String?
-  treatmentDone     String?
-  estimateAmount    Int?
-  consentGiven      Boolean   @default(false)
-  consentNotes      String?
-  patientSignature  String?
-  guardianSignature String?
-  consentSignedAt   DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  patient           Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
-
-  @@index([patientId, visitDate])
-}
 
 model DentalChartEntry {
-  id          Int      @id @default(autoincrement())
+  id          Int        @id @default(autoincrement())
   patientId   Int
+  clinicId    Int
+  encounterId Int?
+  authorId    Int?
   toothNumber String
-  visitDate   DateTime @default(now())
-  condition   String   @default("HEALTHY")
+  visitDate   DateTime   @default(now())
+  condition   String     @default("HEALTHY")
   notes       String?
-  updatedAt   DateTime @updatedAt
-  createdAt   DateTime @default(now())
-  patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  updatedAt   DateTime   @updatedAt
+  createdAt   DateTime   @default(now())
+  status      String     @default("CURRENT")
+  source      String     @default("CLINICAL_WORKSPACE")
+  version     Int        @default(1)
+  patient     Patient    @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  clinic      Clinic     @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  encounter   Encounter? @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+  author      User?      @relation("LegacyChartAuthor", fields: [authorId], references: [id], onDelete: SetNull)
 
   @@unique([patientId, toothNumber, visitDate])
   @@index([patientId, visitDate])
   @@index([patientId, condition])
+  @@index([clinicId, encounterId])
 }
 
 model TreatmentPlan {
-  id            Int                  @id @default(autoincrement())
-  patientId     Int
-  visitDate     DateTime?
-  title         String
-  status        String               @default("Proposed")
-  estimatedCost Int?
-  serviceId     Int?
-  toothNumber   String?
-  unitPrice     Int?
-  notes         String?
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
-  patient       Patient              @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  invoices      Invoice[]
-  labCases      LabCase[]
-  service       ClinicService?       @relation(fields: [serviceId], references: [id], onDelete: SetNull)
-  selectedTeeth TreatmentPlanTooth[]
-  items         TreatmentPlanItem[]
+  id                 Int                  @id @default(autoincrement())
+  patientId          Int
+  clinicId           Int
+  encounterId        Int?
+  providerId         Int?
+  authorId           Int?
+  visitDate          DateTime?
+  title              String
+  status             String               @default("Proposed")
+  estimatedCost      Int?
+  serviceId          Int?
+  toothNumber        String?
+  unitPrice          Int?
+  notes              String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  source             String               @default("MANUAL")
+  version            Int                  @default(1)
+  cancelledAt        DateTime?
+  cancellationReason String?
+  patient            Patient              @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  clinic             Clinic               @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  encounter          Encounter?           @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+  provider           ClinicProvider?      @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  author             User?                @relation("TreatmentPlanAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  invoices           Invoice[]
+  labCases           LabCase[]
+  service            ClinicService?       @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  selectedTeeth      TreatmentPlanTooth[]
+  items              TreatmentPlanItem[]
+  imagingStudies     ImagingStudy[]
+  imagingComparisons ImagingComparison[]
 
   @@index([patientId, status])
   @@index([patientId, visitDate])
   @@index([serviceId])
+  @@index([clinicId, status, updatedAt])
+  @@index([encounterId])
 }
 
 model TreatmentPlanItem {
-  id              Int           @id @default(autoincrement())
+  id              Int            @id @default(autoincrement())
   treatmentPlanId Int
   serviceId       Int?
   name            String
   price           Int
-  createdAt       DateTime      @default(now())
-  treatmentPlan   TreatmentPlan @relation(fields: [treatmentPlanId], references: [id], onDelete: Cascade)
+  createdAt       DateTime       @default(now())
+  treatmentPlan   TreatmentPlan  @relation(fields: [treatmentPlanId], references: [id], onDelete: Cascade)
   service         ClinicService? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  labCases        LabCase[]
 
   @@index([treatmentPlanId])
   @@index([serviceId])
@@ -203,72 +269,638 @@ model TreatmentPlanTooth {
 }
 
 model Prescription {
-  id               Int      @id @default(autoincrement())
-  patientId        Int
-  clinicalRecordId Int?
-  prescribedOn     DateTime @default(now())
-  diagnosis        String?
-  instructions     String?
-  medicines        String
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  patient          Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  id                            Int                @id @default(autoincrement())
+  patientId                     Int
+  clinicId                      Int
+  encounterId                   Int?
+  providerId                    Int?
+  authorId                      Int?
+  prescribedOn                  DateTime           @default(now())
+  diagnosis                     String?
+  instructions                  String?
+  medicines                     String
+  allergySnapshot               String?
+  patientAgeSnapshot            String?
+  patientSexSnapshot            String?
+  providerNameSnapshot          String?
+  providerQualificationSnapshot String?
+  providerRegistrationSnapshot  String?
+  issuePlace                    String?
+  safetyWarnings                Json?
+  signatureStatement            String?
+  signedAt                      DateTime?
+  createdAt                     DateTime           @default(now())
+  updatedAt                     DateTime           @updatedAt
+  status                        String             @default("DRAFT")
+  source                        String             @default("MANUAL")
+  version                       Int                @default(1)
+  issuedAt                      DateTime?
+  cancelledAt                   DateTime?
+  cancellationReason            String?
+  supersedesId                  Int?               @unique
+  patient                       Patient            @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  clinic                        Clinic             @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  encounter                     Encounter?         @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+  provider                      ClinicProvider?    @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  author                        User?              @relation("PrescriptionAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  supersedes                    Prescription?      @relation("PrescriptionVersions", fields: [supersedesId], references: [id], onDelete: SetNull)
+  corrections                   Prescription[]     @relation("PrescriptionVersions")
+  medicationItems               PrescriptionItem[]
 
   @@index([patientId, prescribedOn])
+  @@index([clinicId, status, prescribedOn])
+  @@index([encounterId])
+}
+
+model PrescriptionItem {
+  id                  Int          @id @default(autoincrement())
+  prescriptionId      Int
+  genericName         String
+  brandName           String?
+  formulation         String?
+  strength            String
+  dosageForm          String
+  dose                String
+  doseUnit            String
+  route               String
+  frequency           String
+  timing              String?
+  mealRelation        String?
+  startDate           DateTime?
+  duration            String
+  endDate             DateTime?
+  quantity            String?
+  asNeeded            Boolean      @default(false)
+  maxDose             String?
+  indication          String?
+  instructions        String?
+  substitutionAllowed Boolean      @default(true)
+  sortOrder           Int          @default(0)
+  prescription        Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Restrict)
+
+  @@index([prescriptionId, sortOrder])
+}
+
+model PrescriptionTemplate {
+  id           Int       @id @default(autoincrement())
+  clinicId     Int
+  name         String
+  diagnosis    String?
+  items        Json
+  active       Boolean   @default(true)
+  reviewedAt   DateTime?
+  reviewedById Int?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([clinicId, name])
+  @@index([clinicId, active, name])
+}
+
+/// One clinically meaningful episode of care. It replaces calendar-date joins
+/// while keeping all legacy visit-date fields readable during migration.
+model Encounter {
+  id                   Int                    @id @default(autoincrement())
+  clinicId             Int
+  patientId            Int
+  appointmentId        Int?                   @unique
+  providerId           Int?
+  locationId           Int?
+  chairId              Int?
+  createdById          Int?
+  occurredAt           DateTime
+  status               String                 @default("IN_PROGRESS")
+  source               String                 @default("CLINIC")
+  completedAt          DateTime?
+  archivedAt           DateTime?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  clinic               Clinic                 @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  patient              Patient                @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  appointment          Appointment?           @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  provider             ClinicProvider?        @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  location             ClinicLocation?        @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  chair                ClinicChair?           @relation(fields: [chairId], references: [id], onDelete: SetNull)
+  createdBy            User?                  @relation("EncounterCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  legacyChartEntries   DentalChartEntry[]
+  treatmentPlans       TreatmentPlan[]
+  prescriptions        Prescription[]
+  invoices             Invoice[]
+  payments             Payment[]
+  labCases             LabCase[]
+  dentitionAssessments DentitionAssessment[]
+  dentalFindings       DentalFinding[]
+  timelineEvents       PatientTimelineEvent[]
+  imagingStudies       ImagingStudy[]
+  imagingComparisons   ImagingComparison[]
+
+  @@index([clinicId, patientId, occurredAt])
+  @@index([clinicId, status, occurredAt])
+}
+
+model DentitionAssessment {
+  id               Int       @id @default(autoincrement())
+  clinicId         Int
+  patientId        Int
+  encounterId      Int
+  stage            String
+  suggestedStage   String?
+  ageMonths        Int?
+  version          Int       @default(1)
+  status           String    @default("CONFIRMED")
+  confirmedById    Int
+  confirmedAt      DateTime  @default(now())
+  correctionReason String?
+  createdAt        DateTime  @default(now())
+  clinic           Clinic    @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  patient          Patient   @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter        Encounter @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  confirmedBy      User      @relation("DentitionConfirmer", fields: [confirmedById], references: [id], onDelete: Restrict)
+
+  @@unique([encounterId, version])
+  @@index([clinicId, patientId, confirmedAt])
+}
+
+model PatientTooth {
+  id              Int             @id @default(autoincrement())
+  clinicId        Int
+  patientId       Int
+  dentition       String
+  fdiCode         String?
+  kind            String          @default("STANDARD")
+  customLabel     String?
+  adjacentFdiCode String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  clinic          Clinic          @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  patient         Patient         @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  findings        DentalFinding[]
+
+  @@unique([patientId, dentition, fdiCode])
+  @@index([clinicId, patientId, fdiCode])
+}
+
+/// Append-only chart history. A correction supersedes a prior row; it never
+/// overwrites the clinical statement or original author.
+model DentalFinding {
+  id                 Int                 @id @default(autoincrement())
+  clinicId           Int
+  patientId          Int
+  encounterId        Int
+  patientToothId     Int
+  toothCodeSnapshot  String
+  recordType         String
+  condition          String
+  surfaces           String[]            @default([])
+  notes              String?
+  status             String              @default("ACTIVE")
+  version            Int                 @default(1)
+  authorId           Int
+  source             String              @default("CLINICAL_WORKSPACE")
+  signedAt           DateTime?
+  correctionReason   String?
+  supersedesId       Int?                @unique
+  createdAt          DateTime            @default(now())
+  clinic             Clinic              @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  patient            Patient             @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter          Encounter           @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  patientTooth       PatientTooth        @relation(fields: [patientToothId], references: [id], onDelete: Restrict)
+  author             User                @relation("DentalFindingAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  supersedes         DentalFinding?      @relation("DentalFindingVersions", fields: [supersedesId], references: [id], onDelete: SetNull)
+  corrections        DentalFinding[]     @relation("DentalFindingVersions")
+  imagingComparisons ImagingComparison[]
+
+  @@index([clinicId, patientId, encounterId, status])
+  @@index([patientToothId, status, createdAt])
+}
+
+model PatientTimelineEvent {
+  id             Int        @id @default(autoincrement())
+  clinicId       Int
+  patientId      Int
+  encounterId    Int?
+  actorId        Int?
+  eventType      String
+  objectType     String
+  objectId       String
+  title          String
+  summary        String?
+  source         String     @default("APPLICATION")
+  idempotencyKey String?    @unique
+  occurredAt     DateTime   @default(now())
+  createdAt      DateTime   @default(now())
+  clinic         Clinic     @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  patient        Patient    @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter      Encounter? @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+  actor          User?      @relation("TimelineActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([clinicId, patientId, occurredAt])
+  @@index([encounterId, occurredAt])
+}
+
+/// A configured imaging origin. Credentials are never stored here;
+/// credentialKey references an approved external secret manager entry.
+model ImagingSource {
+  id            String               @id @default(cuid())
+  clinicId      Int
+  name          String
+  adapterType   String
+  status        String               @default("ACTIVE")
+  baseUrl       String?
+  credentialKey String?
+  capabilities  Json?
+  lastHealthAt  DateTime?
+  lastSyncAt    DateTime?
+  lastError     String?
+  revokedAt     DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  clinic        Clinic               @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  studies       ImagingStudy[]
+  ingestEvents  ImagingIngestEvent[]
+
+  @@unique([clinicId, name])
+  @@index([clinicId, adapterType, status])
+}
+
+/// One governed imaging study. Original objects remain in private object
+/// storage and are retrieved only through an authenticated tenant boundary.
+model ImagingStudy {
+  id                     String                   @id @default(cuid())
+  clinicId               Int
+  patientId              Int?
+  encounterId            Int?
+  treatmentPlanId        Int?
+  orderingProviderId     Int?
+  reviewingProviderId    Int?
+  acquiringOperatorId    Int
+  createdById            Int
+  sourceId               String?
+  sourceType             String
+  status                 String                   @default("AVAILABLE")
+  matchStatus            String                   @default("CONFIRMED")
+  matchConfidence        Int?
+  matchReason            String?
+  modality               String
+  treatmentStage         String?
+  description            String?
+  clinicalIndication     String?
+  radiationMetadata      Json?
+  anatomicalRegion       String?
+  laterality             String?
+  toothCodes             String[]                 @default([])
+  acquisitionDate        DateTime
+  accessionNumber        String?
+  studyInstanceUid       String?
+  dicomPatientId         String?
+  externalPatientId      String?
+  vendorRecordId         String?
+  sourcePatientName      String?
+  sourcePatientBirthDate DateTime?
+  contentHash            String
+  idempotencyKey         String
+  numberOfSeries         Int                      @default(1)
+  numberOfInstances      Int                      @default(1)
+  version                Int                      @default(1)
+  reviewedAt             DateTime?
+  signedAt               DateTime?
+  archivedAt             DateTime?
+  archiveReason          String?
+  enteredInErrorAt       DateTime?
+  enteredInErrorReason   String?
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  clinic                 Clinic                   @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  patient                Patient?                 @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter              Encounter?               @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+  treatmentPlan          TreatmentPlan?           @relation(fields: [treatmentPlanId], references: [id], onDelete: SetNull)
+  orderingProvider       ClinicProvider?          @relation("ImagingOrderingProvider", fields: [orderingProviderId], references: [id], onDelete: SetNull)
+  reviewingProvider      ClinicProvider?          @relation("ImagingReviewingProvider", fields: [reviewingProviderId], references: [id], onDelete: SetNull)
+  acquiringOperator      User                     @relation("ImagingAcquiringOperator", fields: [acquiringOperatorId], references: [id], onDelete: Restrict)
+  createdBy              User                     @relation("ImagingStudyCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  source                 ImagingSource?           @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  series                 ImagingSeries[]
+  instances              ImagingInstance[]
+  assets                 ImagingAsset[]
+  reports                ImagingReport[]
+  annotations            ImagingAnnotation[]
+  baselineComparisons    ImagingComparison[]      @relation("ComparisonBaseline")
+  followupComparisons    ImagingComparison[]      @relation("ComparisonFollowup")
+  matchResolutions       ImagingMatchResolution[]
+  ingestEvents           ImagingIngestEvent[]
+  processingJobs         ImagingProcessingJob[]
+  labCaseLinks           LabCaseImagingStudy[]
+
+  @@unique([clinicId, idempotencyKey])
+  @@unique([clinicId, contentHash])
+  @@unique([clinicId, studyInstanceUid])
+  @@index([clinicId, status, acquisitionDate])
+  @@index([clinicId, matchStatus, createdAt])
+  @@index([clinicId, patientId, acquisitionDate])
+  @@index([clinicId, patientId, treatmentStage])
+  @@index([encounterId, acquisitionDate])
+  @@index([treatmentPlanId])
+}
+
+model ImagingSeries {
+  id                String            @id @default(cuid())
+  clinicId          Int
+  studyId           String
+  seriesInstanceUid String?
+  seriesNumber      Int?
+  modality          String
+  description       String?
+  bodySite          String?
+  laterality        String?
+  startedAt         DateTime?
+  numberOfInstances Int               @default(1)
+  createdAt         DateTime          @default(now())
+  clinic            Clinic            @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  study             ImagingStudy      @relation(fields: [studyId], references: [id], onDelete: Restrict)
+  instances         ImagingInstance[]
+
+  @@unique([studyId, seriesInstanceUid])
+  @@index([clinicId, modality, startedAt])
+  @@index([studyId, seriesNumber])
+}
+
+model ImagingInstance {
+  id                String         @id @default(cuid())
+  clinicId          Int
+  studyId           String
+  seriesId          String
+  sopInstanceUid    String?
+  sopClassUid       String?
+  instanceNumber    Int?
+  frameCount        Int            @default(1)
+  transferSyntaxUid String?
+  contentHash       String
+  createdAt         DateTime       @default(now())
+  clinic            Clinic         @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  study             ImagingStudy   @relation(fields: [studyId], references: [id], onDelete: Restrict)
+  series            ImagingSeries  @relation(fields: [seriesId], references: [id], onDelete: Restrict)
+  assets            ImagingAsset[]
+
+  @@unique([clinicId, sopInstanceUid])
+  @@unique([clinicId, contentHash])
+  @@index([seriesId, instanceNumber])
+  @@index([studyId])
+}
+
+model ImagingAsset {
+  id                 String              @id @default(cuid())
+  clinicId           Int
+  studyId            String
+  instanceId         String?
+  role               String
+  storageKey         String              @unique
+  blobUrl            String
+  contentType        String
+  sizeBytes          Int
+  originalName       String?
+  sha256             String
+  width              Int?
+  height             Int?
+  scanStatus         String              @default("BASIC_VALIDATED")
+  derivedFromAssetId String?
+  version            Int                 @default(1)
+  createdAt          DateTime            @default(now())
+  clinic             Clinic              @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  study              ImagingStudy        @relation(fields: [studyId], references: [id], onDelete: Restrict)
+  instance           ImagingInstance?    @relation(fields: [instanceId], references: [id], onDelete: SetNull)
+  derivedFrom        ImagingAsset?       @relation("ImagingAssetDerivatives", fields: [derivedFromAssetId], references: [id], onDelete: SetNull)
+  derivatives        ImagingAsset[]      @relation("ImagingAssetDerivatives")
+  annotations        ImagingAnnotation[]
+
+  @@unique([studyId, role, version])
+  @@index([clinicId, studyId, role])
+  @@index([instanceId])
+  @@index([derivedFromAssetId])
+}
+
+model ImagingReport {
+  id               String          @id @default(cuid())
+  clinicId         Int
+  studyId          String
+  authorId         Int
+  status           String          @default("DRAFT")
+  findings         String?
+  impression       String?
+  version          Int             @default(1)
+  signedAt         DateTime?
+  correctionReason String?
+  supersedesId     String?         @unique
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  clinic           Clinic          @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  study            ImagingStudy    @relation(fields: [studyId], references: [id], onDelete: Restrict)
+  author           User            @relation("ImagingReportAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  supersedes       ImagingReport?  @relation("ImagingReportVersions", fields: [supersedesId], references: [id], onDelete: SetNull)
+  corrections      ImagingReport[] @relation("ImagingReportVersions")
+
+  @@unique([studyId, version])
+  @@index([clinicId, status, createdAt])
+}
+
+model ImagingAnnotation {
+  id        String        @id @default(cuid())
+  clinicId  Int
+  studyId   String
+  authorId  Int
+  assetId   String?
+  toothCode String?
+  label     String
+  geometry  Json
+  status    String        @default("ACTIVE")
+  version   Int           @default(1)
+  createdAt DateTime      @default(now())
+  clinic    Clinic        @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  study     ImagingStudy  @relation(fields: [studyId], references: [id], onDelete: Restrict)
+  author    User          @relation("ImagingAnnotationAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  asset     ImagingAsset? @relation(fields: [assetId], references: [id], onDelete: SetNull)
+
+  @@index([clinicId, studyId, status])
+  @@index([toothCode])
+  @@index([assetId])
+}
+
+model ImagingComparison {
+  id                 String         @id @default(cuid())
+  clinicId           Int
+  patientId          Int
+  encounterId        Int?
+  baselineStudyId    String
+  followupStudyId    String
+  treatmentPlanId    Int?
+  completedFindingId Int?
+  authorId           Int
+  status             String         @default("FINAL")
+  note               String
+  compatibilityNote  String?
+  signedAt           DateTime       @default(now())
+  createdAt          DateTime       @default(now())
+  clinic             Clinic         @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  patient            Patient        @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter          Encounter?     @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+  baselineStudy      ImagingStudy   @relation("ComparisonBaseline", fields: [baselineStudyId], references: [id], onDelete: Restrict)
+  followupStudy      ImagingStudy   @relation("ComparisonFollowup", fields: [followupStudyId], references: [id], onDelete: Restrict)
+  treatmentPlan      TreatmentPlan? @relation(fields: [treatmentPlanId], references: [id], onDelete: SetNull)
+  completedFinding   DentalFinding? @relation(fields: [completedFindingId], references: [id], onDelete: SetNull)
+  author             User           @relation("ImagingComparisonAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@unique([clinicId, baselineStudyId, followupStudyId])
+  @@index([clinicId, patientId, createdAt])
+  @@index([encounterId])
+  @@index([treatmentPlanId])
+}
+
+model ImagingMatchResolution {
+  id                String       @id @default(cuid())
+  clinicId          Int
+  studyId           String
+  patientId         Int
+  resolvedById      Int
+  decision          String
+  signals           Json
+  conflictingFields Json?
+  reason            String
+  createdAt         DateTime     @default(now())
+  clinic            Clinic       @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  study             ImagingStudy @relation(fields: [studyId], references: [id], onDelete: Restrict)
+  patient           Patient      @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  resolvedBy        User         @relation("ImagingMatchResolver", fields: [resolvedById], references: [id], onDelete: Restrict)
+
+  @@index([clinicId, studyId, createdAt])
+  @@index([patientId, createdAt])
+}
+
+/// Durable inbox record for manual, DICOMweb, vendor, or local-bridge ingest.
+model ImagingIngestEvent {
+  id             String         @id @default(cuid())
+  clinicId       Int
+  sourceId       String?
+  studyId        String?
+  createdById    Int?
+  idempotencyKey String
+  payloadHash    String
+  status         String         @default("RECEIVED")
+  attempts       Int            @default(0)
+  failureReason  String?
+  receivedAt     DateTime       @default(now())
+  processedAt    DateTime?
+  clinic         Clinic         @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  source         ImagingSource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  study          ImagingStudy?  @relation(fields: [studyId], references: [id], onDelete: SetNull)
+  createdBy      User?          @relation("ImagingIngestActor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([clinicId, idempotencyKey])
+  @@index([clinicId, status, receivedAt])
+}
+
+/// Durable outbox for derivative generation and integration notifications.
+model ImagingProcessingJob {
+  id             String       @id @default(cuid())
+  clinicId       Int
+  studyId        String
+  jobType        String
+  idempotencyKey String
+  status         String       @default("PENDING")
+  attempts       Int          @default(0)
+  maxAttempts    Int          @default(5)
+  availableAt    DateTime     @default(now())
+  lockedAt       DateTime?
+  completedAt    DateTime?
+  failureReason  String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  clinic         Clinic       @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  study          ImagingStudy @relation(fields: [studyId], references: [id], onDelete: Restrict)
+
+  @@unique([clinicId, idempotencyKey])
+  @@index([clinicId, status, availableAt])
+  @@index([studyId, status])
 }
 
 model Clinic {
-  id              Int                     @id @default(autoincrement())
-  name            String
-  slug            String?                 @unique
-  status          String                  @default("ACTIVE")
-  brandName       String?
-  logoUrl         String?
-  accentColor     String                  @default("#0369a1")
-  phone           String?
-  email           String?
-  address         String?
-  gstin           String?
-  registrationNumber String?
-  invoicePrefix   String    @default("INV")
-  receiptPrefix   String    @default("RCT")
-  invoiceFooter   String?
-  paymentDetails  String?
-  timezone        String                  @default("Asia/Kolkata")
-  createdAt       DateTime                @default(now())
-  updatedAt       DateTime                @updatedAt
-  users           User[]
-  services        ClinicService[]
-  hours           ClinicHours[]
-  whatsapp        ClinicWhatsAppSettings?
-  whatsappConnection ClinicWhatsAppConnection?
-  whatsappTemplates  WhatsAppTemplate[]
-  whatsappAutomations WhatsAppAutomation[]
-  scheduledWhatsAppMessages ScheduledWhatsAppMessage[]
-  whatsappConnectionLogs WhatsAppConnectionLog[]
-  leads           Lead[]
-  faqs            ClinicFAQ[]
-  conversations   WhatsAppConversation[]
-  followUpTasks   FollowUpTask[]
-  inventoryItems  InventoryItem[]
-  labCases        LabCase[]
-  laboratories    Laboratory[]
-  labEvents       LabCaseEvent[]
-  labPayments     LabPayment[]
-  vendors         Vendor[]
-  launchChecklist ClinicLaunchChecklist?
-  intakeRequests  PatientIntakeRequest[]
-  appointments    Appointment[]
-  providers       ClinicProvider[]
-  chairs          ClinicChair[]
-  patients        Patient[]
-  locations       ClinicLocation[]
-  mediaAssets     ClinicMediaAsset[]
-  subscription    TenantSubscription?
-  featureEntitlements TenantFeatureEntitlement[]
+  id                             Int                             @id @default(autoincrement())
+  name                           String
+  slug                           String?                         @unique
+  status                         String                          @default("ACTIVE")
+  brandName                      String?
+  logoUrl                        String?
+  accentColor                    String                          @default("#0369a1")
+  phone                          String?
+  email                          String?
+  address                        String?
+  gstin                          String?
+  registrationNumber             String?
+  invoicePrefix                  String                          @default("INV")
+  receiptPrefix                  String                          @default("RCT")
+  invoiceFooter                  String?
+  paymentDetails                 String?
+  timezone                       String                          @default("Asia/Kolkata")
+  createdAt                      DateTime                        @default(now())
+  updatedAt                      DateTime                        @updatedAt
+  users                          User[]
+  services                       ClinicService[]
+  hours                          ClinicHours[]
+  whatsapp                       ClinicWhatsAppSettings?
+  whatsappConnection             ClinicWhatsAppConnection?
+  whatsappTemplates              WhatsAppTemplate[]
+  whatsappAutomations            WhatsAppAutomation[]
+  scheduledWhatsAppMessages      ScheduledWhatsAppMessage[]
+  whatsappConnectionLogs         WhatsAppConnectionLog[]
+  leads                          Lead[]
+  faqs                           ClinicFAQ[]
+  conversations                  WhatsAppConversation[]
+  followUpTasks                  FollowUpTask[]
+  inventoryItems                 InventoryItem[]
+  labCases                       LabCase[]
+  laboratories                   Laboratory[]
+  labEvents                      LabCaseEvent[]
+  labPayments                    LabPayment[]
+  labMessages                    LabCaseMessage[]
+  labAttachments                 LabCaseAttachment[]
+  labPortalAccesses              LabPortalAccess[]
+  labDeliveryAttempts            LabDeliveryAttempt[]
+  labCaseImagingLinks            LabCaseImagingStudy[]
+  vendors                        Vendor[]
+  launchChecklist                ClinicLaunchChecklist?
+  intakeRequests                 PatientIntakeRequest[]
+  appointments                   Appointment[]
+  providers                      ClinicProvider[]
+  chairs                         ClinicChair[]
+  patients                       Patient[]
+  locations                      ClinicLocation[]
+  mediaAssets                    ClinicMediaAsset[]
+  subscription                   TenantSubscription?
+  featureEntitlements            TenantFeatureEntitlement[]
   appointmentSelfServiceRequests AppointmentSelfServiceRequest[]
-  auditLogs       AuditLog[]
-  patientPortalAccesses PatientPortalAccess[]
+  auditLogs                      AuditLog[]
+  patientPortalAccesses          PatientPortalAccess[]
+  encounters                     Encounter[]
+  dentitionAssessments           DentitionAssessment[]
+  patientTeeth                   PatientTooth[]
+  dentalFindings                 DentalFinding[]
+  timelineEvents                 PatientTimelineEvent[]
+  legacyChartEntries             DentalChartEntry[]
+  treatmentPlans                 TreatmentPlan[]
+  prescriptions                  Prescription[]
+  invoices                       Invoice[]
+  payments                       Payment[]
+  internalNotes                  PlatformInternalNote[]
+  platformTasks                  PlatformTask[]
+  imagingSources                 ImagingSource[]
+  imagingStudies                 ImagingStudy[]
+  imagingSeries                  ImagingSeries[]
+  imagingInstances               ImagingInstance[]
+  imagingAssets                  ImagingAsset[]
+  imagingReports                 ImagingReport[]
+  imagingAnnotations             ImagingAnnotation[]
+  imagingComparisons             ImagingComparison[]
+  imagingMatchResolutions        ImagingMatchResolution[]
+  imagingIngestEvents            ImagingIngestEvent[]
+  imagingProcessingJobs          ImagingProcessingJob[]
 
   @@index([status, createdAt])
 }
@@ -288,56 +920,115 @@ model DemoRequest {
   @@index([email])
 }
 
+/// A clinic that started onboarding itself on the setup portal. This is a
+/// public intake record only: it deliberately provisions nothing. A Clinic and
+/// its tenant models become authoritative only once an operator converts the
+/// signup, so a public form can never create a live workspace on its own.
+model ClinicSignup {
+  id              String    @id @default(cuid())
+  clinicName      String
+  contactName     String
+  role            String
+  email           String
+  phone           String
+  city            String
+  dentistCount    String
+  chairCount      String
+  currentSoftware String?
+  whatsappNumber  String?
+  priorities      String?
+  notes           String?
+  status          String    @default("NEW")
+  clinicId        Int?
+  reviewedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status, createdAt])
+  @@index([email])
+}
+
 model ClinicProvider {
-  id          Int           @id @default(autoincrement())
-  clinicId    Int
-  name        String
-  active      Boolean       @default(true)
-  appointments Appointment[]
-  clinic      Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  locations   ClinicLocationProvider[]
+  id                     Int                      @id @default(autoincrement())
+  clinicId               Int
+  name                   String
+  active                 Boolean                  @default(true)
+  appointments           Appointment[]
+  clinic                 Clinic                   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  locations              ClinicLocationProvider[]
+  encounters             Encounter[]
+  treatmentPlans         TreatmentPlan[]
+  prescriptions          Prescription[]
+  labCases               LabCase[]
+  orderedImagingStudies  ImagingStudy[]           @relation("ImagingOrderingProvider")
+  reviewedImagingStudies ImagingStudy[]           @relation("ImagingReviewingProvider")
 
   @@unique([clinicId, name])
 }
 
 model ClinicChair {
-  id          Int           @id @default(autoincrement())
-  clinicId    Int
-  name        String
-  active      Boolean       @default(true)
+  id           Int           @id @default(autoincrement())
+  clinicId     Int
+  name         String
+  active       Boolean       @default(true)
   appointments Appointment[]
-  clinic      Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  encounters   Encounter[]
+  clinic       Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
 
   @@unique([clinicId, name])
 }
 
 model User {
-  id           Int        @id @default(autoincrement())
-  clinicId     Int
-  fullName     String
-  email        String     @unique
-  passwordHash String
-  role         String     @default("RECEPTIONIST")
-  active       Boolean    @default(true)
-  platformAdmin Boolean   @default(false)
+  id                         Int                      @id @default(autoincrement())
+  clinicId                   Int
+  fullName                   String
+  email                      String                   @unique
+  passwordHash               String
+  mustChangePassword         Boolean                  @default(false)
+  role                       String                   @default("RECEPTIONIST")
+  active                     Boolean                  @default(true)
+  platformAdmin              Boolean                  @default(false)
   /// Null preserves legacy platform administrators as Super Admins until a role is explicitly assigned.
-  platformRole String?
-  emailVerifiedAt DateTime?
-  phone          String?
-  phoneVerifiedAt DateTime?
-  lastLoginAt    DateTime?
-  failedLoginCount Int   @default(0)
-  lockedUntil    DateTime?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  clinic       Clinic     @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  sessions     Session[]
-  passwordResetTokens PasswordResetToken[]
-  auditLogs    AuditLog[]
-  ownedLeads   Lead[]     @relation("LeadOwner")
-  assignedConversations WhatsAppConversation[] @relation("ConversationAssignee")
-  assignedFollowUps FollowUpTask[] @relation("FollowUpAssignee")
-  authChallenges AuthChallenge[]
+  platformRole               String?
+  emailVerifiedAt            DateTime?
+  phone                      String?
+  qualification              String?
+  registrationNumber         String?
+  signatureLabel             String?
+  phoneVerifiedAt            DateTime?
+  lastLoginAt                DateTime?
+  failedLoginCount           Int                      @default(0)
+  lockedUntil                DateTime?
+  createdAt                  DateTime                 @default(now())
+  updatedAt                  DateTime                 @updatedAt
+  clinic                     Clinic                   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  sessions                   Session[]
+  passwordResetTokens        PasswordResetToken[]
+  auditLogs                  AuditLog[]
+  ownedLeads                 Lead[]                   @relation("LeadOwner")
+  assignedConversations      WhatsAppConversation[]   @relation("ConversationAssignee")
+  assignedFollowUps          FollowUpTask[]           @relation("FollowUpAssignee")
+  authChallenges             AuthChallenge[]
+  createdEncounters          Encounter[]              @relation("EncounterCreator")
+  confirmedDentitions        DentitionAssessment[]    @relation("DentitionConfirmer")
+  authoredDentalFindings     DentalFinding[]          @relation("DentalFindingAuthor")
+  authoredLegacyChartEntries DentalChartEntry[]       @relation("LegacyChartAuthor")
+  authoredTreatmentPlans     TreatmentPlan[]          @relation("TreatmentPlanAuthor")
+  authoredPrescriptions      Prescription[]           @relation("PrescriptionAuthor")
+  authoredLabCases           LabCase[]                @relation("LabCaseAuthor")
+  approvedLabCases           LabCase[]                @relation("LabCaseApprover")
+  labCaseEvents              LabCaseEvent[]           @relation("LabCaseEventActor")
+  labCaseMessages            LabCaseMessage[]         @relation("LabCaseMessageAuthor")
+  labCaseAttachments         LabCaseAttachment[]      @relation("LabCaseAttachmentUploader")
+  recordedPayments           Payment[]                @relation("PaymentRecorder")
+  timelineEvents             PatientTimelineEvent[]   @relation("TimelineActor")
+  createdImagingStudies      ImagingStudy[]           @relation("ImagingStudyCreator")
+  acquiredImagingStudies     ImagingStudy[]           @relation("ImagingAcquiringOperator")
+  authoredImagingReports     ImagingReport[]          @relation("ImagingReportAuthor")
+  authoredImagingAnnotations ImagingAnnotation[]      @relation("ImagingAnnotationAuthor")
+  authoredImagingComparisons ImagingComparison[]      @relation("ImagingComparisonAuthor")
+  imagingMatchResolutions    ImagingMatchResolution[] @relation("ImagingMatchResolver")
+  imagingIngestEvents        ImagingIngestEvent[]     @relation("ImagingIngestActor")
 
   @@index([clinicId, role])
   @@index([phone])
@@ -346,18 +1037,18 @@ model User {
 /// Hashed, short-lived verification codes for email, phone, and future MFA flows.
 /// Codes are never stored or logged in plaintext.
 model AuthChallenge {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   userId      Int?
   purpose     String
   channel     String
   recipient   String
   codeHash    String
   expiresAt   DateTime
-  attempts    Int      @default(0)
-  maxAttempts Int      @default(5)
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(5)
   consumedAt  DateTime?
-  createdAt   DateTime @default(now())
-  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([recipient, purpose, createdAt])
   @@index([userId, purpose, expiresAt])
@@ -399,20 +1090,20 @@ model PasswordResetToken {
 }
 
 model ClinicService {
-  id              Int             @id @default(autoincrement())
-  clinicId        Int
-  name            String
-  description     String?
-  durationMinutes Int             @default(30)
-  price           Int?
-  active          Boolean         @default(true)
-  sortOrder       Int             @default(0)
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  clinic          Clinic          @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  treatmentPlans  TreatmentPlan[]
+  id                 Int                     @id @default(autoincrement())
+  clinicId           Int
+  name               String
+  description        String?
+  durationMinutes    Int                     @default(30)
+  price              Int?
+  active             Boolean                 @default(true)
+  sortOrder          Int                     @default(0)
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  clinic             Clinic                  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  treatmentPlans     TreatmentPlan[]
   treatmentPlanItems TreatmentPlanItem[]
-  locations       ClinicLocationService[]
+  locations          ClinicLocationService[]
 
   @@index([clinicId, active, sortOrder])
 }
@@ -433,26 +1124,27 @@ model ClinicHours {
 /// A clinic may retain its legacy organization-level address while operating one
 /// or more bookable branches. Existing clinics are backfilled with one primary location.
 model ClinicLocation {
-  id          Int      @id @default(autoincrement())
-  clinicId    Int
-  name        String
-  address     String?
-  city        String?
-  state       String?
-  postalCode  String?
-  phone       String?
-  email       String?
-  timezone    String?
-  mapUrl      String?
-  isPrimary   Boolean  @default(false)
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  clinic      Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  hours       ClinicLocationHours[]
-  providers   ClinicLocationProvider[]
-  services    ClinicLocationService[]
+  id           Int                      @id @default(autoincrement())
+  clinicId     Int
+  name         String
+  address      String?
+  city         String?
+  state        String?
+  postalCode   String?
+  phone        String?
+  email        String?
+  timezone     String?
+  mapUrl       String?
+  isPrimary    Boolean                  @default(false)
+  active       Boolean                  @default(true)
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+  clinic       Clinic                   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  hours        ClinicLocationHours[]
+  providers    ClinicLocationProvider[]
+  services     ClinicLocationService[]
   appointments Appointment[]
+  encounters   Encounter[]
 
   @@unique([clinicId, name])
   @@index([clinicId, active, isPrimary])
@@ -460,14 +1152,14 @@ model ClinicLocation {
 
 /// Multiple rows per day allow branches to represent breaks and split shifts.
 model ClinicLocationHours {
-  id          Int      @id @default(autoincrement())
+  id          Int            @id @default(autoincrement())
   locationId  Int
   dayOfWeek   Int
-  openTime    String   @default("09:00")
-  closeTime   String   @default("18:00")
-  slotMinutes Int      @default(30)
-  isClosed    Boolean  @default(false)
-  sortOrder   Int      @default(0)
+  openTime    String         @default("09:00")
+  closeTime   String         @default("18:00")
+  slotMinutes Int            @default(30)
+  isClosed    Boolean        @default(false)
+  sortOrder   Int            @default(0)
   location    ClinicLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
   @@unique([locationId, dayOfWeek, sortOrder])
@@ -488,7 +1180,7 @@ model ClinicLocationService {
   locationId Int
   serviceId  Int
   location   ClinicLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
-  service    ClinicService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  service    ClinicService  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@id([locationId, serviceId])
   @@index([serviceId])
@@ -496,49 +1188,49 @@ model ClinicLocationService {
 
 /// Metadata only: actual media bytes live in approved object storage, never Prisma.
 model ClinicMediaAsset {
-  id          String   @id @default(cuid())
-  clinicId    Int
-  kind        String
-  storageKey  String   @unique
-  publicUrl   String
-  contentType String
-  sizeBytes   Int
+  id           String   @id @default(cuid())
+  clinicId     Int
+  kind         String
+  storageKey   String   @unique
+  publicUrl    String
+  contentType  String
+  sizeBytes    Int
   originalName String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  clinic      Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  clinic       Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
 
   @@index([clinicId, kind, createdAt])
 }
 
 model SubscriptionPlan {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
-  code        String   @unique
-  description String?
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            Int                  @id @default(autoincrement())
+  name          String               @unique
+  code          String               @unique
+  description   String?
+  active        Boolean              @default(true)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
   subscriptions TenantSubscription[]
 }
 
 model TenantSubscription {
-  id              Int      @id @default(autoincrement())
-  clinicId        Int      @unique
-  planId          Int?
-  status          String   @default("TRIAL")
-  billingCycle    String   @default("MONTHLY")
-  price           Int?
-  currency        String   @default("INR")
-  startsAt        DateTime @default(now())
-  trialEndsAt     DateTime?
-  renewsAt        DateTime?
-  cancelledAt     DateTime?
-  internalNotes   String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  clinic          Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  plan            SubscriptionPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+  id            Int               @id @default(autoincrement())
+  clinicId      Int               @unique
+  planId        Int?
+  status        String            @default("TRIAL")
+  billingCycle  String            @default("MONTHLY")
+  price         Int?
+  currency      String            @default("INR")
+  startsAt      DateTime          @default(now())
+  trialEndsAt   DateTime?
+  renewsAt      DateTime?
+  cancelledAt   DateTime?
+  internalNotes String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  clinic        Clinic            @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  plan          SubscriptionPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
 
   @@index([status, renewsAt])
   @@index([planId, status])
@@ -546,14 +1238,14 @@ model TenantSubscription {
 
 /// Tenant-level overrides are authoritative. A missing row falls back to the registry default.
 model TenantFeatureEntitlement {
-  id          Int      @id @default(autoincrement())
-  clinicId    Int
-  featureKey  String
-  enabled     Boolean  @default(true)
-  source      String   @default("PLATFORM_OVERRIDE")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  clinic      Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  id         Int      @id @default(autoincrement())
+  clinicId   Int
+  featureKey String
+  enabled    Boolean  @default(true)
+  source     String   @default("PLATFORM_OVERRIDE")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  clinic     Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
 
   @@unique([clinicId, featureKey])
   @@index([featureKey, enabled])
@@ -576,85 +1268,86 @@ model ClinicWhatsAppSettings {
 /// Meta Cloud API assets are always stored per clinic. The bearer token is encrypted
 /// at rest and is deliberately never selected by dashboard pages or returned to a client.
 model ClinicWhatsAppConnection {
-  id                  Int      @id @default(autoincrement())
-  clinicId            Int      @unique
-  wabaId              String   @unique
-  phoneNumberId       String   @unique
-  businessId          String?
-  displayPhoneNumber  String?
-  verifiedName        String?
-  businessName        String?
-  qualityRating       String?
-  messagingLimit      String?
-  webhookVerifiedAt   DateTime?
-  lastSyncedAt        DateTime?
-  tokenCiphertext     String
-  tokenIv             String
-  tokenTag            String
-  connectedAt         DateTime @default(now())
-  lastVerifiedAt      DateTime?
-  disconnectedAt      DateTime?
-  clinic              Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  logs                WhatsAppConnectionLog[]
+  id                 Int                     @id @default(autoincrement())
+  clinicId           Int                     @unique
+  wabaId             String                  @unique
+  phoneNumberId      String                  @unique
+  businessId         String?
+  displayPhoneNumber String?
+  verifiedName       String?
+  businessName       String?
+  qualityRating      String?
+  messagingLimit     String?
+  webhookVerifiedAt  DateTime?
+  lastSyncedAt       DateTime?
+  tokenCiphertext    String
+  tokenIv            String
+  tokenTag           String
+  connectedAt        DateTime                @default(now())
+  lastVerifiedAt     DateTime?
+  disconnectedAt     DateTime?
+  clinic             Clinic                  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  logs               WhatsAppConnectionLog[]
 
   @@index([phoneNumberId])
   @@index([wabaId])
 }
 
 model WhatsAppConnectionLog {
-  id          Int      @id @default(autoincrement())
-  clinicId    Int
+  id           Int                       @id @default(autoincrement())
+  clinicId     Int
   connectionId Int?
-  event       String
-  detail      String?
-  createdAt   DateTime @default(now())
-  clinic      Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  connection  ClinicWhatsAppConnection? @relation(fields: [connectionId], references: [id], onDelete: SetNull)
+  event        String
+  detail       String?
+  createdAt    DateTime                  @default(now())
+  clinic       Clinic                    @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  connection   ClinicWhatsAppConnection? @relation(fields: [connectionId], references: [id], onDelete: SetNull)
 
   @@index([clinicId, createdAt])
   @@index([connectionId, createdAt])
 }
 
 model WhatsAppTemplate {
-  id          Int      @id @default(autoincrement())
-  clinicId    Int
-  name        String
-  language    String   @default("en")
-  category    String?
-  status      String   @default("DRAFT")
-  providerId  String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  clinic      Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  id         Int      @id @default(autoincrement())
+  clinicId   Int
+  name       String
+  language   String   @default("en")
+  category   String?
+  status     String   @default("DRAFT")
+  providerId String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  clinic     Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
 
   @@unique([clinicId, name, language])
   @@index([clinicId, status])
 }
 
 model WhatsAppAutomation {
-  id          Int      @id @default(autoincrement())
-  clinicId    Int
-  name        String
-  trigger     String
-  enabled     Boolean  @default(true)
-  templateId  Int?
+  id            Int      @id @default(autoincrement())
+  clinicId      Int
+  name          String
+  trigger       String
+  enabled       Boolean  @default(true)
+  templateId    Int?
   configuration String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  clinic      Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  clinic        Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
 
+  @@unique([clinicId, trigger])
   @@index([clinicId, enabled])
 }
 
 model Lead {
-  id                  Int            @id @default(autoincrement())
+  id                  Int                    @id @default(autoincrement())
   clinicId            Int
   fullName            String
   phone               String
   email               String?
   serviceInterest     String?
-  source              String         @default("WhatsApp")
-  stage               String         @default("NEW")
+  source              String                 @default("WhatsApp")
+  stage               String                 @default("NEW")
   notes               String?
   lossReason          String?
   conversionValue     Int?
@@ -663,16 +1356,16 @@ model Lead {
   nextFollowUpAt      DateTime?
   ownerId             Int?
   patientId           Int?
-  bookedAppointmentId Int?           @unique
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
-  clinic              Clinic         @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  owner               User?          @relation("LeadOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  patient             Patient?       @relation("PatientLeads", fields: [patientId], references: [id], onDelete: SetNull)
-  bookedAppointment   Appointment?   @relation(fields: [bookedAppointmentId], references: [id], onDelete: SetNull)
+  bookedAppointmentId Int?                   @unique
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  clinic              Clinic                 @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  owner               User?                  @relation("LeadOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  patient             Patient?               @relation("PatientLeads", fields: [patientId], references: [id], onDelete: SetNull)
+  bookedAppointment   Appointment?           @relation(fields: [bookedAppointmentId], references: [id], onDelete: SetNull)
   activities          LeadActivity[]
   followUpTasks       FollowUpTask[]
-  conversations      WhatsAppConversation[] @relation("LeadConversations")
+  conversations       WhatsAppConversation[] @relation("LeadConversations")
 
   @@unique([clinicId, phone])
   @@index([clinicId, stage, createdAt])
@@ -693,19 +1386,30 @@ model LeadActivity {
 }
 
 model AuditLog {
-  id         Int      @id @default(autoincrement())
-  clinicId   Int
-  userId     Int?
-  action     String
-  entityType String
-  entityId   String?
-  detail     String?
-  createdAt  DateTime @default(now())
-  clinic     Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  id            Int      @id @default(autoincrement())
+  clinicId      Int
+  userId        Int?
+  action        String
+  entityType    String
+  entityId      String?
+  detail        String?
+  patientId     Int?
+  actorRole     String?
+  outcome       String   @default("SUCCESS")
+  source        String   @default("APPLICATION")
+  correlationId String?
+  reason        String?
+  beforeState   Json?
+  afterState    Json?
+  createdAt     DateTime @default(now())
+  clinic        Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  patient       Patient? @relation("PatientAuditLogs", fields: [patientId], references: [id], onDelete: SetNull)
 
   @@index([clinicId, createdAt])
   @@index([userId, createdAt])
+  @@index([clinicId, patientId, createdAt])
+  @@index([correlationId])
 }
 
 model ClinicFAQ {
@@ -724,25 +1428,28 @@ model ClinicFAQ {
 }
 
 model WhatsAppConversation {
-  id            Int               @id @default(autoincrement())
-  clinicId      Int
-  phone         String
-  language      String?
-  status        String            @default("OPEN")
+  id             Int               @id @default(autoincrement())
+  clinicId       Int
+  phone          String
+  language       String?
+  status         String            @default("OPEN")
   automationMode String            @default("BOT_ACTIVE")
-  label         String?
+  label          String?
+  consentStatus  String            @default("UNKNOWN")
+  consentPurpose String?
+  consentAt      DateTime?
   assignedUserId Int?
-  patientId     Int?
-  leadId        Int?
-  lastMessageAt DateTime          @default(now())
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  clinic        Clinic            @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  assignedUser  User?             @relation("ConversationAssignee", fields: [assignedUserId], references: [id], onDelete: SetNull)
-  patient       Patient?          @relation("PatientConversations", fields: [patientId], references: [id], onDelete: SetNull)
-  lead          Lead?             @relation("LeadConversations", fields: [leadId], references: [id], onDelete: SetNull)
-  messages      WhatsAppMessage[]
-  booking       WhatsAppBooking?
+  patientId      Int?
+  leadId         Int?
+  lastMessageAt  DateTime          @default(now())
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  clinic         Clinic            @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  assignedUser   User?             @relation("ConversationAssignee", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  patient        Patient?          @relation("PatientConversations", fields: [patientId], references: [id], onDelete: SetNull)
+  lead           Lead?             @relation("LeadConversations", fields: [leadId], references: [id], onDelete: SetNull)
+  messages       WhatsAppMessage[]
+  booking        WhatsAppBooking?
 
   @@unique([clinicId, phone])
   @@index([clinicId, lastMessageAt])
@@ -753,17 +1460,23 @@ model WhatsAppConversation {
 }
 
 model WhatsAppMessage {
-  id             Int                  @id @default(autoincrement())
-  conversationId Int
-  providerMessageId String?           @unique
-  direction      String
-  content        String
-  messageType    String               @default("TEXT")
-  deliveryStatus String                @default("QUEUED")
-  statusUpdatedAt DateTime?
-  failureReason String?
-  createdAt      DateTime             @default(now())
-  conversation   WhatsAppConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  id                Int                  @id @default(autoincrement())
+  conversationId    Int
+  providerMessageId String?              @unique
+  direction         String
+  content           String
+  messageType       String               @default("TEXT")
+  deliveryStatus    String               @default("QUEUED")
+  statusUpdatedAt   DateTime?
+  failureReason     String?
+  actorType         String?
+  triggerType       String?
+  ruleId            String?
+  correlationId     String?
+  sourceType        String?
+  sourceId          String?
+  createdAt         DateTime             @default(now())
+  conversation      WhatsAppConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId, createdAt])
   @@index([providerMessageId])
@@ -771,27 +1484,98 @@ model WhatsAppMessage {
 
 /// A durable per-clinic outbox. Rows are retained after cancellation or delivery for auditability.
 model ScheduledWhatsAppMessage {
-  id                Int      @id @default(autoincrement())
-  clinicId          Int
-  phone             String
-  content           String
-  messageType       String   @default("TEXT")
-  scheduledAt       DateTime
-  status            String   @default("SCHEDULED")
-  attempts          Int      @default(0)
-  maxAttempts       Int      @default(3)
-  lastAttemptAt     DateTime?
-  sentAt            DateTime?
-  cancelledAt       DateTime?
-  failureReason     String?
-  providerMessageId String?
-  createdByUserId   Int?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  clinic            Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  id                        Int                 @id @default(autoincrement())
+  clinicId                  Int
+  patientId                 Int?
+  phone                     String
+  content                   String
+  messageType               String              @default("TEXT")
+  templateName              String?
+  templateLanguage          String?
+  templateParameters        Json?
+  dispatchPayloadCiphertext String?
+  scheduledAt               DateTime
+  status                    String              @default("SCHEDULED")
+  attempts                  Int                 @default(0)
+  maxAttempts               Int                 @default(3)
+  lastAttemptAt             DateTime?
+  sentAt                    DateTime?
+  cancelledAt               DateTime?
+  failureReason             String?
+  providerMessageId         String?
+  idempotencyKey            String?             @unique
+  purpose                   String              @default("CARE_COMMUNICATION")
+  sourceType                String?
+  sourceId                  String?
+  correlationId             String?
+  createdByUserId           Int?
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+  clinic                    Clinic              @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  labDeliveryAttempt        LabDeliveryAttempt?
 
   @@index([clinicId, status, scheduledAt])
   @@index([clinicId, phone, createdAt])
+  @@index([clinicId, patientId, createdAt])
+  @@index([clinicId, sourceType, sourceId])
+}
+
+model WhatsAppWebhookEvent {
+  id              String    @id @default(cuid())
+  providerEventId String    @unique
+  clinicId        Int?
+  phoneNumberId   String?
+  eventType       String
+  payload         Json
+  status          String    @default("PENDING")
+  attempts        Int       @default(0)
+  availableAt     DateTime  @default(now())
+  processedAt     DateTime?
+  failureReason   String?
+  correlationId   String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status, availableAt])
+  @@index([clinicId, createdAt])
+}
+
+model WhatsAppConsentEvent {
+  id            String   @id @default(cuid())
+  clinicId      Int
+  patientId     Int?
+  phone         String
+  purpose       String
+  status        String
+  source        String
+  actorUserId   Int?
+  evidence      String?
+  correlationId String?
+  createdAt     DateTime @default(now())
+
+  @@index([clinicId, phone, createdAt])
+  @@index([clinicId, patientId, purpose, createdAt])
+  @@index([clinicId, status, purpose])
+}
+
+model SecureDocumentAccess {
+  id              String    @id @default(cuid())
+  clinicId        Int
+  patientId       Int
+  documentType    String
+  documentId      Int
+  tokenHash       String    @unique
+  expiresAt       DateTime
+  revokedAt       DateTime?
+  firstViewedAt   DateTime?
+  lastViewedAt    DateTime?
+  viewCount       Int       @default(0)
+  createdByUserId Int?
+  createdAt       DateTime  @default(now())
+
+  @@index([clinicId, documentType, documentId])
+  @@index([patientId, createdAt])
+  @@index([expiresAt, revokedAt])
 }
 
 model WhatsAppBooking {
@@ -811,36 +1595,36 @@ model WhatsAppBooking {
 }
 
 model FollowUpTask {
-  id           Int       @id @default(autoincrement())
-  clinicId     Int
-  leadId       Int?
-  patientId    Int?
+  id             Int       @id @default(autoincrement())
+  clinicId       Int
+  leadId         Int?
+  patientId      Int?
   assignedUserId Int?
-  sourceType   String?
-  sourceId     String?
-  priority     String    @default("NORMAL")
-  outcome      String?
-  attemptCount Int       @default(0)
-  lastAttemptAt DateTime?
-  patientName  String
-  phone        String
-  taskType     String
-  channel      String    @default("WHATSAPP")
-  status       String    @default("PENDING")
-  message      String
-  scheduledFor DateTime  @default(now())
-  sentAt       DateTime?
-  completedAt  DateTime?
-  cancelledAt  DateTime?
-  snoozedUntil DateTime?
-  metadata     String?
-  errorMessage String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  clinic       Clinic    @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  lead         Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  patient      Patient?  @relation("PatientFollowUps", fields: [patientId], references: [id], onDelete: SetNull)
-  assignedUser User?     @relation("FollowUpAssignee", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  sourceType     String?
+  sourceId       String?
+  priority       String    @default("NORMAL")
+  outcome        String?
+  attemptCount   Int       @default(0)
+  lastAttemptAt  DateTime?
+  patientName    String
+  phone          String
+  taskType       String
+  channel        String    @default("WHATSAPP")
+  status         String    @default("PENDING")
+  message        String
+  scheduledFor   DateTime  @default(now())
+  sentAt         DateTime?
+  completedAt    DateTime?
+  cancelledAt    DateTime?
+  snoozedUntil   DateTime?
+  metadata       String?
+  errorMessage   String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  clinic         Clinic    @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  lead           Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  patient        Patient?  @relation("PatientFollowUps", fields: [patientId], references: [id], onDelete: SetNull)
+  assignedUser   User?     @relation("FollowUpAssignee", fields: [assignedUserId], references: [id], onDelete: SetNull)
 
   @@index([clinicId, status, scheduledFor])
   @@index([leadId])
@@ -850,53 +1634,90 @@ model FollowUpTask {
 }
 
 model InventoryItem {
-  id           Int      @id @default(autoincrement())
-  clinicId     Int
-  name         String
-  category     String   @default("Clinical supplies")
-  unit         String   @default("units")
-  quantity     Int      @default(0)
-  reorderLevel Int      @default(0)
-  costPerUnit  Int?
-  supplier     String?
-  batchNumber  String?
-  expiryDate   DateTime?
-  sku          String?
-  barcode      String?
-  brand        String?
-  storageLocation String?
-  maximumQuantity Int?
-  sellingPrice Int?
-  gstPercent   Int?
-  vendorId     Int?
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  clinic       Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  movements    InventoryMovement[]
+  id                 Int                 @id @default(autoincrement())
+  clinicId           Int
+  name               String
+  category           String              @default("Clinical supplies")
+  unit               String              @default("units")
+  quantity           Int                 @default(0)
+  reorderLevel       Int                 @default(0)
+  costPerUnit        Int?
+  supplier           String?
+  batchNumber        String?
+  expiryDate         DateTime?
+  sku                String?
+  barcode            String?
+  gtin               String?
+  brand              String?
+  manufacturer       String?
+  storageLocation    String?
+  purchaseUnit       String?
+  unitConversion     Int                 @default(1)
+  reorderQuantity    Int?
+  leadTimeDays       Int?
+  maximumQuantity    Int?
+  sellingPrice       Int?
+  gstPercent         Int?
+  vendorId           Int?
+  active             Boolean             @default(true)
+  archivedAt         DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  clinic             Clinic              @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  movements          InventoryMovement[]
+  batches            InventoryBatch[]
   purchaseOrderItems PurchaseOrderItem[]
-  vendor       Vendor? @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  vendor             Vendor?             @relation(fields: [vendorId], references: [id], onDelete: SetNull)
 
   @@unique([clinicId, name])
   @@index([clinicId, active, quantity])
   @@index([vendorId])
+  @@index([clinicId, sku])
+  @@index([clinicId, barcode])
+  @@index([clinicId, gtin])
+}
+
+model InventoryBatch {
+  id                Int                 @id @default(autoincrement())
+  clinicId          Int
+  inventoryItemId   Int
+  batchNumber       String
+  serialNumber      String?
+  expiryDate        DateTime?
+  receivedAt        DateTime            @default(now())
+  initialQuantity   Int
+  availableQuantity Int
+  unitCost          Int?
+  taxPercent        Int?
+  storageLocation   String?
+  recalledAt        DateTime?
+  recallReason      String?
+  archivedAt        DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  inventoryItem     InventoryItem       @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  movements         InventoryMovement[]
+
+  @@unique([clinicId, inventoryItemId, batchNumber])
+  @@index([clinicId, expiryDate, availableQuantity])
+  @@index([clinicId, recalledAt])
 }
 
 model Vendor {
-  id           Int      @id @default(autoincrement())
-  clinicId     Int
-  name         String
-  gstNumber    String?
-  contactName  String?
-  phone        String?
-  whatsapp     String?
-  email        String?
-  address      String?
-  outstanding  Int      @default(0)
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  clinic       Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  id             Int             @id @default(autoincrement())
+  clinicId       Int
+  name           String
+  gstNumber      String?
+  contactName    String?
+  phone          String?
+  whatsapp       String?
+  email          String?
+  address        String?
+  outstanding    Int             @default(0)
+  active         Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  clinic         Clinic          @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   inventoryItems InventoryItem[]
   purchaseOrders PurchaseOrder[]
 
@@ -905,137 +1726,402 @@ model Vendor {
 }
 
 model InventoryMovement {
-  id              Int           @id @default(autoincrement())
-  inventoryItemId Int
-  clinicId        Int
-  quantityChange  Int
-  type            String
-  notes           String?
-  patientId       Int?
-  treatmentPlanId Int?
-  recordedBy      String?
-  createdAt       DateTime      @default(now())
-  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  id                 Int             @id @default(autoincrement())
+  inventoryItemId    Int
+  clinicId           Int
+  quantityChange     Int
+  type               String
+  direction          String          @default("IN")
+  unit               String?
+  batchId            Int?
+  reason             String?
+  sourceType         String?
+  sourceId           String?
+  sourceDocumentType String?
+  sourceDocumentId   String?
+  storageLocation    String?
+  unitCost           Int?
+  actorUserId        Int?
+  actorRole          String?
+  approvedById       Int?
+  correlationId      String?
+  balanceAfter       Int?
+  notes              String?
+  patientId          Int?
+  treatmentPlanId    Int?
+  recordedBy         String?
+  createdAt          DateTime        @default(now())
+  inventoryItem      InventoryItem   @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  batch              InventoryBatch? @relation(fields: [batchId], references: [id], onDelete: Restrict)
 
   @@index([clinicId, createdAt])
   @@index([inventoryItemId, createdAt])
+  @@index([clinicId, batchId, createdAt])
+  @@index([clinicId, sourceType, sourceId])
+  @@index([clinicId, correlationId])
+}
+
+model InventoryCycleCount {
+  id              String                    @id @default(cuid())
+  clinicId        Int
+  status          String                    @default("OPEN")
+  storageLocation String?
+  countedById     Int
+  approvedById    Int?
+  varianceReason  String?
+  countedAt       DateTime                  @default(now())
+  approvedAt      DateTime?
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+  lines           InventoryCycleCountLine[]
+
+  @@index([clinicId, status, countedAt])
+}
+
+model InventoryCycleCountLine {
+  id               Int                 @id @default(autoincrement())
+  cycleCountId     String
+  inventoryItemId  Int
+  batchId          Int?
+  expectedQuantity Int
+  countedQuantity  Int
+  variance         Int
+  cycleCount       InventoryCycleCount @relation(fields: [cycleCountId], references: [id], onDelete: Cascade)
+
+  @@index([cycleCountId])
+  @@index([inventoryItemId])
+}
+
+model ProcedureConsumptionTemplate {
+  id            Int                                @id @default(autoincrement())
+  clinicId      Int
+  name          String
+  procedureName String
+  active        Boolean                            @default(true)
+  createdAt     DateTime                           @default(now())
+  updatedAt     DateTime                           @updatedAt
+  items         ProcedureConsumptionTemplateItem[]
+
+  @@unique([clinicId, name])
+  @@index([clinicId, active, procedureName])
+}
+
+model ProcedureConsumptionTemplateItem {
+  id              Int                          @id @default(autoincrement())
+  templateId      Int
+  inventoryItemId Int
+  quantity        Int
+  unit            String
+  template        ProcedureConsumptionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, inventoryItemId])
 }
 
 model PurchaseOrder {
-  id          Int                 @id @default(autoincrement())
-  clinicId    Int
-  supplier    String
-  vendorId    Int?
-  status      String              @default("DRAFT")
+  id               Int                 @id @default(autoincrement())
+  clinicId         Int
+  supplier         String
+  vendorId         Int?
+  status           String              @default("DRAFT")
   expectedDelivery DateTime?
-  receivedAt  DateTime?
-  notes       String?
-  createdBy   String?
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-  items       PurchaseOrderItem[]
-  vendor       Vendor?            @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  receivedAt       DateTime?
+  notes            String?
+  createdBy        String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  items            PurchaseOrderItem[]
+  vendor           Vendor?             @relation(fields: [vendorId], references: [id], onDelete: SetNull)
 
   @@index([clinicId, status, createdAt])
   @@index([clinicId, vendorId, status])
 }
 
 model PurchaseOrderItem {
-  id              Int           @id @default(autoincrement())
-  purchaseOrderId Int
-  inventoryItemId Int
-  quantity        Int
-  receivedQuantity Int             @default(0)
-  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  id               Int           @id @default(autoincrement())
+  purchaseOrderId  Int
+  inventoryItemId  Int
+  quantity         Int
+  receivedQuantity Int           @default(0)
+  purchaseOrder    PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  inventoryItem    InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
 
   @@unique([purchaseOrderId, inventoryItemId])
 }
 
 model LabCase {
-  id              Int            @id @default(autoincrement())
-  clinicId        Int
-  patientId       Int
-  treatmentPlanId Int?
-  labName         String
-  labId           Int?
-  caseType        String
-  status          String         @default("SENT_TO_LAB")
-  dueDate         DateTime?
-  notes           String?
-  orderNumber     String?
-  teeth           String?
-  priority        String         @default("NORMAL")
-  treatingDoctor  String?
-  assistant       String?
-  technicianName  String?
-  labPhone        String?
-  labWhatsapp     String?
-  shade           String?
-  material        String?
-  marginType      String?
-  occlusionNotes  String?
-  biteNotes       String?
-  attachments     String?
-  version         Int            @default(1)
-  parentCaseId    Int?
-  reworkReason    String?
-  reworkCount     Int            @default(0)
-  deliveredAt     DateTime?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  clinic          Clinic         @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  laboratory      Laboratory?    @relation(fields: [labId], references: [id], onDelete: SetNull)
-  patient         Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  treatmentPlan   TreatmentPlan? @relation(fields: [treatmentPlanId], references: [id], onDelete: SetNull)
-  parentCase      LabCase?       @relation("LabCaseVersions", fields: [parentCaseId], references: [id], onDelete: SetNull)
-  reworks         LabCase[]      @relation("LabCaseVersions")
-  events          LabCaseEvent[]
-  payments        LabPayment[]
+  id                     Int                   @id @default(autoincrement())
+  publicId               String                @unique @default(cuid())
+  clinicId               Int
+  patientId              Int
+  patientSafeIdentifier  String                @default(cuid())
+  treatmentPlanId        Int?
+  treatmentPlanItemId    Int?
+  encounterId            Int?
+  appointmentId          Int?
+  providerId             Int?
+  authorId               Int?
+  approvedById           Int?
+  labName                String
+  labId                  Int?
+  caseType               String
+  restorationType        String?
+  status                 String                @default("DRAFT")
+  dueDate                DateTime?
+  patientAppointmentAt   DateTime?
+  expectedCompletionAt   DateTime?
+  notes                  String?
+  orderNumber            String?
+  idempotencyKey         String?               @unique
+  teeth                  String?
+  anatomicalScope        String?
+  priority               String                @default("NORMAL")
+  treatingDoctor         String?
+  assistant              String?
+  technicianName         String?
+  labPhone               String?
+  labWhatsapp            String?
+  shade                  String?
+  shadeSystem            String?
+  material               String?
+  marginType             String?
+  marginDesign           String?
+  ponticDesign           String?
+  occlusionNotes         String?
+  biteNotes              String?
+  implantSystem          String?
+  implantComponents      String?
+  materialBatchDetails   String?
+  requestedStages        String[]              @default([])
+  pickupRequired         Boolean               @default(false)
+  pickupInstructions     String?
+  previousCaseReference  String?
+  approvalStatement      String?
+  attachments            String?
+  version                Int                   @default(1)
+  parentCaseId           Int?
+  reworkReason           String?
+  reworkChargeable       Boolean?
+  reworkResponsibility   String?
+  reworkCount            Int                   @default(0)
+  approvedAt             DateTime?
+  firstViewedAt          DateTime?
+  acceptedAt             DateTime?
+  dispatchedAt           DateTime?
+  dispatchCarrier        String?
+  dispatchTrackingNumber String?
+  dispatchNotes          String?
+  receivedAt             DateTime?
+  fittedAt               DateTime?
+  completedAt            DateTime?
+  deliveredAt            DateTime?
+  cancelledAt            DateTime?
+  cancellationReason     String?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  clinic                 Clinic                @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  laboratory             Laboratory?           @relation(fields: [labId], references: [id], onDelete: SetNull)
+  patient                Patient               @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  treatmentPlan          TreatmentPlan?        @relation(fields: [treatmentPlanId], references: [id], onDelete: SetNull)
+  treatmentPlanItem      TreatmentPlanItem?    @relation(fields: [treatmentPlanItemId], references: [id], onDelete: SetNull)
+  encounter              Encounter?            @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+  appointment            Appointment?          @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  provider               ClinicProvider?       @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  author                 User?                 @relation("LabCaseAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  approvedBy             User?                 @relation("LabCaseApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  parentCase             LabCase?              @relation("LabCaseVersions", fields: [parentCaseId], references: [id], onDelete: SetNull)
+  reworks                LabCase[]             @relation("LabCaseVersions")
+  events                 LabCaseEvent[]
+  payments               LabPayment[]
+  messages               LabCaseMessage[]
+  caseAttachments        LabCaseAttachment[]
+  portalAccesses         LabPortalAccess[]
+  deliveryAttempts       LabDeliveryAttempt[]
+  imagingLinks           LabCaseImagingStudy[]
 
   @@index([clinicId, status, dueDate])
   @@index([patientId, createdAt])
   @@index([clinicId, parentCaseId])
   @@index([clinicId, labId, status, dueDate])
+  @@index([encounterId])
+  @@index([clinicId, appointmentId, status])
+  @@index([clinicId, treatmentPlanItemId])
+  @@index([clinicId, publicId])
 }
 
 model Laboratory {
-  id                   Int       @id @default(autoincrement())
-  clinicId             Int
-  name                 String
-  contactName          String?
-  technicianName       String?
-  phone                String?
-  whatsapp             String?
-  email                String?
-  address              String?
-  gstNumber            String?
-  services             String?
-  defaultTurnaroundDays Int?
-  notes                String?
-  active               Boolean   @default(true)
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-  clinic               Clinic    @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  labCases             LabCase[]
+  id                       Int               @id @default(autoincrement())
+  clinicId                 Int
+  name                     String
+  legalName                String?
+  contactName              String?
+  technicianName           String?
+  technicians              String[]          @default([])
+  phone                    String?
+  whatsapp                 String?
+  email                    String?
+  address                  String?
+  gstNumber                String?
+  services                 String?
+  supportedServices        String[]          @default([])
+  materials                String[]          @default([])
+  defaultTurnaroundDays    Int?
+  pickupSchedule           String?
+  deliverySchedule         String?
+  priceList                Json?
+  taxInformation           String?
+  preferredCommunication   String            @default("SECURE_LINK")
+  integrationType          String            @default("SECURE_PORTAL")
+  qualityScore             Float?
+  remakeRate               Float?
+  onTimeDeliveryRate       Float?
+  dataProcessingNotes      String?
+  dataProcessingAcceptedAt DateTime?
+  notes                    String?
+  active                   Boolean           @default(true)
+  archivedAt               DateTime?
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
+  clinic                   Clinic            @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  labCases                 LabCase[]
+  portalAccesses           LabPortalAccess[]
 
   @@unique([clinicId, name])
   @@index([clinicId, active, name])
 }
 
 model LabCaseEvent {
-  id        Int      @id @default(autoincrement())
-  clinicId  Int
-  labCaseId Int
-  type      String
-  notes     String?
-  actorName String?
-  createdAt DateTime @default(now())
-  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  labCase   LabCase  @relation(fields: [labCaseId], references: [id], onDelete: Cascade)
+  id             Int              @id @default(autoincrement())
+  clinicId       Int
+  labCaseId      Int
+  type           String
+  notes          String?
+  actorName      String?
+  actorType      String           @default("CLINIC")
+  actorUserId    Int?
+  portalAccessId String?
+  fromStatus     String?
+  toStatus       String?
+  metadata       Json?
+  idempotencyKey String?          @unique
+  createdAt      DateTime         @default(now())
+  clinic         Clinic           @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  labCase        LabCase          @relation(fields: [labCaseId], references: [id], onDelete: Cascade)
+  actorUser      User?            @relation("LabCaseEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  portalAccess   LabPortalAccess? @relation(fields: [portalAccessId], references: [id], onDelete: SetNull)
 
   @@index([labCaseId, createdAt])
   @@index([clinicId, createdAt])
+}
+
+model LabCaseMessage {
+  id             String              @id @default(cuid())
+  clinicId       Int
+  labCaseId      Int
+  authorType     String
+  authorUserId   Int?
+  portalAccessId String?
+  kind           String              @default("MESSAGE")
+  body           String
+  createdAt      DateTime            @default(now())
+  clinic         Clinic              @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  labCase        LabCase             @relation(fields: [labCaseId], references: [id], onDelete: Cascade)
+  authorUser     User?               @relation("LabCaseMessageAuthor", fields: [authorUserId], references: [id], onDelete: SetNull)
+  portalAccess   LabPortalAccess?    @relation(fields: [portalAccessId], references: [id], onDelete: SetNull)
+  attachments    LabCaseAttachment[]
+
+  @@index([clinicId, labCaseId, createdAt])
+}
+
+model LabCaseAttachment {
+  id               String           @id @default(cuid())
+  clinicId         Int
+  labCaseId        Int
+  messageId        String?
+  uploadedByUserId Int?
+  portalAccessId   String?
+  category         String           @default("DOCUMENT")
+  storageKey       String
+  blobUrl          String
+  contentType      String
+  originalName     String
+  sizeBytes        Int
+  sha256           String
+  scanStatus       String
+  createdAt        DateTime         @default(now())
+  clinic           Clinic           @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  labCase          LabCase          @relation(fields: [labCaseId], references: [id], onDelete: Cascade)
+  message          LabCaseMessage?  @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  uploadedByUser   User?            @relation("LabCaseAttachmentUploader", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+  portalAccess     LabPortalAccess? @relation(fields: [portalAccessId], references: [id], onDelete: SetNull)
+
+  @@unique([clinicId, labCaseId, sha256])
+  @@index([clinicId, labCaseId, createdAt])
+}
+
+model LabCaseImagingStudy {
+  id             String       @id @default(cuid())
+  clinicId       Int
+  labCaseId      Int
+  imagingStudyId String
+  purpose        String       @default("REFERENCE")
+  createdAt      DateTime     @default(now())
+  clinic         Clinic       @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  labCase        LabCase      @relation(fields: [labCaseId], references: [id], onDelete: Cascade)
+  imagingStudy   ImagingStudy @relation(fields: [imagingStudyId], references: [id], onDelete: Restrict)
+
+  @@unique([labCaseId, imagingStudyId])
+  @@index([clinicId, labCaseId])
+}
+
+model LabPortalAccess {
+  id               String               @id @default(cuid())
+  clinicId         Int
+  laboratoryId     Int
+  labCaseId        Int
+  tokenHash        String               @unique
+  tokenCiphertext  String
+  contactName      String?
+  expiresAt        DateTime
+  lastViewedAt     DateTime?
+  revokedAt        DateTime?
+  createdAt        DateTime             @default(now())
+  clinic           Clinic               @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  laboratory       Laboratory           @relation(fields: [laboratoryId], references: [id], onDelete: Restrict)
+  labCase          LabCase              @relation(fields: [labCaseId], references: [id], onDelete: Cascade)
+  events           LabCaseEvent[]
+  messages         LabCaseMessage[]
+  attachments      LabCaseAttachment[]
+  deliveryAttempts LabDeliveryAttempt[]
+
+  @@index([clinicId, labCaseId, expiresAt])
+  @@index([laboratoryId, revokedAt])
+}
+
+model LabDeliveryAttempt {
+  id               String                    @id @default(cuid())
+  clinicId         Int
+  labCaseId        Int
+  portalAccessId   String?
+  whatsappOutboxId Int?                      @unique
+  channel          String
+  endpointMasked   String?
+  status           String                    @default("QUEUED")
+  idempotencyKey   String                    @unique
+  attempts         Int                       @default(0)
+  maxAttempts      Int                       @default(3)
+  lastAttemptAt    DateTime?
+  sentAt           DateTime?
+  viewedAt         DateTime?
+  failureReason    String?
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  clinic           Clinic                    @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  labCase          LabCase                   @relation(fields: [labCaseId], references: [id], onDelete: Cascade)
+  portalAccess     LabPortalAccess?          @relation(fields: [portalAccessId], references: [id], onDelete: SetNull)
+  whatsappOutbox   ScheduledWhatsAppMessage? @relation(fields: [whatsappOutboxId], references: [id], onDelete: SetNull)
+
+  @@index([clinicId, status, createdAt])
+  @@index([labCaseId, createdAt])
 }
 
 model LabPayment {
@@ -1071,18 +2157,18 @@ model ClinicLaunchChecklist {
 
 /// Inactive portal identity foundation. No patient authentication is enabled until OTP delivery is configured.
 model PatientPortalAccess {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   clinicId        Int
-  patientId       Int      @unique
-  status          String   @default("PREPARED")
+  patientId       Int       @unique
+  status          String    @default("PREPARED")
   deliveryChannel String?
-  preparedAt      DateTime @default(now())
+  preparedAt      DateTime  @default(now())
   activatedAt     DateTime?
   lastLoginAt     DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  clinic          Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  patient         Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  clinic          Clinic    @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patient         Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
   @@index([clinicId, status])
 }
@@ -1123,21 +2209,21 @@ model PatientIntakeRequest {
 }
 
 model AppointmentSelfServiceRequest {
-  id              Int         @id @default(autoincrement())
-  clinicId        Int
-  appointmentId   Int
-  token           String      @unique
-  status          String      @default("PENDING")
-  expiresAt       DateTime
-  sentAt          DateTime?
-  openedAt        DateTime?
-  respondedAt     DateTime?
-  requestedTime   String?
-  note            String?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  clinic          Clinic      @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  appointment     Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  id            Int         @id @default(autoincrement())
+  clinicId      Int
+  appointmentId Int
+  token         String      @unique
+  status        String      @default("PENDING")
+  expiresAt     DateTime
+  sentAt        DateTime?
+  openedAt      DateTime?
+  respondedAt   DateTime?
+  requestedTime String?
+  note          String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  clinic        Clinic      @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
 
   @@index([clinicId, status, expiresAt])
   @@index([appointmentId, createdAt])
@@ -1146,32 +2232,50 @@ model AppointmentSelfServiceRequest {
 
 /// Control Centre workflow records are separate from clinical data and contain no patient content.
 model PlatformOnboarding {
-  id              Int      @id @default(autoincrement())
-  clinicId        Int      @unique
-  stage           String   @default("TENANT_CREATED")
-  ownerId         Int?
-  targetGoLiveAt  DateTime?
-  blockers        String?
-  notes           String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             Int       @id @default(autoincrement())
+  clinicId       Int       @unique
+  stage          String    @default("TENANT_CREATED")
+  ownerId        Int?
+  targetGoLiveAt DateTime?
+  blockers       String?
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([stage, targetGoLiveAt])
   @@index([ownerId, stage])
 }
 
+/// A private, operator-owned staging record for the Control Centre wizard.
+/// It deliberately contains no clinic configuration of record: the Clinic and
+/// related tenant models become authoritative only once provisioning succeeds.
+model PlatformProvisioningDraft {
+  id          String    @id @default(cuid())
+  ownerUserId Int
+  data        Json
+  status      String    @default("ACTIVE")
+  currentStep Int       @default(0)
+  archivedAt  DateTime?
+  discardedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([ownerUserId, status, updatedAt])
+  @@index([ownerUserId, updatedAt])
+}
+
 model PlatformSupportTicket {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   clinicId    Int?
   requester   String?
-  category    String   @default("GENERAL")
-  priority    String   @default("NORMAL")
-  status      String   @default("OPEN")
+  category    String    @default("GENERAL")
+  priority    String    @default("NORMAL")
+  status      String    @default("OPEN")
   subject     String
   description String
   assignedTo  Int?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   resolvedAt  DateTime?
 
   @@index([status, priority, updatedAt])
@@ -1180,15 +2284,69 @@ model PlatformSupportTicket {
 }
 
 model PlatformNotification {
-  id          Int      @id @default(autoincrement())
-  clinicId    Int?
-  severity    String   @default("INFO")
-  title       String
-  detail      String?
-  href        String?
-  readAt      DateTime?
-  createdAt   DateTime @default(now())
+  id        Int       @id @default(autoincrement())
+  clinicId  Int?
+  severity  String    @default("INFO")
+  title     String
+  detail    String?
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
 
   @@index([readAt, severity, createdAt])
   @@index([clinicId, createdAt])
+}
+
+/// Internal-only operational notes. These are never selected by clinic SaaS routes.
+model PlatformInternalNote {
+  id        Int      @id @default(autoincrement())
+  clinicId  Int
+  authorId  Int
+  category  String   @default("GENERAL")
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId, createdAt])
+  @@index([authorId, createdAt])
+}
+
+/// Small, platform-owned operational queue; it does not create clinic-visible tasks.
+model PlatformTask {
+  id          Int       @id @default(autoincrement())
+  clinicId    Int?
+  assigneeId  Int?
+  title       String
+  description String?
+  priority    String    @default("NORMAL")
+  status      String    @default("OPEN")
+  dueAt       DateTime?
+  createdById Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  clinic      Clinic?   @relation(fields: [clinicId], references: [id], onDelete: SetNull)
+
+  @@index([status, priority, dueAt])
+  @@index([clinicId, status])
+  @@index([assigneeId, status])
+}
+
+/// Announcement authoring is platform-only. Delivery to clinic SaaS is intentionally separate.
+model PlatformAnnouncement {
+  id             Int       @id @default(autoincrement())
+  title          String
+  message        String
+  severity       String    @default("INFO")
+  targetType     String    @default("ALL_CLINICS")
+  targetClinicId Int?
+  startsAt       DateTime  @default(now())
+  endsAt         DateTime?
+  dismissible    Boolean   @default(true)
+  createdById    Int
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([targetType, startsAt, endsAt])
+  @@index([targetClinicId, startsAt])
 }

@@ -9,6 +9,7 @@ export const FEATURE_REGISTRY = {
   patients: { label: "Patients", defaultEnabled: true },
   appointments: { label: "Appointments", defaultEnabled: true },
   clinical: { label: "Clinical workspace", defaultEnabled: true },
+  imaging: { label: "X-rays & Imaging", defaultEnabled: true },
   billing: { label: "Billing", defaultEnabled: true },
   crm: { label: "CRM & leads", defaultEnabled: true },
   follow_ups: { label: "Follow-ups", defaultEnabled: true },
@@ -17,7 +18,6 @@ export const FEATURE_REGISTRY = {
   inventory: { label: "Inventory", defaultEnabled: true },
   reports: { label: "Reports", defaultEnabled: true },
   analytics: { label: "Advanced analytics", defaultEnabled: true },
-  ai_coach: { label: "AI Coach", defaultEnabled: true },
 } as const;
 
 export type FeatureKey = keyof typeof FEATURE_REGISTRY;

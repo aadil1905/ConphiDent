@@ -1,13 +1,11 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, Loader2, UserRoundPlus } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
-
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import Pending from "@/components/ui/pending";
+import { useUnsavedGuard } from "@/components/ui/unsaved-guard";
 
 type Values = {
   fullName: string;
@@ -23,23 +21,22 @@ type PatientResponse = {
   id?: number;
   existed?: boolean;
   error?: string;
-  issues?: {
-    fieldErrors?: Record<string, string[]>;
-  };
+  issues?: { fieldErrors?: Record<string, string[]> };
 };
+
+type FieldName = "fullName" | "phone" | "email";
+
+const DRAFT_KEY = "conphident.patient.draft";
 
 function firstIssue(body: PatientResponse) {
   const fields = body.issues?.fieldErrors;
   return fields ? Object.values(fields).flat()[0] : null;
 }
 
-function normalizePhone(value: FormDataEntryValue | null) {
-  return String(value || "").replace(/\D/g, "").slice(-10);
-}
-
-function normalizeText(value: FormDataEntryValue | null) {
-  return String(value || "").trim();
-}
+const field = (bad: boolean) =>
+  `min-h-11 w-full rounded-control border bg-card px-3 text-sm text-foreground outline-none ${
+    bad ? "border-danger-mark" : "border-border"
+  }`;
 
 export default function PatientForm({
   patient,
@@ -49,41 +46,40 @@ export default function PatientForm({
   mode?: "create" | "edit";
 }) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const { formRef: unsavedFormRef, release: releaseUnsaved, dialog: unsavedDialog } = useUnsavedGuard();
+  const [saving, setSaving] = useState(false);
+  const [problems, setProblems] = useState<{ field?: FieldName; text: string }[]>([]);
 
-  const title = useMemo(
-    () => (mode === "create" ? "Add patient" : "Save changes"),
-    [mode],
-  );
+  const has = (name: FieldName) => problems.some((problem) => problem.field === name);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (loading) return;
+    if (saving) return;
 
     const form = new FormData(event.currentTarget);
+    const text = (name: string) => String(form.get(name) || "").trim();
     const data = {
-      fullName: normalizeText(form.get("fullName")),
-      phone: normalizePhone(form.get("phone")),
-      email: normalizeText(form.get("email")),
-      dateOfBirth: normalizeText(form.get("dateOfBirth")),
-      gender: normalizeText(form.get("gender")),
-      address: normalizeText(form.get("address")),
-      medicalNotes: normalizeText(form.get("medicalNotes")),
+      fullName: text("fullName"),
+      phone: String(form.get("phone") || "").replace(/\D/g, "").slice(-10),
+      email: text("email"),
+      dateOfBirth: text("dateOfBirth"),
+      gender: text("gender"),
+      address: text("address"),
+      medicalNotes: text("medicalNotes"),
     };
 
-    if (data.fullName.length < 2) {
-      setMessage({ type: "error", text: "Please enter the patient name." });
+    // Errors sit against the field and are repeated above the button, so
+    // nobody has to hunt for what is missing.
+    const found: { field?: FieldName; text: string }[] = [];
+    if (data.fullName.length < 2) found.push({ field: "fullName", text: "We need a name to put on the file." });
+    if (data.phone.length !== 10) found.push({ field: "phone", text: "A mobile number is 10 digits." });
+    if (found.length) {
+      setProblems(found);
       return;
     }
 
-    if (data.phone.length !== 10) {
-      setMessage({ type: "error", text: "Please enter a valid 10-digit mobile number." });
-      return;
-    }
-
-    setLoading(true);
-    setMessage(null);
+    setSaving(true);
+    setProblems([]);
 
     try {
       const response = await fetch(
@@ -94,125 +90,125 @@ export default function PatientForm({
           body: JSON.stringify(data),
         },
       );
-
       const body = (await response.json().catch(() => ({}))) as PatientResponse;
-
-      if (!response.ok) {
-        throw new Error(firstIssue(body) || body.error || "Patient could not be saved.");
-      }
+      if (!response.ok) throw new Error(firstIssue(body) || body.error || "That didn't save.");
 
       const patientId = mode === "create" ? body.id : patient?.id;
-      if (!patientId) throw new Error("Patient saved, but profile could not be opened.");
+      if (!patientId) throw new Error("It saved, but we could not open the file.");
 
-      const successText = body.existed
-        ? "This phone number already exists. Opening the saved patient profile."
-        : mode === "create"
-          ? "Patient profile saved successfully."
-          : "Patient profile updated successfully.";
+      try {
+        localStorage.removeItem(DRAFT_KEY);
+      } catch {
+        // Nothing to clean up.
+      }
 
-      setMessage({ type: "success", text: successText });
-      toast.success(successText);
+      releaseUnsaved();
+      const firstName = data.fullName.split(" ")[0] || data.fullName;
+      toast.success(
+        body.existed
+          ? `${firstName} already had that number — opening their file.`
+          : mode === "create"
+            ? `${firstName} is on your list.`
+            : "Saved.",
+      );
       router.push(`/dashboard/patients/${patientId}`);
       router.refresh();
     } catch (error) {
-      const errorText = error instanceof Error ? error.message : "Patient could not be saved.";
-      setMessage({ type: "error", text: errorText });
-      toast.error(errorText);
+      const text =
+        error instanceof Error && error.message
+          ? error.message
+          : "That didn't save — your connection dropped. Nothing was lost; try again.";
+      setProblems([{ text }]);
+      toast.error(text);
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   }
 
   return (
-    <form onSubmit={submit} className="overflow-hidden rounded-3xl border border-border bg-white shadow-sm">
-      <div className="border-b border-border bg-gradient-to-r from-sky-50 to-white px-6 py-5">
-        <div className="flex items-start gap-3">
-          <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-sky-100 text-sky-700">
-            <UserRoundPlus className="size-5" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-slate-950">Patient details</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Name and mobile number are required. Other details can be added later.
-            </p>
-          </div>
-        </div>
+    <form
+      ref={unsavedFormRef}
+      onSubmit={submit}
+      className="overflow-hidden rounded-card border border-border bg-card shadow-[var(--shadow)]"
+    >
+      {unsavedDialog}
+      <div className="border-b border-border px-5.5 py-4">
+        <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">
+          {mode === "create" ? "Who are they?" : "Their details"}
+        </h2>
+        <p className="mt-1 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
+          A name and a mobile number is enough to start. The rest can wait until they are in the chair.
+        </p>
       </div>
 
-      <div className="space-y-6 p-6">
-        {message ? (
-          <div
-            className={`flex items-start gap-2 rounded-2xl border px-4 py-3 text-sm ${
-              message.type === "error"
-                ? "border-red-200 bg-red-50 text-red-700"
-                : "border-emerald-200 bg-emerald-50 text-emerald-800"
-            }`}
-          >
-            {message.type === "error" ? (
-              <AlertCircle className="mt-0.5 size-4 shrink-0" />
-            ) : (
-              <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
-            )}
-            <span>{message.text}</span>
-          </div>
-        ) : null}
-
-        <div className="grid gap-5 md:grid-cols-2">
-          <label className="space-y-2 text-sm font-semibold text-slate-800">
-            Full name <span className="text-red-500">*</span>
-            <Input
+      <div className="flex flex-col gap-6 p-5.5">
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-heading">Full name<span aria-hidden className="font-normal text-danger-mark"> *</span></span>
+            <input
               required
               name="fullName"
               autoComplete="name"
               defaultValue={patient?.fullName}
-              placeholder="Patient name"
-              className="h-11 rounded-xl bg-white"
+              placeholder="e.g. Kavya Menon"
+              aria-invalid={has("fullName")}
+              className={field(has("fullName"))}
             />
+            {has("fullName") && (
+              <span className="text-[13px] text-danger">
+                {problems.find((problem) => problem.field === "fullName")?.text}
+              </span>
+            )}
           </label>
 
-          <label className="space-y-2 text-sm font-semibold text-slate-800">
-            Phone number <span className="text-red-500">*</span>
-            <Input
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-heading">Mobile number<span aria-hidden className="font-normal text-danger-mark"> *</span></span>
+            <input
               required
               name="phone"
-              inputMode="numeric"
+              inputMode="tel"
               autoComplete="tel"
               defaultValue={patient?.phone}
-              placeholder="10-digit mobile number"
-              className="h-11 rounded-xl bg-white"
+              placeholder="+91 98XXX XXXXX"
+              aria-invalid={has("phone")}
+              className={`${field(has("phone"))} tabular-nums`}
             />
+            {has("phone") ? (
+              <span className="text-[13px] text-danger">
+                {problems.find((problem) => problem.field === "phone")?.text}
+              </span>
+            ) : (
+              <span className="text-xs text-text-muted">10 digits. This is how reminders and receipts reach them.</span>
+            )}
           </label>
 
-          <label className="space-y-2 text-sm font-semibold text-slate-800">
-            Email
-            <Input
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-heading">Email</span>
+            <input
               name="email"
               type="email"
               autoComplete="email"
               defaultValue={patient?.email ?? ""}
-              placeholder="name@example.com"
-              className="h-11 rounded-xl bg-white"
+              placeholder="Optional"
+              className={field(has("email"))}
             />
           </label>
 
-          <label className="space-y-2 text-sm font-semibold text-slate-800">
-            Date of birth
-            <Input
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-heading">Date of birth</span>
+            <input
               name="dateOfBirth"
               type="date"
               defaultValue={patient?.dateOfBirth?.slice(0, 10) ?? ""}
-              className="h-11 rounded-xl bg-white"
+              className={`${field(false)} tabular-nums`}
             />
+            <span className="text-xs text-text-muted">Some doses depend on age.</span>
           </label>
 
-          <label className="space-y-2 text-sm font-semibold text-slate-800">
-            Gender
-            <select
-              name="gender"
-              defaultValue={patient?.gender ?? ""}
-              className="h-11 w-full rounded-xl border border-input bg-white px-3 text-sm outline-none transition focus:border-ring focus:ring-3 focus:ring-ring/50"
-            >
-              <option value="">Not specified</option>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-heading">Sex</span>
+            <select name="gender" defaultValue={patient?.gender ?? ""} className={field(false)}>
+              <option value="">Not said</option>
               <option>Female</option>
               <option>Male</option>
               <option>Non-binary</option>
@@ -220,49 +216,63 @@ export default function PatientForm({
             </select>
           </label>
 
-          <label className="space-y-2 text-sm font-semibold text-slate-800">
-            Address
-            <Input
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-heading">Address</span>
+            <input
               name="address"
               defaultValue={patient?.address ?? ""}
-              placeholder="Address"
-              className="h-11 rounded-xl bg-white"
+              placeholder="Optional"
+              className={field(false)}
             />
           </label>
         </div>
 
-        <label className="block space-y-2 text-sm font-semibold text-slate-800">
-          Medical notes
-          <Textarea
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-heading">Anything to read before treating them</span>
+          <textarea
             name="medicalNotes"
             rows={5}
             defaultValue={patient?.medicalNotes ?? ""}
-            placeholder="Allergies, conditions, ongoing medicines, or other notes..."
-            className="rounded-xl bg-white"
+            placeholder="Allergies, pregnancy, diabetes, blood thinners, anything that changes what is safe"
+            className="rounded-control border border-border bg-card px-3 py-2.5 text-sm text-foreground outline-none"
           />
+          <span className="text-xs text-text-muted">
+            This shows in red at the top of their file, so nobody misses it.
+          </span>
         </label>
+
+        {problems.length > 0 && (
+          <p
+            role="alert"
+            className="flex items-start gap-2.5 rounded-control border border-danger-border bg-danger-bg px-3.5 py-3 text-[13px] text-danger"
+          >
+            <AlertCircle className="mt-0.5 h-4 w-4 flex-none" strokeWidth={2.2} aria-hidden />
+            <span>
+              {problems.length === 1
+                ? problems[0].text
+                : `Two things still need fixing: ${problems.map((problem) => problem.text.replace(/\.$/, "").toLowerCase()).join(", and ")}.`}
+            </span>
+          </p>
+        )}
       </div>
 
-      <div className="flex flex-col-reverse gap-3 border-t border-border bg-slate-50 px-6 py-4 sm:flex-row sm:justify-end">
-        <Button
+      <div className="flex flex-col-reverse gap-2.5 border-t border-border bg-muted px-5.5 py-3.5 sm:flex-row sm:justify-end">
+        <button
           type="button"
-          variant="outline"
-          className="h-11 rounded-xl px-5"
           onClick={() => router.back()}
-          disabled={loading}
+          disabled={saving}
+          className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-5 text-[13px] font-semibold text-heading hover:bg-muted disabled:opacity-70"
         >
           Cancel
-        </Button>
-        <Button type="submit" disabled={loading} className="h-11 rounded-xl px-6">
-          {loading ? (
-            <>
-              <Loader2 className="size-4 animate-spin" />
-              Saving patient...
-            </>
-          ) : (
-            title
-          )}
-        </Button>
+        </button>
+        <button
+          type="submit"
+          disabled={saving}
+          aria-busy={saving}
+          className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-control border border-primary bg-primary px-6 text-[13px] font-semibold text-white hover:bg-primary-hover disabled:opacity-70"
+        >
+          {saving ? <Pending label="Saving…" /> : mode === "create" ? "Add them" : "Save"}
+        </button>
       </div>
     </form>
   );

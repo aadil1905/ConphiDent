@@ -9,6 +9,8 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"]!,
+    // Prisma's schema engine (migrations/status) must bypass a transaction pooler.
+    // Runtime queries still use DATABASE_URL from schema.prisma.
+    url: process.env["DIRECT_URL"] || process.env["DATABASE_URL"]!,
   },
 });

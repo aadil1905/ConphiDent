@@ -71,7 +71,7 @@ export async function generateFollowUpTasks(clinicId: number) {
       take: 100,
     }),
     prisma.labCase.findMany({
-      where: { clinicId, dueDate: { lt: now }, status: { notIn: ["COMPLETED", "CANCELLED", "DELIVERED"] } },
+      where: { clinicId, status: { notIn: ["READY", "DISPATCHED", "RECEIVED_BY_CLINIC", "FITTED", "COMPLETED", "CANCELLED", "DELIVERED"] }, OR: [{ dueDate: { lt: now } }, { patientAppointmentAt: { lte: new Date(now.getTime() + 72 * 60 * 60 * 1000) } }] },
       include: { patient: { select: { id: true, fullName: true, phone: true } } },
       orderBy: { dueDate: "asc" },
       take: 100,
@@ -172,8 +172,8 @@ export async function generateFollowUpTasks(clinicId: number) {
       patientName: labCase.patient.fullName,
       phone: labCase.patient.phone,
       taskType: "LABORATORY_FOLLOW_UP",
-      message: `Laboratory case ${labCase.orderNumber || `LAB-${labCase.id}`} for ${labCase.patient.fullName} is overdue. Confirm the laboratory status and arrange the next patient action.`,
-      metadata: JSON.stringify({ labCaseId: labCase.id, labName: labCase.labName, dueDate: labCase.dueDate?.toISOString() }),
+      message: `Hello ${labCase.patient.fullName}, we are reviewing readiness for your upcoming dental appointment. Our team will contact you if any timing change is needed. Please do not change your appointment until the clinic confirms it.`,
+      metadata: JSON.stringify({ labCaseId: labCase.id, labName: labCase.labName, dueDate: labCase.dueDate?.toISOString(), patientAppointmentAt: labCase.patientAppointmentAt?.toISOString(), approvalRequired: true, internalAction: "Contact the laboratory, review the fitting appointment, and suggest rescheduling only if clinically necessary. Never auto-reschedule or auto-send this patient draft." }),
     });
     if (didCreate) created += 1;
   }

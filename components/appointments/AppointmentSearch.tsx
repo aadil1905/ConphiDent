@@ -41,13 +41,13 @@ if (status) {
       placeholder="Search by patient name, phone or treatment..."
       value={search}
       onChange={(e) => setSearch(e.target.value)}
-      className="flex-1 rounded-md border px-4 py-2"
+      className="flex-1 rounded-control border px-4 py-2"
     />
 
     <select
       value={status}
       onChange={(e) => setStatus(e.target.value)}
-      className="w-48 rounded-md border px-4 py-2"
+      className="w-48 rounded-control border px-4 py-2"
     >
       <option value="">All Status</option>
       <option value="Pending">Pending</option>
