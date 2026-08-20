@@ -56,9 +56,6 @@ export type NavDestination = {
 export const NAV_DESTINATIONS: readonly NavDestination[] = [
   {
     href: "/dashboard", label: "Today", icon: Home, hint: "What needs you right now", badge: "today",
-    children: [
-      { href: "/dashboard/huddle", label: "Huddle brief", permission: "manageSchedule" },
-    ],
   },
   {
     href: "/dashboard/appointments", label: "Schedule", icon: CalendarDays, hint: "The diary, day and week", feature: "appointments", permission: "manageSchedule",

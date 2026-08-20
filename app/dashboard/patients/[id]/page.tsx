@@ -1,13 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { MessageSquare } from "lucide-react";
 import { requirePermission, can } from "@/lib/permissions";
 import { hasFeature } from "@/lib/features";
 import { prisma } from "@/lib/prisma";
 import { clockTime, exactStamp, humanTime, overdueBy, rupees } from "@/lib/format";
 import { STATUS_LABELS } from "@/lib/visit-status";
 import ToothMap from "@/components/patients/ToothMap";
-import SendFormButton from "@/components/patients/SendFormButton";
 import ScrollToSection from "@/components/patients/ScrollToSection";
 import BackLink from "@/components/navigation/BackLink";
 import SafetyBanner from "@/components/clinical/SafetyBanner";
@@ -67,7 +65,6 @@ export default async function Patient360Page({
   const requested = (await searchParams).tab;
   const tab: Tab | null = TABS.includes(requested as Tab) ? (requested as Tab) : null;
   const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   const patient = await prisma.patient.findFirst({
     where: { id: patientId, clinicId: user.clinicId, archivedAt: null },
@@ -88,7 +85,7 @@ export default async function Patient360Page({
   const canSeeClinical = can(user.role, "viewClinical");
   const canSeeMoney = can(user.role, "manageBilling");
 
-  const [visits, invoices, plans, chart, studies, intakes, whatsappOn] = await Promise.all([
+  const [visits, invoices, plans, chart, studies, intakes, whatsappOn, prescriptions] = await Promise.all([
     prisma.appointment.findMany({
       where: { clinicId: user.clinicId, patientId, archivedAt: null },
       orderBy: [{ appointmentDate: "desc" }, { appointmentTime: "desc" }],
@@ -164,6 +161,34 @@ export default async function Patient360Page({
       select: { id: true, status: true, completedAt: true, expiresAt: true, createdAt: true, drugAllergies: true },
     }),
     hasFeature(user.clinicId, "whatsapp"),
+    canSeeClinical
+      ? prisma.prescription.findMany({
+          where: { clinicId: user.clinicId, patientId, cancelledAt: null },
+          orderBy: { prescribedOn: "desc" },
+          take: 5,
+          select: {
+            id: true,
+            prescribedOn: true,
+            diagnosis: true,
+            instructions: true,
+            status: true,
+            medicationItems: {
+              orderBy: { sortOrder: "asc" },
+              select: {
+                id: true,
+                genericName: true,
+                strength: true,
+                dose: true,
+                doseUnit: true,
+                frequency: true,
+                duration: true,
+                mealRelation: true,
+                instructions: true,
+              },
+            },
+          },
+        })
+      : [],
   ]);
 
   // --- Derived ------------------------------------------------------------
@@ -175,16 +200,12 @@ export default async function Patient360Page({
     .filter((invoice) => invoice.totalAmount > invoice.payments.reduce((t, p) => t + p.amount, 0))
     .sort((a, b) => a.issueDate.getTime() - b.issueDate.getTime())[0];
 
-  const nextVisit = visits
-    .filter((visit) => visit.status !== "Cancelled" && visit.appointmentDate >= startOfDay)
-    .sort((a, b) => a.appointmentDate.getTime() - b.appointmentDate.getTime())[0];
 
   const conditions: Record<string, string> = {};
   for (const entry of chart) {
     if (!conditions[entry.toothNumber]) conditions[entry.toothNumber] = entry.condition;
   }
 
-  const activePlan = plans.find((plan) => plan.status !== "Completed" && plan.status !== "Declined");
   const age = patient.dateOfBirth ? now.getFullYear() - patient.dateOfBirth.getFullYear() : null;
   const initials =
     patient.fullName
@@ -193,11 +214,6 @@ export default async function Patient360Page({
       .join("")
       .slice(0, 2)
       .toUpperCase() || "?";
-
-  const signedIntake = intakes.find((intake) => ["COMPLETED", "REVIEWED"].includes(intake.status));
-  const pendingIntake = intakes.find(
-    (intake) => !["COMPLETED", "REVIEWED"].includes(intake.status) && intake.expiresAt > now,
-  );
 
   const safety = patientSafety({ medicalNotes: patient.medicalNotes, intakeAnswers: intakes });
 
@@ -229,38 +245,17 @@ export default async function Patient360Page({
               </span>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          {/* One action up here. Booking lives on Schedule, messaging in the
+              inbox, charting behind "Open charting" below — the header names
+              the person and opens their case paper, nothing else. */}
+          {canSeeClinical && (
             <Link
-              href={`/dashboard/clinical-workspace/${patient.id}`}
+              href={`/dashboard/clinical-workspace/${patient.id}?fromPatient=1`}
               className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
             >
-              Start visit
+              View case paper
             </Link>
-            {canSeeMoney && balance > 0 && (
-              <Link
-                href="/dashboard/billing?show=due"
-                className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
-              >
-                Collect {rupees(balance)}
-              </Link>
-            )}
-            <Link
-              href={`/dashboard/appointments/new?patient=${patient.id}`}
-              className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
-            >
-              Book
-            </Link>
-            {whatsappOn && (
-              <Link
-                href={`/dashboard/conversations?phone=${encodeURIComponent(patient.phone)}`}
-                aria-label={`Message ${patient.fullName} on WhatsApp`}
-                title="Message on WhatsApp"
-                className="grid h-11 w-11 place-items-center rounded-control border border-border-strong bg-card text-heading hover:bg-muted"
-              >
-                <MessageSquare className="h-[17px] w-[17px]" strokeWidth={1.9} aria-hidden />
-              </Link>
-            )}
-          </div>
+          )}
         </div>
 
         {/* The whole record reads top to bottom now — these are jump links,
@@ -280,6 +275,47 @@ export default async function Patient360Page({
           ))}
         </nav>
       </header>
+
+      {/* Read-before-treating stays at the very top — but only when there is
+          something to read. The quiet "nothing on file" state that used to
+          hold this slot lives on in the prescribing and charting screens,
+          where the no-allergies/never-asked distinction is a dosing decision;
+          here it was one more grey box between the person and their record. */}
+      {safety.hasAlerts && (
+        <SafetyBanner safety={safety} recordHref={`/dashboard/patients/${patient.id}/edit`} />
+      )}
+
+      <div className="flex flex-col gap-2 rounded-card border border-border bg-card p-4 shadow-[var(--shadow)]">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <p className="text-xs font-semibold text-heading">Details</p>
+          {canSeeMoney && balance > 0 && (
+            <span className="text-[13px] font-semibold tabular-nums text-danger">
+              {rupees(balance)} due
+              {oldestUnpaid && ` · oldest ${overdueBy(oldestUnpaid.issueDate, now) ?? "raised today"}`}
+            </span>
+          )}
+        </div>
+        <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
+          {whatsappOn ? `WhatsApp · ${patient.phone}` : patient.phone}
+          <br />
+          {patient.email || "No email on file"}
+          <br />
+          {patient.address || "No address on file"}
+          <br />
+          Patient since{" "}
+          {patient.createdAt.toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          })}
+        </p>
+        <Link
+          href={`/dashboard/patients/${patient.id}/edit`}
+          className="inline-flex min-h-11 w-fit items-center rounded-control border border-border-strong bg-card px-3 text-[13px] font-semibold text-heading hover:bg-muted"
+        >
+          Edit details
+        </Link>
+      </div>
 
       <div className="grid items-start gap-5">
         <div className="flex min-w-0 flex-col gap-5">
@@ -339,7 +375,7 @@ export default async function Patient360Page({
                 <div className="flex flex-wrap items-baseline justify-between gap-3 px-5.5 pt-4 pb-1">
                   <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Mouth as it stands</h2>
                   <Link
-                    href={`/dashboard/clinical-workspace/${patient.id}`}
+                    href={`/dashboard/clinical-workspace/${patient.id}?fromPatient=1`}
                     className="text-[13px] font-semibold text-primary hover:underline"
                   >
                     Open charting →
@@ -354,11 +390,13 @@ export default async function Patient360Page({
               </Card>
 
               <Card>
-                <div className="flex flex-wrap items-baseline justify-between gap-3 px-5.5 pt-4 pb-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-3 px-5.5 pt-4 pb-3">
                   <div className="min-w-0">
                     <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Prescribing</h2>
                     <p className="mt-1 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
-                      What has already been prescribed is under Prescriptions.
+                      {prescriptions.length === 0
+                        ? "Nothing prescribed yet."
+                        : `Latest ${prescriptions.length} — the full history is under Prescriptions.`}
                     </p>
                   </div>
                   {can(user.role, "issuePrescription") && (
@@ -370,6 +408,52 @@ export default async function Patient360Page({
                     </Link>
                   )}
                 </div>
+                {/* The medicines themselves, right where they were written. A
+                    script that vanishes into another screen the moment it is
+                    saved reads as "not saved" — this is the receipt. */}
+                {prescriptions.length > 0 && (
+                  <div className="max-h-[340px] overflow-y-auto">
+                    {prescriptions.map((script) => (
+                      <div key={script.id} className="border-t border-border px-5.5 py-3">
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <Link
+                            href={`/dashboard/prescriptions/${script.id}`}
+                            className="text-[13px] font-semibold text-primary hover:underline"
+                          >
+                            {script.prescribedOn.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                            {script.diagnosis ? ` · ${script.diagnosis}` : ""}
+                          </Link>
+                          <span className="text-xs font-semibold text-text-muted">
+                            {script.status === "ISSUED" ? "Issued" : script.status.charAt(0) + script.status.slice(1).toLowerCase()}
+                          </span>
+                        </div>
+                        <ul className="mt-1.5 flex flex-col gap-1">
+                          {script.medicationItems.map((item) => (
+                            <li key={item.id} className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-foreground">
+                              <span className="font-semibold text-heading">
+                                {item.genericName}
+                                {item.strength ? ` ${item.strength}` : ""}
+                              </span>
+                              {" — "}
+                              {[
+                                item.dose && item.doseUnit ? `${item.dose} ${item.doseUnit}` : "",
+                                item.frequency.toLowerCase(),
+                                (item.mealRelation || "").toLowerCase(),
+                                item.duration ? `for ${item.duration}` : "",
+                              ]
+                                .filter(Boolean)
+                                .join(", ")}
+                              {item.instructions ? ` · ${item.instructions}` : ""}
+                            </li>
+                          ))}
+                        </ul>
+                        {script.instructions && (
+                          <p className="mt-1 text-xs text-text-muted">{script.instructions}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </Card>
             </div>
           )}
@@ -586,131 +670,6 @@ export default async function Patient360Page({
           )}
         </div>
 
-        <aside className="flex flex-col gap-6">
-          <div className="flex flex-col gap-2.5 rounded-card border border-border bg-card p-4 shadow-[var(--shadow)]">
-            <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] font-semibold text-heading">Forms and consent</p>
-
-            <div className="flex flex-col gap-1.5 border-b border-border/70 pb-2">
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-[13px]">Medical history form</span>
-                <span
-                  className={`text-xs font-semibold whitespace-nowrap ${
-                    signedIntake ? "text-success" : "text-danger"
-                  }`}
-                >
-                  {signedIntake ? "Signed" : "Not signed"}
-                </span>
-              </div>
-              <p
-                title={signedIntake?.completedAt ? exactStamp(signedIntake.completedAt) : undefined}
-                className="text-xs text-text-muted"
-              >
-                {signedIntake?.completedAt
-                  ? `Signed ${humanTime(signedIntake.completedAt, now)}`
-                  : pendingIntake
-                    ? `Link sent, waiting — it runs out ${humanTime(pendingIntake.expiresAt, now)}`
-                    : "Nothing on file yet"}
-              </p>
-              {whatsappOn && (
-                <SendFormButton
-                  patientId={patient.id}
-                  label={signedIntake ? "Ask them to check it again" : "Send the link on WhatsApp"}
-                  primary={!signedIntake}
-                />
-              )}
-            </div>
-
-            <p className="text-xs text-text-muted">
-              Links open on their phone and run out after 7 days. Signed forms land in this patient&rsquo;s
-              file.
-            </p>
-          </div>
-
-          <SafetyBanner safety={safety} recordHref={`/dashboard/patients/${patient.id}/edit`} />
-
-          <div className="flex flex-col gap-3 rounded-card border border-border bg-card p-4 shadow-[var(--shadow)]">
-            <div>
-              <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
-                Next visit
-              </p>
-              {nextVisit ? (
-                <>
-                  <p className="text-sm font-semibold text-heading">
-                    {humanTime(visitMoment(nextVisit.appointmentDate, nextVisit.appointmentTime), now)}
-                  </p>
-                  <p className="text-xs text-text-muted">
-                    {[nextVisit.treatment, nextVisit.provider?.name].filter(Boolean).join(" · ")}
-                  </p>
-                </>
-              ) : (
-                <p className="text-sm text-text-muted">Nothing booked</p>
-              )}
-            </div>
-
-            {canSeeMoney && (
-              <div>
-                <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
-                  Balance
-                </p>
-                <p
-                  className={`text-sm font-semibold tabular-nums ${balance > 0 ? "text-danger" : "text-success"}`}
-                >
-                  {balance > 0 ? `${rupees(balance)} due` : "All settled"}
-                </p>
-                {oldestUnpaid && (
-                  <p className="text-xs text-text-muted">
-                    Oldest unpaid: {oldestUnpaid.invoiceNumber},{" "}
-                    {overdueBy(oldestUnpaid.issueDate, now) ?? "raised today"}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {activePlan && (
-              <div>
-                <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
-                  Plan in progress
-                </p>
-                <p className="text-sm font-semibold text-heading">{activePlan.title}</p>
-                <p className="text-xs text-text-muted">
-                  {activePlan.status}
-                  {activePlan.estimatedCost ? ` · ${rupees(activePlan.estimatedCost)} agreed` : ""}
-                </p>
-              </div>
-            )}
-
-            <div>
-              <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
-                Reachable on
-              </p>
-              <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)]">
-                {whatsappOn ? `WhatsApp · ${patient.phone}` : patient.phone}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2 rounded-card border border-border bg-card p-4">
-            <p className="text-xs font-semibold text-heading">Details</p>
-            <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
-              {patient.email || "No email on file"}
-              <br />
-              {patient.address || "No address on file"}
-              <br />
-              Patient since{" "}
-              {patient.createdAt.toLocaleDateString("en-IN", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              })}
-            </p>
-            <Link
-              href={`/dashboard/patients/${patient.id}/edit`}
-              className="inline-flex min-h-11 w-fit items-center rounded-control border border-border-strong bg-card px-3 text-[13px] font-semibold text-heading hover:bg-muted"
-            >
-              Edit details
-            </Link>
-          </div>
-        </aside>
       </div>
     </div>
   );

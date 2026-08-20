@@ -12,7 +12,6 @@ const GROWTH = "/dashboard/growth";
 /** Every action here changes what the queue and the huddle brief show. */
 function revalidateQueue() {
   revalidatePath(GROWTH);
-  revalidatePath("/dashboard/huddle");
   revalidatePath("/dashboard");
 }
 

@@ -143,7 +143,6 @@ const groups = [
       "Lead conversion and follow-up analytics",
       "Clinic performance overview",
       "Operational exports so your data can leave with you",
-      "The morning huddle brief, printed as a sheet",
     ],
   },
   {

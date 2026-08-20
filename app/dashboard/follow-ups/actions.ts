@@ -12,7 +12,6 @@ export async function generateFollowUpsAction() {
   const user = await requirePermission("manageSchedule");
   await generateFollowUpTasks(user.clinicId);
   revalidatePath("/dashboard/growth");
-  revalidatePath("/dashboard/huddle");
 }
 
 export async function sendFollowUpAction(formData: FormData) {
@@ -23,13 +22,11 @@ export async function sendFollowUpAction(formData: FormData) {
   if (!task.patientId) {
     await prisma.followUpTask.updateMany({ where: { id: task.id, clinicId: user.clinicId, status: "PENDING" }, data: { status: "FAILED", errorMessage: "Link this follow-up to an active patient before sending WhatsApp." } });
     revalidatePath("/dashboard/growth");
-  revalidatePath("/dashboard/huddle");
     return;
   }
   if (formData.get("consentConfirmed") !== "1") {
     await prisma.followUpTask.updateMany({ where: { id: task.id, clinicId: user.clinicId, status: "PENDING" }, data: { status: "FAILED", errorMessage: "Confirm the patient's current WhatsApp consent before sending." } });
     revalidatePath("/dashboard/growth");
-  revalidatePath("/dashboard/huddle");
     return;
   }
 
@@ -79,7 +76,6 @@ export async function sendFollowUpAction(formData: FormData) {
     await prisma.followUpTask.updateMany({ where: { id: task.id, clinicId: user.clinicId, status: "QUEUED" }, data: { status: "FAILED", errorMessage: error instanceof Error ? error.message : "Unable to queue WhatsApp message" } });
   }
   revalidatePath("/dashboard/growth");
-  revalidatePath("/dashboard/huddle");
 }
 
 export async function completeFollowUpAction(formData: FormData) {
@@ -88,7 +84,6 @@ export async function completeFollowUpAction(formData: FormData) {
   const outcome = String(formData.get("outcome") || "OTHER").trim().slice(0, 80);
   await prisma.followUpTask.updateMany({ where: { id, clinicId: user.clinicId, status: { in: ["PENDING", "QUEUED", "SENT", "FAILED"] } }, data: { status: "COMPLETED", outcome, completedAt: new Date() } });
   revalidatePath("/dashboard/growth");
-  revalidatePath("/dashboard/huddle");
 }
 
 export async function assignFollowUpAction(formData: FormData) {
@@ -102,7 +97,6 @@ export async function assignFollowUpAction(formData: FormData) {
   }
   await prisma.followUpTask.updateMany({ where: { id, clinicId: user.clinicId, status: { notIn: ["COMPLETED", "CANCELLED"] } }, data: { assignedUserId } });
   revalidatePath("/dashboard/growth");
-  revalidatePath("/dashboard/huddle");
 }
 
 export async function snoozeFollowUpAction(formData: FormData) {
@@ -112,7 +106,6 @@ export async function snoozeFollowUpAction(formData: FormData) {
   if (!Number.isInteger(id) || !scheduledFor) return;
   await prisma.followUpTask.updateMany({ where: { id, clinicId: user.clinicId, status: { in: ["PENDING", "FAILED", "SENT"] } }, data: { status: "PENDING", scheduledFor: new Date(scheduledFor), snoozedUntil: new Date(scheduledFor) } });
   revalidatePath("/dashboard/growth");
-  revalidatePath("/dashboard/huddle");
 }
 
 export async function cancelFollowUpAction(formData: FormData) {
@@ -121,5 +114,4 @@ export async function cancelFollowUpAction(formData: FormData) {
   if (!Number.isInteger(id)) return;
   await prisma.followUpTask.updateMany({ where: { id, clinicId: user.clinicId, status: { in: ["PENDING", "QUEUED", "FAILED", "SENT"] } }, data: { status: "CANCELLED", cancelledAt: new Date() } });
   revalidatePath("/dashboard/growth");
-  revalidatePath("/dashboard/huddle");
 }

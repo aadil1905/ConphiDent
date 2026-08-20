@@ -136,9 +136,9 @@ export default function PrescriptionForm({ patients, templates = [], initialPati
           </div>
         ) : null}
 
-        <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
+        <section className="rounded-card border border-border bg-card px-5.5 py-3.5 shadow-[var(--shadow)]">
           <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Who this is for</h2>
-          <div className="mt-3.5 grid gap-3.5 sm:grid-cols-2">
+          <div className="mt-2.5 grid grid-cols-2 gap-2.5">
             <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">Patient<span aria-hidden className="font-normal text-danger-mark"> *</span>
               <select required name="patientId" value={patientId} disabled={Boolean(editingPrescription)} onChange={(event) => { setPatientId(event.target.value); setAcknowledged(false); }} className={field}>
                 <option value="">Pick the patient</option>

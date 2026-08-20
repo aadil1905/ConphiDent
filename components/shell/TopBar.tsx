@@ -111,7 +111,10 @@ export default function TopBar({
         </kbd>
       </button>
 
-      <div className="flex flex-none items-center gap-2">
+      {/* ml-auto keeps this cluster on the right even when the header wraps
+          to two rows on a phone — without it the account menu, anchored
+          right-0 to its button, opened 49px past the left screen edge. */}
+      <div className="ml-auto flex flex-none items-center gap-2">
         <Link
           href="/dashboard/appointments/new"
           className="inline-flex min-h-11 items-center rounded-control bg-primary px-3.5 text-[13px] font-semibold whitespace-nowrap text-white transition-colors duration-150 hover:bg-primary-hover"
@@ -139,7 +142,7 @@ export default function TopBar({
           </button>
 
           {bellOpen && (
-            <div className="absolute right-0 top-[calc(100%+8px)] w-[340px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-card border border-border bg-card shadow-[var(--shadow-overlay)] motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-150">
+            <div className="absolute right-0 top-[calc(100%+8px)] max-h-[min(70vh,480px)] w-[340px] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-card border border-border bg-card shadow-[var(--shadow-overlay)] motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-150">
               <div className="flex items-baseline justify-between border-b border-border px-3.5 py-2.5">
                 <span className="text-[13px] font-semibold text-heading">Needs you</span>
                 <span className="text-[11px] text-text-muted">{freshness}</span>
@@ -189,7 +192,7 @@ export default function TopBar({
           </button>
 
           {avatarOpen && (
-            <div className="absolute right-0 top-[calc(100%+8px)] w-[250px] overflow-hidden rounded-card border border-border bg-card shadow-[var(--shadow-overlay)] motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-150">
+            <div className="absolute right-0 top-[calc(100%+8px)] max-h-[min(70vh,480px)] w-[250px] max-w-[calc(100vw-1rem)] overflow-y-auto rounded-card border border-border bg-card shadow-[var(--shadow-overlay)] motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-150">
               <div className="border-b border-border px-3.5 py-3">
                 <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] font-semibold text-heading">{user.fullName}</p>
                 <p className="text-xs text-text-muted">

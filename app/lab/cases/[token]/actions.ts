@@ -79,6 +79,5 @@ export async function labPortalCaseAction(token: string, _previous: LabPortalAct
   revalidatePath(`/lab/cases/${token}`);
   revalidatePath(`/dashboard/laboratory/${access.labCase.id}`);
   revalidatePath(`/dashboard/patients/${access.labCase.patientId}`);
-  revalidatePath("/dashboard/huddle");
   return { ok: true, message: target ? `Case updated to ${target.replaceAll("_", " ").toLowerCase()}.` : "Message added to the permanent case thread." };
 }
