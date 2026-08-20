@@ -4,7 +4,6 @@ import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { clockTime, exactStamp, humanTime, overdueBy, rupees } from "@/lib/format";
 import { todayMetrics } from "@/lib/metrics";
-import NeedsYouQueue, { type QueueItem } from "@/components/today/NeedsYouQueue";
 import ChairList, { type ChairVisit } from "@/components/today/ChairList";
 import GlanceStrip, { type GlanceTile } from "@/components/today/GlanceStrip";
 import ModuleGrid, { type ModuleTile } from "@/components/today/ModuleGrid";
@@ -15,7 +14,6 @@ import { moneyMetrics, rangeFor } from "@/lib/metrics";
 
 export const dynamic = "force-dynamic";
 
-const QUEUE_SHOWN = 5;
 const CHAIRS_SHOWN = 7;
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -96,6 +94,8 @@ export default async function TodayPage() {
           },
         },
       }),
+      // Only the oldest open task survives here — the queue itself moved to
+      // Growth, and the glance tile needs just "oldest is N days late".
       prisma.followUpTask.findMany({
         where: {
           clinicId: user.clinicId,
@@ -103,17 +103,8 @@ export default async function TodayPage() {
           scheduledFor: { lte: endOfDay },
         },
         orderBy: { scheduledFor: "asc" },
-        take: QUEUE_SHOWN,
-        select: {
-          id: true,
-          patientName: true,
-          phone: true,
-          message: true,
-          taskType: true,
-          scheduledFor: true,
-          patientId: true,
-          leadId: true,
-        },
+        take: 1,
+        select: { scheduledFor: true },
       }),
       prisma.followUpTask.count({
         where: { clinicId: user.clinicId, status: { in: ["PENDING", "FAILED"] } },
@@ -221,27 +212,6 @@ export default async function TodayPage() {
   // of the range passed in, so any range gives the correct all-time figure —
   // reusing it here is one query, not a second billing summary to keep honest.
   const money = canSeeMoney ? await moneyMetrics({ clinicId: user.clinicId }, rangeFor("month", now)) : null;
-
-  // --- Needs you today -----------------------------------------------------
-  const queue: QueueItem[] = tasks.map((task) => {
-    const late = overdueBy(task.scheduledFor, now);
-    return {
-      taskId: task.id,
-      who: task.patientName,
-      what: task.message,
-      due: late ?? humanTime(task.scheduledFor, now),
-      exact: exactStamp(task.scheduledFor),
-      overdue: Boolean(late),
-      primaryLabel: `Call ${task.patientName.split(" ")[0]}`,
-      primaryHref: null,
-      secondaryLabel: "Open",
-      secondaryHref: task.patientId
-        ? `/dashboard/patients/${task.patientId}`
-        : // No enquiry detail page exists, so land on the queue with them found.
-          `/dashboard/growth?show=everyone&q=${encodeURIComponent(task.phone)}`,
-    };
-  });
-  const overdueInQueue = queue.filter((item) => item.overdue).length;
 
   // --- Today in the chairs -------------------------------------------------
   const chairs: ChairVisit[] = visits.slice(0, CHAIRS_SHOWN).map((visit) => {
@@ -525,26 +495,11 @@ export default async function TodayPage() {
             })}
           </p>
         </div>
-        {can(user.role, "manageSchedule") && (
-          <Link
-            href="/dashboard/huddle"
-            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
-          >
-            Morning brief
-          </Link>
-        )}
       </header>
 
       <GlanceStrip tiles={glanceTiles} />
 
       <ModuleGrid modules={modules} />
-
-      <NeedsYouQueue
-        items={queue}
-        total={openTaskCount}
-        overdueCount={overdueInQueue}
-        moreHref="/dashboard/growth?show=overdue"
-      />
 
       <ChairList
         visits={chairs}

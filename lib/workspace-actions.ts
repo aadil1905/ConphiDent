@@ -17,7 +17,6 @@ export const WORKSPACE_ACTIONS: WorkspaceAction[] = [
   { kind: "Action", title: "New invoice", detail: "Bill the patient in the chair", href: "/dashboard/billing/new", hint: "Run" },
   { kind: "Action", title: "Log an enquiry", detail: "Someone who just called", href: "/dashboard/growth?log=1", hint: "Run" },
   { kind: "Action", title: "Start charting", detail: "Open the clinical workspace for a patient", href: "/dashboard/clinical-workspace", hint: "Run" },
-  { kind: "Action", title: "Today's huddle brief", detail: "The printable page for the morning stand-up", href: "/dashboard/huddle", hint: "Run" },
 ];
 
 /** Where the palette keeps what you opened last, read by Find anything too. */

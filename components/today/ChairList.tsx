@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { AlertTriangle, Check, Clock } from "lucide-react";
 import { toast } from "sonner";
-import { markArrivedAction, undoArrivedAction } from "@/app/dashboard/today-actions";
+import { markArrivedAction, markCompletedAction, undoArrivedAction } from "@/app/dashboard/today-actions";
 
 export type ChairVisit = {
   id: number;
@@ -40,7 +41,9 @@ export default function ChairList({
   seenToday: number;
   unconfirmedToday: number;
 }) {
+  const router = useRouter();
   const [arrived, setArrived] = useState<number[]>([]);
+  const [completed, setCompleted] = useState<number[]>([]);
   const [, startTransition] = useTransition();
 
   const arrive = (visit: ChairVisit) => {
@@ -65,6 +68,23 @@ export default function ChairList({
         if (result.ok) return;
         setArrived((current) => current.filter((id) => id !== visit.id));
         toast.error(result.message);
+      });
+    });
+  };
+
+  // Step 2 of the stepper. Completing lands you on the patient's record —
+  // the write-up, the bill and the next booking all start from there.
+  const complete = (visit: ChairVisit) => {
+    setCompleted((current) => [...current, visit.id]);
+    startTransition(() => {
+      void markCompletedAction(visit.id).then((result) => {
+        if (!result.ok) {
+          setCompleted((current) => current.filter((id) => id !== visit.id));
+          toast.error(result.message);
+          return;
+        }
+        toast.success(`${visit.patientName.split(" ")[0]}'s visit is done.`);
+        if (visit.patientHref) router.push(visit.patientHref);
       });
     });
   };
@@ -102,21 +122,14 @@ export default function ChairList({
       ) : (
         visits.map((visit) => {
           const isArrived = arrived.includes(visit.id);
-          const state = isArrived ? "arrived" : visit.state;
+          const isCompleted = completed.includes(visit.id) || visit.state === "seen";
+          const state = isCompleted ? "seen" : isArrived ? "arrived" : visit.state;
           const look = LOOK[state];
-          const canArrive = state !== "seen" && state !== "arrived";
-          const actionLabel = state === "seen" ? "Bill this visit" : isArrived ? "Start charting" : "Mark arrived";
-          const actionHref =
-            state === "seen"
-              ? `/dashboard/billing/new?appointment=${visit.id}`
-              : isArrived
-                ? `/dashboard/clinical-workspace${visit.patientHref ? `/${visit.patientHref.split("/").pop()}` : ""}`
-                : null;
 
           return (
             <div
               key={visit.id}
-              className={`grid grid-cols-1 items-center gap-3.5 border-t border-border px-5.5 py-2.5 sm:grid-cols-[84px_minmax(0,1fr)] lg:grid-cols-[84px_minmax(0,1fr)_140px_156px] ${
+              className={`grid grid-cols-1 items-center gap-3.5 border-t border-border px-5.5 py-2.5 sm:grid-cols-[84px_minmax(0,1fr)] lg:grid-cols-[84px_minmax(0,1fr)_130px_150px_150px] ${
                 isArrived ? "bg-card" : ""
               }`}
             >
@@ -153,21 +166,36 @@ export default function ChairList({
                 {look.label}
               </span>
 
-              {actionHref ? (
-                <Link
-                  href={actionHref}
-                  className="inline-flex min-h-11 w-full items-center justify-center rounded-control border border-primary bg-primary px-3 text-[13px] font-semibold whitespace-nowrap text-white hover:bg-primary-hover"
-                >
-                  {actionLabel}
-                </Link>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => canArrive && arrive(visit)}
-                  className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-control border border-border-strong bg-card px-3 text-[13px] font-semibold whitespace-nowrap text-heading hover:bg-muted"
-                >
-                  {actionLabel}
-                </button>
+              {/* The two-step stepper: arrived, then completed. Completing
+                  opens the patient's record. A seen visit needs nothing more
+                  from this list — the pill already says so. */}
+              {!isCompleted && (
+                <div className="flex flex-col gap-1.5 lg:col-span-2 lg:grid lg:grid-cols-2 lg:gap-2">
+                  <button
+                    type="button"
+                    disabled={isArrived}
+                    onClick={() => arrive(visit)}
+                    className={`inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-control border px-3 text-[13px] font-semibold whitespace-nowrap ${
+                      isArrived
+                        ? "border-border bg-muted text-text-muted"
+                        : "cursor-pointer border-primary bg-primary text-white hover:bg-primary-hover"
+                    }`}
+                  >
+                    {isArrived && <Check className="h-3.5 w-3.5" strokeWidth={2.4} aria-hidden />}
+                    {isArrived ? "Arrived" : "Mark arrived"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => complete(visit)}
+                    className={`inline-flex min-h-11 w-full items-center justify-center rounded-control border px-3 text-[13px] font-semibold whitespace-nowrap ${
+                      isArrived
+                        ? "cursor-pointer border-primary bg-primary text-white hover:bg-primary-hover"
+                        : "cursor-pointer border-border-strong bg-card text-heading hover:bg-muted"
+                    }`}
+                  >
+                    Mark completed
+                  </button>
+                </div>
               )}
             </div>
           );

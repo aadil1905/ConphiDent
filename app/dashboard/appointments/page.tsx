@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Suspense } from "react";
 import { CalendarX2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Prisma } from "@prisma/client";
 import { requirePermission } from "@/lib/permissions";
@@ -7,7 +6,6 @@ import { prisma } from "@/lib/prisma";
 import { exactStamp, humanTime } from "@/lib/format";
 import { listHref, pageWindow, parseListQuery, type RawSearchParams } from "@/lib/list-params";
 import DataList, { ListCell, ListLink, ListRow } from "@/components/lists/DataList";
-import ListSearch from "@/components/lists/ListSearch";
 import FilterChips from "@/components/lists/FilterChips";
 import EmptyState from "@/components/lists/EmptyState";
 import PageHeader from "@/components/lists/PageHeader";
@@ -218,12 +216,6 @@ export default async function SchedulePage({
 
       <section className="flex flex-col gap-3 rounded-card border border-border bg-card p-4 shadow-[var(--shadow)]">
         <div className="flex flex-wrap items-center gap-3">
-          <Suspense fallback={<div className="h-11 flex-[1_1_240px] rounded-control bg-muted" />}>
-            <ListSearch
-              placeholder="Name, phone or reason — filters as you type"
-              label="Search visits"
-            />
-          </Suspense>
           <FilterChips
             basePath={BASE}
             query={query}

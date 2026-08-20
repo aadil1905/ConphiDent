@@ -114,7 +114,6 @@ export async function deleteFollowUpAction(formData: FormData) {
     prisma.auditLog.create({ data: { clinicId: user.clinicId, userId: user.id, patientId: task.patientId, actorRole: user.role, action: "FOLLOW_UP_CANCELLED", entityType: "FOLLOW_UP", entityId: String(task.id), detail: "Cancelled follow-up and retained activity history", reason, beforeState: { status: task.status }, afterState: { status: "CANCELLED" } } }),
   ]);
   revalidatePath("/dashboard/growth");
-  revalidatePath("/dashboard/huddle");
 }
 
 export async function deleteTreatmentPlanAction(formData: FormData) {

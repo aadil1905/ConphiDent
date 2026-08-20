@@ -39,7 +39,6 @@ function percent(formData: FormData, name: string) {
 function refreshCase(caseId: number, patientId?: number | null) {
   revalidatePath(listPath);
   revalidatePath(`${listPath}/${caseId}`);
-  revalidatePath("/dashboard/huddle");
   revalidatePath("/dashboard");
   if (patientId) revalidatePath(`/dashboard/patients/${patientId}`);
 }
