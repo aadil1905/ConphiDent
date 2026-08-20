@@ -55,24 +55,27 @@ const ICONS: Record<GlanceTile["icon"], LucideIcon> = {
 };
 
 /** Icon plate, sparkline and progress bar all take the tile's one accent. */
-const TONE: Record<GlanceTone, { plate: string; ink: string; fill: string; bar: string }> = {
+const TONE: Record<GlanceTone, { plate: string; ink: string; fill: string; bar: string; edge: string }> = {
   primary: {
     plate: "bg-[var(--primary-soft)]",
     ink: "text-primary",
     fill: "color-mix(in oklab, var(--primary) 9%, transparent)",
     bar: "bg-primary",
+    edge: "border-l-primary",
   },
   warning: {
     plate: "bg-warning-bg",
     ink: "text-warning",
     fill: "color-mix(in oklab, var(--warning) 10%, transparent)",
     bar: "bg-warning",
+    edge: "border-l-warning",
   },
   danger: {
     plate: "bg-danger-bg",
     ink: "text-danger-mark",
     fill: "color-mix(in oklab, var(--danger-mark) 9%, transparent)",
     bar: "bg-danger-mark",
+    edge: "border-l-danger-mark",
   },
 };
 
@@ -106,7 +109,10 @@ function Tile({ tile }: { tile: GlanceTile }) {
   return (
     <Link
       href={tile.href}
-      className="flex w-full flex-col rounded-card border border-border bg-card px-4 pt-[15px] pb-3.5 text-left shadow-[var(--shadow)] transition-colors duration-150 hover:border-border-strong hover:bg-surface-hover"
+      // The 3px tone stroke down the edge — the same mark the lists use for a
+      // row that needs attention, and what keeps four white tiles on a grey
+      // ground from reading as one flat sheet.
+      className={`flex w-full flex-col rounded-card border border-border border-l-[3px] ${tone.edge} bg-card px-4 pt-[15px] pb-3.5 text-left shadow-[var(--shadow)] transition-colors duration-150 hover:bg-surface-hover`}
     >
       <span className="flex h-[22px] items-center gap-2">
         <span className={`grid h-[22px] w-[22px] flex-none place-items-center rounded-chip ${tone.plate} ${tone.ink}`}>

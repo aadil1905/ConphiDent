@@ -96,7 +96,12 @@
 
      The public site (.cf-public) and the Control Center (.cf-portal) declare
      their own tokens at higher specificity, so they do not read from here. */
-  --background: #ffffff;
+  /* The ground is a half-step of neutral grey, not white — with the cards
+     staying white, the page reads in two layers instead of one flat sheet.
+     #f7f8f8 is achromatic to the eye (verified against the radiograph
+     concern that retired the old warm paper: no hue cast, and imagery sits
+     on white cards anyway). Every text-on-ground pair still clears AA. */
+  --background: #f7f8f8;
   --foreground: #4a5b61;
   --card: #ffffff;
   --card-foreground: #10262e;
@@ -219,7 +224,7 @@
      A modal scrim, the translucent top bar, the plate a clinic logo sits on,
      and the message canvas. Naming them is what lets them follow the mode. */
   --overlay: rgba(16, 38, 46, 0.38);
-  --topbar-bg: rgba(255, 255, 255, 0.88);
+  --topbar-bg: rgba(247, 248, 248, 0.88);
   /* Stays white in both modes on purpose: a clinic's uploaded logo is usually
      dark ink on transparent, and it disappears on anything else. */
   --logo-plate: #ffffff;
@@ -395,14 +400,21 @@
    -0.012em where the grotesque wanted -0.02em. Left behind, headings look
    untouched but pinched.
    =========================================================================== */
-.clinic-theme {
+/* body:has() carries the repoint to portaled UI — Radix dialogs and the
+   sonner toaster mount straight into <body>, outside this wrapper, and were
+   still resolving the grotesque. Same :has() pattern the dark mode uses; if
+   :has() is unavailable the .clinic-theme selector still covers the page and
+   only overlays fall back. */
+.clinic-theme,
+body:has(.clinic-theme) {
   --font-display: var(--font-workspace-display);
 }
 
 .clinic-theme h1,
 .clinic-theme h2,
 .clinic-theme h3,
-.clinic-theme h4 {
+.clinic-theme h4,
+body:has(.clinic-theme) :is(h1, h2, h3, h4) {
   font-family: var(--font-workspace-display), Georgia, serif;
   letter-spacing: -.012em;
 }
@@ -421,7 +433,8 @@
    instead of an edit in nine files, and any tile added later is covered.
    Outside `@layer base` so it is not outranked by the utilities beside it. */
 .clinic-theme [class*="--text-metric"],
-.clinic-theme [class*="--text-tile"] {
+.clinic-theme [class*="--text-tile"],
+body:has(.clinic-theme) :is([class*="--text-metric"], [class*="--text-tile"]) {
   font-family: var(--font-workspace-display), Georgia, serif;
   letter-spacing: -.012em;
 }
