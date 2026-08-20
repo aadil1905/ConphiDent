@@ -6,6 +6,12 @@ import { clockTime, exactStamp, humanTime, overdueBy, rupees } from "@/lib/forma
 import { todayMetrics } from "@/lib/metrics";
 import NeedsYouQueue, { type QueueItem } from "@/components/today/NeedsYouQueue";
 import ChairList, { type ChairVisit } from "@/components/today/ChairList";
+import GlanceStrip, { type GlanceTile } from "@/components/today/GlanceStrip";
+import ModuleGrid, { type ModuleTile } from "@/components/today/ModuleGrid";
+import { NAV_DESTINATIONS, NAV_SETTINGS, visibleHrefs } from "@/components/shell/nav-items";
+import { getFeatureEntitlements } from "@/lib/features";
+import { PERMISSIONS, type Permission } from "@/lib/permissions";
+import { moneyMetrics, rangeFor } from "@/lib/metrics";
 
 export const dynamic = "force-dynamic";
 
@@ -39,8 +45,34 @@ export default async function TodayPage() {
   const canSeeLab = can(user.role, "manageLaboratory");
   const canSeeStock = can(user.role, "manageInventory");
 
-  const [metrics, visits, tasks, openTaskCount, lateLabCases, lowStock, thisWeekPayments] =
-    await Promise.all([
+  // Today at a glance reconstructs its sparklines from the last 7 real days —
+  // never seeded or smoothed. glanceDays is that window, oldest to newest,
+  // ending on today; dayIndex/countByDay/sumByDay below bucket raw rows into it.
+  const glanceDays = Array.from({ length: 7 }, (_, index) => new Date(startOfDay.getTime() - (6 - index) * DAY));
+  const glanceFrom = glanceDays[0];
+  const weekAgoStart = new Date(startOfDay.getTime() - 7 * DAY);
+  const weekAgoEnd = new Date(endOfDay.getTime() - 7 * DAY);
+
+  const [
+    metrics,
+    visits,
+    tasks,
+    openTaskCount,
+    lateLabCases,
+    lowStock,
+    thisWeekPayments,
+    visitsLast7,
+    lastWeekSameDayVisits,
+    tasksCreatedLast7,
+    overdueTaskCount,
+    labDueLast7,
+    features,
+    patientCount,
+    openConversationCount,
+    plansAwaitingDecision,
+    unmatchedImaging,
+    unreviewedImaging,
+  ] = await Promise.all([
       todayMetrics({ clinicId: user.clinicId }, now),
       prisma.appointment.findMany({
         where: {
@@ -122,7 +154,73 @@ export default async function TodayPage() {
             select: { amount: true, paidAt: true },
           })
         : [],
+      prisma.appointment.findMany({
+        where: {
+          clinicId: user.clinicId,
+          archivedAt: null,
+          status: { not: "Cancelled" },
+          appointmentDate: { gte: glanceFrom, lt: endOfDay },
+        },
+        select: { appointmentDate: true },
+      }),
+      prisma.appointment.count({
+        where: {
+          clinicId: user.clinicId,
+          archivedAt: null,
+          status: { not: "Cancelled" },
+          appointmentDate: { gte: weekAgoStart, lt: weekAgoEnd },
+        },
+      }),
+      prisma.followUpTask.findMany({
+        where: { clinicId: user.clinicId, createdAt: { gte: glanceFrom, lt: endOfDay } },
+        select: { createdAt: true },
+      }),
+      prisma.followUpTask.count({
+        where: { clinicId: user.clinicId, status: { in: ["PENDING", "FAILED"] }, scheduledFor: { lt: now } },
+      }),
+      canSeeLab
+        ? prisma.labCase.findMany({
+            where: {
+              clinicId: user.clinicId,
+              cancelledAt: null,
+              status: { notIn: ["COMPLETED", "DELIVERED", "CANCELLED"] },
+              dueDate: { gte: glanceFrom, lt: endOfDay },
+            },
+            select: { dueDate: true },
+          })
+        : [],
+      getFeatureEntitlements(user.clinicId),
+      prisma.patient.count({ where: { clinicId: user.clinicId, archivedAt: null } }),
+      can(user.role, "sendWhatsApp")
+        ? prisma.whatsAppConversation.count({ where: { clinicId: user.clinicId, status: "OPEN" } })
+        : 0,
+      can(user.role, "viewClinical")
+        ? prisma.treatmentPlan.count({
+            where: { clinicId: user.clinicId, cancelledAt: null, status: "Proposed" },
+          })
+        : 0,
+      can(user.role, "uploadImaging")
+        ? prisma.imagingStudy.count({
+            where: { clinicId: user.clinicId, matchStatus: "UNMATCHED", archivedAt: null, enteredInErrorAt: null },
+          })
+        : 0,
+      can(user.role, "signImaging")
+        ? prisma.imagingStudy.count({
+            where: {
+              clinicId: user.clinicId,
+              matchStatus: "CONFIRMED",
+              status: { not: "REVIEWED" },
+              archivedAt: null,
+              enteredInErrorAt: null,
+            },
+          })
+        : 0,
     ]);
+
+  // moneyMetrics' stillOwed/owedByPatients read every open invoice regardless
+  // of the range passed in, so any range gives the correct all-time figure —
+  // reusing it here is one query, not a second billing summary to keep honest.
+  const money = canSeeMoney ? await moneyMetrics({ clinicId: user.clinicId }, rangeFor("month", now)) : null;
 
   // --- Needs you today -----------------------------------------------------
   const queue: QueueItem[] = tasks.map((task) => {
@@ -224,6 +322,195 @@ export default async function TodayPage() {
       })),
   ].slice(0, 6);
 
+  // --- Today at a glance ----------------------------------------------------
+  const dayIndex = (value: Date) => {
+    const key = new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
+    return glanceDays.findIndex((day) => day.getTime() === key);
+  };
+  const countByDay = (dates: Date[]) => {
+    const bucket = Array(7).fill(0);
+    for (const date of dates) {
+      const index = dayIndex(date);
+      if (index >= 0) bucket[index] += 1;
+    }
+    return bucket;
+  };
+  const sumByDay = (rows: { at: Date; amount: number }[]) => {
+    const bucket = Array(7).fill(0);
+    for (const row of rows) {
+      const index = dayIndex(row.at);
+      if (index >= 0) bucket[index] += row.amount;
+    }
+    return bucket;
+  };
+  const clampPct = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
+  const flatSeries = (last: number) => Array(6).fill(last).concat(last);
+
+  const glanceTiles: GlanceTile[] = [];
+
+  if (canSeeMoney) {
+    const collectedSeries = sumByDay(thisWeekPayments.map((p) => ({ at: p.paidAt, amount: p.amount })));
+    const lastWeekToday = thisWeekPayments
+      .filter((p) => p.paidAt >= weekAgoStart && p.paidAt < weekAgoEnd)
+      .reduce((sum, p) => sum + p.amount, 0);
+    const moneyDelta = lastWeekToday
+      ? Math.round(((metrics.collectedToday - lastWeekToday) / lastWeekToday) * 100)
+      : null;
+    const billedShare = metrics.visitsToday
+      ? clampPct((metrics.seenSoFar / metrics.visitsToday) * 100)
+      : 0;
+    glanceTiles.push({
+      key: "collected",
+      label: "Collected today",
+      value: rupees(metrics.collectedToday),
+      href: "/dashboard/billing",
+      icon: "money",
+      tone: "primary",
+      delta: moneyDelta === null ? null : `${Math.abs(moneyDelta)}%`,
+      deltaUp: (moneyDelta ?? 0) >= 0,
+      deltaIsGood: (moneyDelta ?? 0) >= 0,
+      compare: lastWeekToday
+        ? `${rupees(lastWeekToday)} on this day last week`
+        : "Nothing recorded on this day last week",
+      series: collectedSeries.some((v) => v > 0) ? collectedSeries : flatSeries(metrics.collectedToday),
+      footLabel: "Visits billed",
+      footPct: billedShare,
+    });
+  }
+
+  const chairsSeries = countByDay(visitsLast7.map((v) => v.appointmentDate));
+  const chairsDelta = lastWeekSameDayVisits ? visits.length - lastWeekSameDayVisits : null;
+  glanceTiles.push({
+    key: "chairs",
+    label: "In the chairs",
+    value: String(visits.length),
+    href: "/dashboard/appointments",
+    icon: "chairs",
+    tone: "primary",
+    delta: chairsDelta === null ? null : String(Math.abs(chairsDelta)),
+    deltaUp: (chairsDelta ?? 0) >= 0,
+    deltaIsGood: (chairsDelta ?? 0) >= 0,
+    compare: `${seenToday} seen · ${unconfirmedToday} not confirmed`,
+    series: chairsSeries.some((v) => v > 0) ? chairsSeries : flatSeries(visits.length),
+    footLabel: "Seen",
+    footPct: visits.length ? clampPct((seenToday / visits.length) * 100) : 0,
+  });
+
+  const askedSeries = countByDay(tasksCreatedLast7.map((t) => t.createdAt));
+  const askedToday = askedSeries[6];
+  const priorAverage = askedSeries.slice(0, 6).reduce((sum, v) => sum + v, 0) / 6;
+  const askedDelta = priorAverage > 0 ? Math.round(askedToday - priorAverage) : null;
+  const oldestOpen = tasks[0];
+  glanceTiles.push({
+    key: "needs-you",
+    label: "Needs you",
+    value: String(openTaskCount),
+    href: "/dashboard/growth?show=overdue",
+    icon: "calls",
+    tone: "danger",
+    delta: askedDelta === null || askedDelta === 0 ? null : String(Math.abs(askedDelta)),
+    deltaUp: (askedDelta ?? 0) >= 0,
+    // More new asks in a day is not good news — it is the one tile where "up" reads red.
+    deltaIsGood: (askedDelta ?? 0) < 0,
+    compare:
+      overdueTaskCount > 0
+        ? `${overdueTaskCount} overdue${oldestOpen ? ` · oldest is ${overdueBy(oldestOpen.scheduledFor, now) ?? "due today"}` : ""}`
+        : "Nothing overdue right now",
+    series: askedSeries.some((v) => v > 0) ? askedSeries : flatSeries(openTaskCount),
+    footLabel: "Overdue",
+    footPct: openTaskCount ? clampPct((overdueTaskCount / openTaskCount) * 100) : 0,
+  });
+
+  if (risks.length > 0) {
+    const riskSeries = countByDay(labDueLast7.map((c) => c.dueDate as Date));
+    const urgentCount = risks.filter((risk) => risk.urgent).length;
+    const labCount = risks.filter((risk) => risk.key.startsWith("lab-")).length;
+    const stockCount = risks.length - labCount;
+    glanceTiles.push({
+      key: "risk",
+      label: "Could break today",
+      value: String(risks.length),
+      href: "/dashboard/laboratory",
+      icon: "risk",
+      tone: "warning",
+      delta: null,
+      deltaUp: false,
+      deltaIsGood: false,
+      compare:
+        labCount && stockCount
+          ? `${labCount} lab case${labCount === 1 ? "" : "s"} · ${stockCount} stock item${stockCount === 1 ? "" : "s"}`
+          : labCount
+            ? `${labCount} lab case${labCount === 1 ? "" : "s"}`
+            : `${stockCount} stock item${stockCount === 1 ? "" : "s"}`,
+      series: riskSeries.some((v) => v > 0) ? riskSeries : flatSeries(risks.length),
+      footLabel: "Urgent",
+      footPct: clampPct((urgentCount / risks.length) * 100),
+    });
+  }
+
+  // --- Everything in the clinic ---------------------------------------------
+  const permissions = (Object.keys(PERMISSIONS) as Permission[]).filter((permission) => can(user.role, permission));
+  const visible = new Set(visibleHrefs(features, permissions));
+  const plural = (count: number, one: string, many: string) => (count === 1 ? one : many);
+
+  const moduleSub = (href: string): { sub: string; badge: string; tone: ModuleTile["tone"] } => {
+    switch (href) {
+      case "/dashboard/appointments":
+        return unconfirmedToday > 0
+          ? { sub: `${visits.length} today · ${unconfirmedToday} unconfirmed`, badge: String(unconfirmedToday), tone: "warn" }
+          : { sub: `${visits.length} today, all confirmed`, badge: "", tone: "calm" };
+      case "/dashboard/patients":
+        return { sub: `${patientCount.toLocaleString("en-IN")} record${plural(patientCount, "", "s")}`, badge: "", tone: "calm" };
+      case "/dashboard/clinical-workspace":
+        return plansAwaitingDecision > 0
+          ? { sub: `${plansAwaitingDecision} plan${plural(plansAwaitingDecision, "", "s")} awaiting a decision`, badge: String(plansAwaitingDecision), tone: "warn" }
+          : { sub: "Nothing awaiting a decision", badge: "", tone: "calm" };
+      case "/dashboard/billing":
+        return money && money.stillOwed > 0
+          ? { sub: `${rupees(money.stillOwed)} outstanding`, badge: String(money.owedByPatients), tone: "bad" }
+          : { sub: "Nothing outstanding", badge: "", tone: "calm" };
+      case "/dashboard/conversations":
+        return openConversationCount > 0
+          ? { sub: `${openConversationCount} thread${plural(openConversationCount, "", "s")} awaiting a reply`, badge: String(openConversationCount), tone: "warn" }
+          : { sub: "Inbox is clear", badge: "", tone: "calm" };
+      case "/dashboard/growth":
+        return overdueTaskCount > 0
+          ? { sub: `${openTaskCount} follow-up${plural(openTaskCount, "", "s")} · ${overdueTaskCount} overdue`, badge: String(openTaskCount), tone: "bad" }
+          : openTaskCount > 0
+            ? { sub: `${openTaskCount} follow-up${plural(openTaskCount, "", "s")}`, badge: String(openTaskCount), tone: "warn" }
+            : { sub: "Nothing to call back", badge: "", tone: "calm" };
+      case "/dashboard/laboratory":
+        return lateLabCases.length > 0
+          ? { sub: `${lateLabCases.length} case${plural(lateLabCases.length, "", "s")} running late`, badge: String(lateLabCases.length), tone: "bad" }
+          : { sub: "Nothing running late", badge: "", tone: "calm" };
+      case "/dashboard/imaging": {
+        const imagingCount = unmatchedImaging + unreviewedImaging;
+        return imagingCount > 0
+          ? { sub: `${imagingCount} scan${plural(imagingCount, "", "s")} need${plural(imagingCount, "s", "")} attention`, badge: String(imagingCount), tone: "warn" }
+          : { sub: "Nothing waiting on you", badge: "", tone: "calm" };
+      }
+      case "/dashboard/operations": {
+        const lowStockCount = lowStock.filter((item) => item.quantity <= item.reorderLevel).length;
+        return lowStockCount > 0
+          ? { sub: `${lowStockCount} item${plural(lowStockCount, "", "s")} below reorder level`, badge: String(lowStockCount), tone: "warn" }
+          : { sub: "Stock levels are healthy", badge: "", tone: "calm" };
+      }
+      case "/dashboard/insights":
+        return { sub: "Trends across the practice", badge: "", tone: "calm" };
+      case "/dashboard/settings":
+        return { sub: "Clinic, team and billing setup", badge: "", tone: "calm" };
+      default:
+        return { sub: "", badge: "", tone: "calm" };
+    }
+  };
+
+  const modules: ModuleTile[] = [...NAV_DESTINATIONS.filter((item) => item.href !== "/dashboard"), NAV_SETTINGS]
+    .filter((item) => visible.has(item.href))
+    .map((item) => {
+      const { sub, badge, tone } = moduleSub(item.href);
+      return { key: item.href, label: item.label, sub, badge, tone, href: item.href, icon: item.icon };
+    });
+
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
@@ -248,6 +535,10 @@ export default async function TodayPage() {
         )}
       </header>
 
+      <GlanceStrip tiles={glanceTiles} />
+
+      <ModuleGrid modules={modules} />
+
       <NeedsYouQueue
         items={queue}
         total={openTaskCount}
@@ -268,7 +559,7 @@ export default async function TodayPage() {
           className="rounded-card border border-border bg-card px-5.5 pt-4 pb-4.5 shadow-[var(--shadow)]"
         >
           <div className="flex flex-wrap items-baseline justify-between gap-3">
-            <h2 id="collected" className="text-base font-semibold text-heading">
+            <h2 id="collected" className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">
               Collected this week
             </h2>
             <span className="text-xs text-text-muted">vs last week</span>
@@ -332,7 +623,7 @@ export default async function TodayPage() {
           className="rounded-card border border-border bg-card shadow-[var(--shadow)]"
         >
           <div className="px-5.5 pt-4 pb-3">
-            <h2 id="risks" className="text-base font-semibold text-heading">
+            <h2 id="risks" className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">
               Could break today
             </h2>
             <p className="mt-1 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">

@@ -261,7 +261,7 @@ export default function ImagingGallery({
                   key={study.id}
                   id={`study-${study.id}`}
                   className={`overflow-hidden rounded-card border bg-card shadow-[var(--shadow)] ${
-                    study.matchStatus === "UNMATCHED" ? "border-warning-border border-l-[3px] border-l-[#c4a46c]" : "border-border"
+                    study.matchStatus === "UNMATCHED" ? "border-warning-border border-l-[3px] border-l-warning" : "border-border"
                   }`}
                 >
                   <button

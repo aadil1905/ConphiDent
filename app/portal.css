@@ -57,19 +57,27 @@
   font-family: var(--font-body), Inter, system-ui, sans-serif;
 }
 
-/* Headings carry the display face. The fallback here was "Source Serif 4",
-   Georgia, serif and the tracking -.012em — both left over from the pairing
-   retired on 2026-08-17, so a failed webfont load dropped the portal into the
-   old register's serif, and the tracking was the value a serif wants rather
-   than a grotesque. Matched to the workspace, which runs the same size range. */
+/* Headings carry the display face — Source Serif 4, the same one the clinic
+   workspace runs, because sign-in is the workspace's front door and the two
+   are looked at within a second of each other. `--font-display` is repointed
+   for this scope only (lib/fonts.ts explains the split), so the rules further
+   down that already say `var(--font-display), Georgia, serif` now get the
+   serif they were written for rather than a grotesque with a serif fallback.
+
+   Tracking matches: a serif at this size range wants about -.012em, not the
+   -.02em a grotesque wants. */
+.cf-portal {
+  --font-display: var(--font-workspace-display);
+}
+
 .cf-portal h1,
 .cf-portal h2,
 .cf-portal h3,
 .cf-portal h4 {
   color: var(--heading);
-  font-family: var(--font-display), "Plus Jakarta Sans", system-ui, sans-serif;
+  font-family: var(--font-workspace-display), Georgia, serif;
   font-weight: 600;
-  letter-spacing: -.02em;
+  letter-spacing: -.012em;
 }
 
 /* The ruled small-caps label from the public site, so section furniture

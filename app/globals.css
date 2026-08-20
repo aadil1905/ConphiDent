@@ -33,6 +33,7 @@
   --color-text-muted: var(--text-muted);
   --color-border-strong: var(--border-strong);
   --color-primary-soft: var(--primary-soft);
+  --color-surface-hover: var(--surface-hover);
   --color-primary-hover: var(--primary-hover);
   --color-success: var(--success);
   --color-success-bg: var(--success-bg);
@@ -132,6 +133,11 @@
   --sidebar-ring: #0e6379;
   --surface: #ffffff;
   --surface-muted: #f2f2f2;
+  /* A hovered card is not a hovered button. --muted (#f2f2f2) is the right
+     step for something the size of a 44px control; on a card the size of a
+     glance tile the same step reads as a selected state rather than a
+     pointer, so a card gets a whisper and a control gets the full step. */
+  --surface-hover: #fafafa;
   --primary-hover: #0a4e60;
   --primary-soft: rgba(14, 99, 121, 0.07);
   /* Teal does two jobs that pull in opposite directions once the ground is
@@ -188,6 +194,11 @@
   --text-secondary-lh: 1.5;
   --text-metric: 1.625rem;    /* 26px — the number on a stat tile */
   --text-metric-lh: 1.1;
+  /* 28px — the number on a glance tile, the one figure on Today that is read
+     from across the room. A step above --text-metric because the glance strip
+     is the first thing on the page and everything below it is a detail. */
+  --text-tile: 1.75rem;
+  --text-tile-lh: 1;
   --text-micro: 0.71875rem;   /* 11.5px — uppercase micro-labels */
   --text-micro-lh: 1.4;
 
@@ -283,6 +294,8 @@
     --sidebar-ring: #4fb2cc;
     --surface: #101010;
     --surface-muted: #1c1c1c;
+    /* Lifts off --card (#101010) by the same whisper the light mode gives. */
+    --surface-hover: #161616;
     /* Any lighter and white stops clearing AA on the hovered fill. */
     --primary-hover: #167f99;
     --primary-soft: rgba(79, 178, 204, 0.14);
@@ -369,6 +382,31 @@
   }
 }
 
+/* ===========================================================================
+   The signed-in product's display face.
+
+   lib/fonts.ts loads two: Plus Jakarta Sans for www.conphident.live and
+   Source Serif 4 for everything behind a sign-in. Rather than fork the
+   hundred-odd rules that already say `var(--font-display)`, the workspace
+   repoints that one property at its own face and every rule follows. The
+   public site never enters this scope, so it keeps the grotesque.
+
+   Tracking has to move with the face — a serif at 20–30px wants about
+   -0.012em where the grotesque wanted -0.02em. Left behind, headings look
+   untouched but pinched.
+   =========================================================================== */
+.clinic-theme {
+  --font-display: var(--font-workspace-display);
+}
+
+.clinic-theme h1,
+.clinic-theme h2,
+.clinic-theme h3,
+.clinic-theme h4 {
+  font-family: var(--font-workspace-display), Georgia, serif;
+  letter-spacing: -.012em;
+}
+
 /* The number on a stat tile carries the display face, the way the site's does.
    `--text-metric` is consumed on nine dashboard pages — Today, Insights,
    Billing, an invoice, Treatment plans, Laboratory, Operations, Launch and
@@ -382,9 +420,10 @@
    than a shared class, so the token name appears verbatim in `class`. One rule
    instead of an edit in nine files, and any tile added later is covered.
    Outside `@layer base` so it is not outranked by the utilities beside it. */
-.clinic-theme [class*="--text-metric"] {
-  font-family: var(--font-display), "Plus Jakarta Sans", system-ui, sans-serif;
-  letter-spacing: -.022em;
+.clinic-theme [class*="--text-metric"],
+.clinic-theme [class*="--text-tile"] {
+  font-family: var(--font-workspace-display), Georgia, serif;
+  letter-spacing: -.012em;
 }
 
 ::selection { background: color-mix(in oklab, var(--primary) 22%, white); }

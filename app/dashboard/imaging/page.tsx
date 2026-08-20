@@ -224,7 +224,7 @@ export default async function ImagingPage({
 
       {/* --- X-rays that need a name ------------------------------------- */}
       {unmatchedStudies.length > 0 && (
-        <section className="overflow-hidden rounded-card border border-warning-border border-l-[3px] border-l-[#c4a46c] bg-card shadow-[var(--shadow)]">
+        <section className="overflow-hidden rounded-card border border-warning-border border-l-[3px] border-l-warning bg-card shadow-[var(--shadow)]">
           <div className="px-5.5 pt-3.5 pb-2.5">
             <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">
               {unmatchedStudies.length === 1

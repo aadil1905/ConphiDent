@@ -42,7 +42,12 @@ function Tooth({
   flipped: boolean;
 }) {
   const state = stateFor(condition);
-  const fill = state === "work" ? "#a52222" : state === "treated" ? "#176b87" : "#ffffff";
+  // Matches DentalChartEditor's palette exactly — this is the same chart read
+  // back, and a heritage hex left over from before the token migration had
+  // drifted both its colours (danger-mark and chart-2 have since moved) and
+  // its dark-mode behaviour (a literal white tooth was the brightest thing on
+  // a black ground, the same bug the editor's own comment explains).
+  const fill = state === "work" ? "var(--danger-mark)" : state === "treated" ? "var(--primary)" : "var(--card)";
   const label =
     state === "work"
       ? `needs work${condition ? ` — ${condition.toLowerCase().replace(/_/g, " ")}` : ""}`
@@ -61,7 +66,7 @@ function Tooth({
       <path
         d={shapeFor(number)}
         fill={fill}
-        stroke={state === "healthy" ? "rgba(23,107,135,0.45)" : "#123b5d"}
+        stroke={state === "healthy" ? "var(--border-strong)" : "var(--heading)"}
         strokeWidth="1.6"
       />
     </svg>

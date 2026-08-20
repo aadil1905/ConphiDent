@@ -75,7 +75,7 @@ export default function NeedsYouQueue({
       className="rounded-card border border-border bg-card shadow-[var(--shadow)]"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-3 px-5.5 pt-4 pb-3">
-        <h2 id="needs-you" className="text-lg font-semibold text-heading">
+        <h2 id="needs-you" className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">
           Needs you today
         </h2>
         <span className="text-xs text-text-muted">

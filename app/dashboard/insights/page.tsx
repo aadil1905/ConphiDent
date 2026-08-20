@@ -27,7 +27,16 @@ const RANGES: Array<{ key: RangeKey; label: string }> = [
   { key: "year", label: "This year" },
 ];
 
-const BAR_COLOURS = ["#176b87", "#2d879b", "#6eaeb9", "#c4a46c", "#123b5d"];
+// Reads the shared chart tokens rather than a private palette, so these bars
+// carry the same five hues (and dark-mode equivalents) as every other chart
+// in the workspace instead of the pre-Phase-B heritage teal it used to hardcode.
+const BAR_COLOURS = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+];
 
 function short(amount: number) {
   if (amount >= 100000) return `₹${(amount / 100000).toFixed(1)}L`;

@@ -337,7 +337,7 @@ export default async function StockPage({
                     item.quantity <= 0 || item.expired
                       ? "border-l-[3px] border-l-danger-mark"
                       : item.low || item.expiringSoon
-                        ? "border-l-[3px] border-l-[#c4a46c]"
+                        ? "border-l-[3px] border-l-warning"
                         : "border-l-[3px] border-l-transparent"
                   }`}
                 >
@@ -571,7 +571,7 @@ export default async function StockPage({
               return (
                 <div
                   key={order.id}
-                  className={`border-t border-border/70 px-5.5 py-3 ${late ? "border-l-[3px] border-l-danger-mark" : "border-l-[3px] border-l-[#c4a46c]"}`}
+                  className={`border-t border-border/70 px-5.5 py-3 ${late ? "border-l-[3px] border-l-danger-mark" : "border-l-[3px] border-l-warning"}`}
                 >
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] font-semibold text-heading">

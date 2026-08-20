@@ -1,4 +1,4 @@
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { Inter, Plus_Jakarta_Sans, Source_Serif_4 } from "next/font/google";
 
 /**
  * One pairing, shared by every ConphiDent-branded surface: the public site and
@@ -39,5 +39,32 @@ export const bodyFont = Inter({
   display: "swap",
 });
 
+/**
+ * The workspace display face, and only the workspace's.
+ *
+ * The 2026-08-17 note above still holds for the public site: a book serif at
+ * 68px is the "35 years behind us" register the marketing brief moved away
+ * from, and www.conphident.live keeps Plus Jakarta Sans for exactly that
+ * reason. The signed-in product is a different argument. Its headings run
+ * 20–30px, never display size, and beside them sits Inter at 15px — two
+ * grotesques drawn close enough that a section title barely separated from
+ * the paragraph under it. That flatness is what the redesign set out to fix,
+ * and a serif fixes it in one move: heading and body are told apart before
+ * either is read.
+ *
+ * Scoped by custom property rather than by swapping `displayFont`, so the two
+ * registers cannot leak into each other. `.clinic-theme` and `.cf-portal`
+ * repoint `--font-display` at this; `.cf-public` does not, and every existing
+ * `var(--font-display)` rule follows its own scope with no edit.
+ *
+ * Tracking moves with it — a serif wants about -0.012em where the grotesque
+ * wanted -0.03em. Those overrides live beside the scope declarations.
+ */
+export const workspaceDisplayFont = Source_Serif_4({
+  subsets: ["latin"],
+  variable: "--font-workspace-display",
+  display: "swap",
+});
+
 /** Convenience for `className` on a branded surface root. */
-export const brandFontVariables = `${displayFont.variable} ${bodyFont.variable}`;
+export const brandFontVariables = `${displayFont.variable} ${workspaceDisplayFont.variable} ${bodyFont.variable}`;
