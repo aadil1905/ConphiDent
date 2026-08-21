@@ -74,20 +74,20 @@ export default async function ClinicControlPage({ params }: { params: Promise<{ 
             </div>
             <Settings2 className="size-7 text-primary" />
           </div>
-          <div className="mt-4 h-2 rounded-full bg-slate-100">
-            <div className="h-full rounded-full bg-sky-700" style={{ width: `${readiness.percent}%` }} />
+          <div className="mt-4 h-2 rounded-full bg-muted">
+            <div className="h-full rounded-full bg-[var(--primary)]" style={{ width: `${readiness.percent}%` }} />
           </div>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             {readiness.checks.map((check) => (
               <p key={check.label} className="flex gap-2 text-sm">
-                <CheckCircle2 className={`mt-0.5 size-4 ${check.complete ? "text-emerald-600" : "text-slate-300"}`} />
+                <CheckCircle2 className={`mt-0.5 size-4 ${check.complete ? "text-[var(--success)]" : "text-text-muted"}`} />
                 {check.label}
               </p>
             ))}
           </div>
         </article>
         <article className="rounded-2xl border bg-card p-6 shadow-sm">
-          <MessageCircle className="size-6 text-emerald-600" />
+          <MessageCircle className="size-6 text-[var(--success)]" />
           <p className="mt-3 text-sm font-semibold text-muted-foreground">WhatsApp status</p>
           <p className="text-xl font-bold">
             {clinic.whatsappConnection && !clinic.whatsappConnection.disconnectedAt ? "Connected" : "Not connected"}
@@ -117,7 +117,7 @@ export default async function ClinicControlPage({ params }: { params: Promise<{ 
             <Field label="Phone" name="phone" defaultValue={clinic.phone ?? ""} required={false} />
             <Field label="Email" name="email" type="email" defaultValue={clinic.email ?? ""} required={false} />
             <Area label="Address" name="address" defaultValue={clinic.address ?? ""} />
-            <button className="primary">Save profile</button>
+            <button className="platform-button platform-button--primary">Save profile</button>
           </form>
         </Card>
         <Card title="Subscription" description="Assign a platform-managed plan and tenant billing state.">
@@ -140,7 +140,7 @@ export default async function ClinicControlPage({ params }: { params: Promise<{ 
             </label>
             <Field label="Price (minor units)" name="price" type="number" defaultValue={clinic.subscription?.price ?? ""} required={false} />
             <Area label="Internal notes" name="internalNotes" defaultValue={clinic.subscription?.internalNotes ?? ""} />
-            <button className="primary">Save subscription</button>
+            <button className="platform-button platform-button--primary">Save subscription</button>
           </form>
         </Card>
       </section>
@@ -154,7 +154,7 @@ export default async function ClinicControlPage({ params }: { params: Promise<{ 
           <form action={savePlatformProviderAction} className="flex gap-2">
             <input type="hidden" name="clinicId" value={clinic.id} />
             <input required name="name" placeholder="Dr. name" className="control flex-1" />
-            <button className="primary">Add provider</button>
+            <button className="platform-button platform-button--primary">Add provider</button>
           </form>
           <div className="mt-4 space-y-2">
             {clinic.providers.map((provider) => (
@@ -187,7 +187,7 @@ export default async function ClinicControlPage({ params }: { params: Promise<{ 
             <Field label="Duration (minutes)" name="durationMinutes" type="number" min="5" defaultValue="30" />
             <Area label="Description" name="description" />
             <Field label="Price (minor units)" name="price" type="number" min="0" required={false} />
-            <button className="primary">Add service</button>
+            <button className="platform-button platform-button--primary">Add service</button>
           </form>
           <div className="mt-4 space-y-2">
             {clinic.services.map((service) => (
@@ -220,7 +220,7 @@ export default async function ClinicControlPage({ params }: { params: Promise<{ 
           <Field label="Phone" name="phone" required={false} />
           <Field label="Address" name="address" required={false} />
           <Field label="Timezone" name="timezone" defaultValue={clinic.timezone} required={false} />
-          <button className="primary">Add branch</button>
+          <button className="platform-button platform-button--primary">Add branch</button>
         </form>
 
         <div className="mt-5 space-y-5">
@@ -232,7 +232,7 @@ export default async function ClinicControlPage({ params }: { params: Promise<{ 
                 <summary className="cursor-pointer font-bold">
                   {location.name}
                   {location.isPrimary && <span className="ml-2 text-xs text-[var(--gold)]">PRIMARY</span>}
-                  {!location.active && <span className="ml-2 text-xs text-red-700">INACTIVE</span>}
+                  {!location.active && <span className="ml-2 text-xs text-[var(--danger)]">INACTIVE</span>}
                 </summary>
                 <div className="mt-4 grid gap-5 xl:grid-cols-[minmax(220px,1fr)_minmax(480px,2fr)_minmax(220px,1fr)]">
                   <form action={updateLocationAction} className="space-y-2">
@@ -242,7 +242,7 @@ export default async function ClinicControlPage({ params }: { params: Promise<{ 
                     <Field label="Phone" name="phone" defaultValue={location.phone ?? ""} required={false} />
                     <Field label="Address" name="address" defaultValue={location.address ?? ""} required={false} />
                     <Field label="Timezone" name="timezone" defaultValue={location.timezone ?? clinic.timezone} required={false} />
-                    <button className="secondary">Save branch</button>
+                    <button className="platform-button platform-button--secondary">Save branch</button>
                   </form>
 
                   <div>
@@ -262,8 +262,8 @@ export default async function ClinicControlPage({ params }: { params: Promise<{ 
                             action={saveLocationHoursAction}
                             className={`grid gap-2 rounded-lg border p-2 text-xs sm:grid-cols-[82px_1fr_1fr_72px_84px_auto] sm:items-center ${
                               savedHour
-                                ? "border-emerald-200 bg-emerald-50/60"
-                                : "border-amber-300 bg-amber-50/70"
+                                ? "border-[var(--success-border)] bg-[var(--success-bg)]"
+                                : "border-[var(--warning-border)] bg-[var(--warning-bg)]"
                             }`}
                           >
                             <input type="hidden" name="clinicId" value={clinic.id} />
@@ -271,7 +271,7 @@ export default async function ClinicControlPage({ params }: { params: Promise<{ 
                             <input type="hidden" name="dayOfWeek" value={fallback.dayOfWeek} />
                             <span className="font-semibold">
                               {days[fallback.dayOfWeek].slice(0, 3)}
-                              <span className={`mt-1 block text-[10px] font-bold uppercase ${savedHour ? "text-emerald-700" : "text-amber-800"}`}>
+                              <span className={`mt-1 block text-[10px] font-bold uppercase ${savedHour ? "text-[var(--success)]" : "text-[var(--warning)]"}`}>
                                 {savedHour ? (hour.isClosed ? "Saved · Closed" : "Saved · Open") : "Not configured"}
                               </span>
                             </span>
@@ -306,7 +306,7 @@ export default async function ClinicControlPage({ params }: { params: Promise<{ 
                               <input name="isClosed" type="checkbox" value="true" defaultChecked={hour.isClosed} />
                               Closed
                             </label>
-                            <button className="secondary">Save</button>
+                            <button className="platform-button platform-button--secondary">Save</button>
                           </form>
                         );
                       })}
@@ -344,14 +344,14 @@ export default async function ClinicControlPage({ params }: { params: Promise<{ 
                     <form action={setPrimaryLocationAction}>
                       <input type="hidden" name="clinicId" value={clinic.id} />
                       <input type="hidden" name="locationId" value={location.id} />
-                      <button className="secondary">Make primary</button>
+                      <button className="platform-button platform-button--secondary">Make primary</button>
                     </form>
                   )}
                   {!location.isPrimary && location.active && (
                     <form action={deactivateLocationAction}>
                       <input type="hidden" name="clinicId" value={clinic.id} />
                       <input type="hidden" name="locationId" value={location.id} />
-                      <button className="text-sm font-semibold text-red-700">Deactivate branch</button>
+                      <button className="text-sm font-semibold text-[var(--danger)]">Deactivate branch</button>
                     </form>
                   )}
                 </div>
@@ -372,7 +372,7 @@ export default async function ClinicControlPage({ params }: { params: Promise<{ 
                 <input type="hidden" name="featureKey" value={key} />
                 <input type="hidden" name="enabled" value={String(!enabled)} />
                 <span className="text-sm font-semibold">{feature.label}</span>
-                <button className={enabled ? "text-emerald-700" : "text-text-muted"}>{enabled ? "Enabled" : "Disabled"}</button>
+                <button className={enabled ? "text-[var(--success)]" : "text-text-muted"}>{enabled ? "Enabled" : "Disabled"}</button>
               </form>
             );
           })}

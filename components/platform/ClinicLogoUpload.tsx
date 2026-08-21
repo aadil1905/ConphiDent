@@ -44,6 +44,6 @@ export function ClinicLogoUpload({ clinicId, currentLogoUrl, clinicName }: { cli
         </label>
       </div>
     </div>
-    {state.type !== "idle" && <p role={state.type === "error" ? "alert" : "status"} className={`mt-3 text-sm ${state.type === "error" ? "text-red-700" : state.type === "success" ? "text-emerald-700" : "text-muted-foreground"}`}>{state.message}</p>}
+    {state.type !== "idle" && <p role={state.type === "error" ? "alert" : "status"} className={`mt-3 text-sm ${state.type === "error" ? "text-[var(--danger)]" : state.type === "success" ? "text-[var(--success)]" : "text-muted-foreground"}`}>{state.message}</p>}
   </div>;
 }

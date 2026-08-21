@@ -51,7 +51,7 @@ export default async function AutomationsPage() {
                   <input type="hidden" name="clinicId" value={clinic.id} />
                   {automation ? <input type="hidden" name="automationId" value={automation.id} /> : null}
                   <input type="hidden" name="enabled" value={String(!enabled)} />
-                  <button className={`rounded-xl px-4 py-2 text-sm font-bold ${enabled ? "border border-amber-300 text-amber-800" : "bg-emerald-700 text-white"}`}>
+                  <button className={`${enabled ? "rounded-xl border border-[var(--warning-border)] px-4 py-2 text-sm font-bold text-[var(--warning)]" : "platform-button platform-button--primary"}`}>
                     {enabled ? "Pause" : "Enable"}
                   </button>
                 </form>

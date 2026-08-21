@@ -120,7 +120,7 @@ export default async function ProvisionClinicPage({
         actions={
           <Link
             href="/platform/clinics"
-            className="rounded-lg border bg-white px-4 py-2 text-sm font-semibold"
+            className="rounded-lg border bg-card px-4 py-2 text-sm font-semibold"
           >
             View tenant directory
           </Link>
@@ -129,7 +129,7 @@ export default async function ProvisionClinicPage({
       {errorMessage && (
         <p
           role="alert"
-          className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-800"
+          className="rounded-xl border border-[var(--danger-border)] bg-[var(--danger-bg)] p-3 text-sm font-semibold text-[var(--danger)]"
         >
           {errorMessage}
         </p>
@@ -137,7 +137,7 @@ export default async function ProvisionClinicPage({
       {params.draftState && (
         <p
           role="status"
-          className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800"
+          className="rounded-xl border border-[var(--success-border)] bg-[var(--success-bg)] p-3 text-sm font-semibold text-[var(--success)]"
         >
           Draft {params.draftState} successfully.
         </p>

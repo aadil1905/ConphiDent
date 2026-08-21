@@ -114,17 +114,18 @@ body:has(.cf-portal) {
 .cf-portal .tabular-nums { font-variant-numeric: tabular-nums; }
 
 /* ==========================================================================
-   Control Center redesign.
+   Control Center visual language.
 
-   globals.css carries the structural Control Center CSS (the off-canvas
-   transforms, the 5rem topbar, the overlay z-index) and the platform test
-   suite pins those declarations, so none of it is edited there. What follows
-   overrides only the *visual* language, at higher specificity, inside this
-   scope — which leaves the clinic dashboard on its own look untouched.
+   globals.css used to carry a different, older register for these classes —
+   blue radial gradients, navy drop shadows, cyan accents — and this block
+   existed to defeat it at higher specificity. On 21 Aug 2026 the base itself
+   was folded onto these values (the Control Center renders only inside
+   .cf-portal, so the gradients were dead weight the cascade had to fight).
 
-   The direction it replaces was blue radial gradients, navy drop shadows and
-   cyan accents. This is the institutional one: flat warm paper, hairline
-   rules instead of shadows, serif titles, and gold used sparingly.
+   These rules now MIRROR the base rather than fight it. They are kept, not
+   deleted: they are the declarations the shipping look was verified against,
+   and they pin the institutional register even if the base drifts. If you
+   change a value here, change its twin in globals.css too.
    ========================================================================== */
 
 /* --- Shell ---------------------------------------------------------------- */

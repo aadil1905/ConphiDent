@@ -88,8 +88,8 @@ export function ProvisioningDraftDashboard({
                       Archive
                     </DraftMutationButton>
                   </form>
-                  <details className="w-full rounded-lg border border-rose-200 bg-rose-50 p-3">
-                    <summary className="flex cursor-pointer list-none items-center gap-1 text-xs font-semibold text-rose-800">
+                  <details className="w-full rounded-lg border border-[var(--danger-border)] bg-[var(--danger-bg)] p-3">
+                    <summary className="flex cursor-pointer list-none items-center gap-1 text-xs font-semibold text-[var(--danger)]">
                       <Trash2 className="size-3.5" />
                       Discard draft
                     </summary>
@@ -98,19 +98,19 @@ export function ProvisioningDraftDashboard({
                       className="mt-3 grid gap-2"
                     >
                       <input type="hidden" name="draftId" value={draft.id} />
-                      <label className="text-xs font-semibold text-rose-900">
+                      <label className="text-xs font-semibold text-[var(--danger)]">
                         Type DISCARD
                         <input
                           required
                           pattern="DISCARD"
                           name="confirmation"
                           autoComplete="off"
-                          className="mt-1 block w-full rounded-lg border bg-white px-3 py-2 font-normal"
+                          className="mt-1 block w-full rounded-lg border bg-card px-3 py-2 font-normal"
                         />
                       </label>
                       <DraftMutationButton
                         pendingLabel="Discarding…"
-                        className="w-fit rounded-lg bg-rose-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                        className="w-fit rounded-lg bg-[var(--danger)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
                       >
                         Discard recoverably
                       </DraftMutationButton>
@@ -135,7 +135,7 @@ export function ProvisioningDraftDashboard({
               {inactive.map((draft) => (
                 <article
                   key={draft.id}
-                  className="rounded-lg border bg-white p-3"
+                  className="rounded-lg border bg-card p-3"
                 >
                   <DraftIdentity draft={draft} />
                   <form

@@ -715,17 +715,17 @@ export function ClinicOnboardingWizard({
                 </h3>
                 <ul className="mt-3 space-y-2 text-sm">
                   <li className="flex items-start gap-2">
-                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-700" />
+                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[var(--success)]" />
                     Required organization, location, service, feature,
                     commercial, and workspace configuration is complete.
                   </li>
-                  <li className="flex items-start gap-2 text-amber-800">
+                  <li className="flex items-start gap-2 text-[var(--warning)]">
                     <ShieldCheck className="mt-0.5 size-4 shrink-0" />
                     Provisioning creates an ONBOARDING tenant. Tenant login
                     remains blocked until a separate, audited go-live
                     transition.
                   </li>
-                  <li className="flex items-start gap-2 text-amber-800">
+                  <li className="flex items-start gap-2 text-[var(--warning)]">
                     <ShieldCheck className="mt-0.5 size-4 shrink-0" />
                     Before go-live, review opening hours, invite the clinic
                     team, connect WhatsApp, approve templates, assign a backup
@@ -735,15 +735,15 @@ export function ClinicOnboardingWizard({
                 </ul>
               </div>
               <div
-                className={`rounded-xl border p-4 ${preflightState === "passed" ? "border-emerald-200 bg-emerald-50" : preflightState === "failed" ? "border-rose-200 bg-rose-50" : "border-amber-200 bg-amber-50"}`}
+                className={`rounded-xl border p-4 ${preflightState === "passed" ? "border-[var(--success-border)] bg-[var(--success-bg)]" : preflightState === "failed" ? "border-[var(--danger-border)] bg-[var(--danger-bg)]" : "border-[var(--warning-border)] bg-[var(--warning-bg)]"}`}
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2 font-semibold">
                       {preflightState === "passed" ? (
-                        <CheckCircle2 className="size-5 text-emerald-700" />
+                        <CheckCircle2 className="size-5 text-[var(--success)]" />
                       ) : (
-                        <ShieldCheck className="size-5 text-amber-700" />
+                        <ShieldCheck className="size-5 text-[var(--warning)]" />
                       )}
                       {preflightState === "passed"
                         ? "Server preflight passed"
@@ -774,7 +774,7 @@ export function ClinicOnboardingWizard({
                   </button>
                 </div>
                 {preflightIssues.length > 0 && (
-                  <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-rose-800">
+                  <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-[var(--danger)]">
                     {preflightIssues.map((issue) => (
                       <li key={issue}>{issue}</li>
                     ))}
@@ -811,7 +811,7 @@ export function ClinicOnboardingWizard({
                     value={activateText}
                     onChange={(event) => setActivateText(event.target.value)}
                     autoComplete="off"
-                    className="mt-1.5 h-11 w-full rounded-xl border bg-white px-3 font-normal"
+                    className="mt-1.5 h-11 w-full rounded-xl border bg-card px-3 font-normal"
                   />
                 </label>
               </div>
@@ -820,7 +820,7 @@ export function ClinicOnboardingWizard({
           {stepError && (
             <p
               role="alert"
-              className="mt-5 rounded-lg bg-rose-50 p-3 text-sm font-semibold text-rose-800"
+              className="mt-5 rounded-lg bg-[var(--danger-bg)] p-3 text-sm font-semibold text-[var(--danger)]"
             >
               {stepError}
             </p>
@@ -1002,14 +1002,14 @@ function PlatformSaveState({
 }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 text-xs font-semibold ${failed ? "text-rose-700" : "text-muted-foreground"}`}
+      className={`inline-flex items-center gap-1 text-xs font-semibold ${failed ? "text-[var(--danger)]" : "text-muted-foreground"}`}
     >
       {failed ? (
         <CloudOff className="size-4" />
       ) : saving ? (
         <Cloud className="size-4 animate-pulse" />
       ) : (
-        <Check className="size-4 text-emerald-700" />
+        <Check className="size-4 text-[var(--success)]" />
       )}
       {failed ? "Not saved" : saving ? "Saving" : "Draft safe"}
     </span>
@@ -1022,7 +1022,7 @@ function ActivationSubmitButton({ disabled }: { disabled: boolean }) {
     <button
       disabled={disabled || pending}
       aria-disabled={disabled || pending}
-      className="h-11 rounded-xl bg-emerald-700 px-5 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+      className="h-11 platform-button platform-button--primary disabled:cursor-not-allowed disabled:opacity-50"
     >
       {pending ? "Provisioning securely…" : "Activate provisioning"}
     </button>
