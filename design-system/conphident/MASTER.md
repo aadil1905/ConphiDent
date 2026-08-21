@@ -21,6 +21,63 @@ on 16 August 2026, then corrected — the deviations are recorded below with rea
 | Background `#ECFEFF` | `#F4FBFC` | The generated tint is too saturated across full-bleed sections. |
 | Border `#A5F3FC` | `#D5E8ED` | Saturated cyan borders vibrate against white cards. |
 
+## Revision — enforcement pass, second sweep (21 Aug 2026, later the same day)
+
+- **The Control Center has one visual language now.** globals.css's `.platform-*`
+  base rules were folded onto the institutional values portal.css had been
+  winning with at higher specificity — the blue radial gradients, gradient
+  buttons, navy shadows and hover-lift are gone from the base rather than
+  merely beaten. portal.css keeps its mirrored overrides as the pin (its
+  header explains the twin-maintenance rule). The ≤520px masthead override
+  that re-rounded the flat masthead into a hybrid is fixed; remaining navy
+  rgba(18,59,93) shadows re-tinted to ink.
+- **Booking window unlocked.** /appointments/new anchors its 7-day grid on
+  `?date=` (clamped to a year); BookAVisit gained the "Further out?" picker.
+  Recalls months out book from the normal screen.
+- **Week grid derives its hours** from the visits in the window over a
+  9am–7pm default — an 8pm visit gets a cell instead of vanishing.
+- **Deleted:** the orphaned root globals.css; AdministrativeActionConfirmation
+  (a no-op MutationObserver on every page — its `.dashboard-shell` scope never
+  rendered); the unrendered `.conphident-marketing` !important layer; four
+  orphaned Appointment* components; the fictional "WhatsApp reminder the
+  evening before" checkbox (nothing scheduled it; reminders send from the
+  visit).
+- **Restored:** the entitlement-gated "Message on WhatsApp" action on the
+  patient record (the source test pinning `whatsappOn && ` was failing because
+  a refactor had dropped it). Test suite: 186 tests, 0 failures.
+- **Focus contracts:** CommandPalette and AddPatientSheet now trap Tab and
+  restore focus to their opener, matching NavDrawer.
+
+## Revision — enforcement pass (21 Aug 2026)
+
+No token changed value. This pass made the declared system true in the DOM:
+
+- **The type scale is now consumed, not shadowed.** ~440 arbitrary `text-[Npx]`
+  utilities across 96 workspace files were moved onto `--text-body/-dense/
+  -secondary/-micro`. 13.5px and 12.5px one-offs normalised to `--text-secondary`;
+  modal titles (five files, 17–18px) normalised to `--text-section`. Sanctioned
+  non-token sizes that remain: Tailwind `text-xs`/`text-sm` (12/14px) and the
+  10px badge-count/kbd labels.
+- **`--input` finally paints.** The workspace input default (border `--input`,
+  the 3:1 control boundary) had been dead behind `.dashboard-shell`, a class
+  nothing renders. It now lives in `@layer base` behind `:where()` scoped to
+  `.clinic-theme`, so call-site utilities (StatusSelect's tone tints, danger
+  borders) still win. The three form-field class strings that hardcoded the
+  failing `border-border` hairline now say `border-input`.
+- **Interaction chrome retokenized.** The route-progress bar, loading pill and
+  spinners ran a retired indigo/sky/green palette; all on `--primary`/`--card`/
+  `--border` now, so they follow dark mode. The pending-state spinner rules were
+  repointed from `.dashboard-shell` to `.clinic-theme` and render for the first
+  time.
+- **Primary-button labels** say `text-primary-foreground` (90 call sites), not
+  `text-white`.
+- **Control Center floor fixed:** `.platform-shell__content button` outranks
+  `.platform-button`, so its 2.5rem was the real height of every CC button —
+  raised to 2.75rem, with both close buttons.
+- **Dead CSS removed:** the never-rendered `.dashboard-shell`/`.login-screen`
+  blocks (sky-blue focus ring, off-token radius, blanket min-height, padding
+  queries) and two orphaned keyframes.
+
 ## Revision — modern SaaS (17 Aug 2026) — CURRENT
 
 The heritage direction below was reversed. Aadil was asked twice whether to keep

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
-import AdministrativeActionConfirmation from "@/components/AdministrativeActionConfirmation";
 import { brandFontVariables } from "@/lib/fonts";
 import "./marketing.css";
 import "./portal.css";
@@ -25,8 +24,11 @@ export default function RootLayout({
     // The font variables live on the root so every surface can reach them —
     // the clinic workspace, the Control Center and the public site alike.
     <html lang="en" className={`h-full antialiased ${brandFontVariables}`}>
+      {/* AdministrativeActionConfirmation used to mount here. Its scope check
+          was `.dashboard-shell`, a class nothing has rendered since Phase B,
+          so it has been a no-op with a MutationObserver on every page —
+          including the marketing site. Reason fields collect real reasons. */}
       <body className="min-h-full flex flex-col">
-        <AdministrativeActionConfirmation />
         {children}
 
         <Toaster
