@@ -194,7 +194,7 @@ export default async function PatientClinicalWorkspace({
             </BackLink>
             <div className="flex flex-wrap items-baseline gap-x-2.5">
               <h1 className="text-[length:var(--text-page)] leading-[var(--text-page-lh)] font-semibold tracking-[-0.01em] text-heading">{patient.fullName}</h1>
-              <span className="text-[13px] text-text-muted">
+              <span className="text-[length:var(--text-secondary)] text-text-muted">
                 {details ? `${details} · ` : ""}
                 {patient.phone}
               </span>
@@ -204,13 +204,13 @@ export default async function PatientClinicalWorkspace({
         <div className="flex flex-wrap gap-2">
           <Link
             href={`/dashboard/laboratory/new?patientId=${patient.id}`}
-            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted"
+            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-4 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
           >
             New lab order
           </Link>
           <Link
             href={`/dashboard/patients/${patient.id}?visit=${selectedVisitDate}`}
-            className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+            className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
           >
             Patient 360
           </Link>

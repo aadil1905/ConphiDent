@@ -56,12 +56,12 @@ export function LabAttachmentUploader({ caseId, portalToken }: { caseId: number;
       </label>
       <button
         disabled={busy}
-        className="min-h-11 cursor-pointer self-end rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+        className="min-h-11 cursor-pointer self-end rounded-control border border-primary bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
       >
         {busy ? "Uploading…" : "Attach it"}
       </button>
       {message && (
-        <p aria-live="polite" className="text-[13px] text-text-muted sm:col-span-3">
+        <p aria-live="polite" className="text-[length:var(--text-secondary)] text-text-muted sm:col-span-3">
           {message}
         </p>
       )}

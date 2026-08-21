@@ -37,7 +37,7 @@ export default function SendInvoiceWhatsAppButton({ invoiceId }: { invoiceId: nu
         type="button"
         onClick={() => gate.ask(() => void sendInvoice())}
         disabled={sending}
-        className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted disabled:opacity-70"
+        className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted disabled:opacity-70"
       >
         <Send className="size-4" aria-hidden />
         {sending ? "Sending…" : "Send on WhatsApp"}

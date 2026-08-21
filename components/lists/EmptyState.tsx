@@ -26,7 +26,7 @@ export default function EmptyState({
       {action && (
         <Link
           href={action.href}
-          className="mt-2 inline-flex min-h-11 items-center rounded-control bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+          className="mt-2 inline-flex min-h-11 items-center rounded-control bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
         >
           {action.label}
         </Link>

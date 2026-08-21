@@ -40,14 +40,14 @@ export default async function StaffIntakePage({
       actions={
         <Link
           href="/dashboard/patients"
-          className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+          className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
         >
           Back to Patients
         </Link>
       }
       context={
         <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
-          <h2 className="text-[13px] font-semibold text-heading">How it goes</h2>
+          <h2 className="text-[length:var(--text-secondary)] font-semibold text-heading">How it goes</h2>
           {/* Three steps read as one line across the width, rather than a tall
               column of instructions above the thing you came here to do. */}
           <ol className="mt-3 grid gap-x-8 gap-y-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,17rem),1fr))]">
@@ -57,13 +57,13 @@ export default async function StaffIntakePage({
                 <li key={step.title} className="flex gap-3">
                   <span className="relative grid h-9 w-9 flex-none place-items-center rounded-control bg-secondary text-heading">
                     <Icon className="h-[17px] w-[17px]" strokeWidth={1.8} aria-hidden />
-                    <span className="absolute -top-1.5 -right-1.5 grid h-5 w-5 place-items-center rounded-pill bg-primary text-[11px] font-bold text-white">
+                    <span className="absolute -top-1.5 -right-1.5 grid h-5 w-5 place-items-center rounded-pill bg-primary text-[length:var(--text-micro)] font-bold text-primary-foreground">
                       {index + 1}
                     </span>
                   </span>
                   <span className="min-w-0">
                     <span className="block text-sm font-semibold text-heading">{step.title}</span>
-                    <span className="mt-0.5 block text-[13px] text-text-muted">{step.detail}</span>
+                    <span className="mt-0.5 block text-[length:var(--text-secondary)] text-text-muted">{step.detail}</span>
                   </span>
                 </li>
               );

@@ -98,7 +98,7 @@ export default async function NewTreatmentPlanPage({
           {openPlans.length > 0 && (
             <RailCard title="Already agreed with them">
               {openPlans.map((plan) => (
-                <div key={plan.id} className="flex items-baseline justify-between gap-2 text-[13px]">
+                <div key={plan.id} className="flex items-baseline justify-between gap-2 text-[length:var(--text-secondary)]">
                   <Link
                     href={`/dashboard/treatment-plans/${plan.id}`}
                     className="min-w-0 truncate font-semibold text-primary hover:underline"
@@ -120,7 +120,7 @@ export default async function NewTreatmentPlanPage({
           {priced.length > 0 && (
             <RailCard title="Your usual prices">
               {priced.map((service) => (
-                <div key={service.id} className="flex items-baseline justify-between gap-2 text-[13px]">
+                <div key={service.id} className="flex items-baseline justify-between gap-2 text-[length:var(--text-secondary)]">
                   <span className="min-w-0 truncate text-foreground">{service.name}</span>
                   <span className="tabular-nums whitespace-nowrap text-text-muted">
                     {rupees(service.price ?? 0)}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { CalendarX2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Prisma } from "@prisma/client";
 import { requirePermission } from "@/lib/permissions";
@@ -7,16 +8,23 @@ import { exactStamp, humanTime } from "@/lib/format";
 import { listHref, pageWindow, parseListQuery, type RawSearchParams } from "@/lib/list-params";
 import DataList, { ListCell, ListLink, ListRow } from "@/components/lists/DataList";
 import FilterChips from "@/components/lists/FilterChips";
+import ListSearch from "@/components/lists/ListSearch";
 import EmptyState from "@/components/lists/EmptyState";
 import PageHeader from "@/components/lists/PageHeader";
 import StatusSelect from "@/components/schedule/StatusSelect";
-import { STATUS_LABELS } from "@/lib/visit-status";
+import DateJump from "@/components/schedule/DateJump";
+import StatusBadge from "@/components/appointments/StatusBadge";
+import type { AppointmentStatus } from "@/types/appointment";
 
 export const dynamic = "force-dynamic";
 
 const BASE = "/dashboard/appointments";
 const DAY = 24 * 60 * 60 * 1000;
-const WEEK_HOURS = Array.from({ length: 11 }, (_, index) => 9 + index);
+/* The default working window. The grid extends itself around any visit that
+   falls outside it — a 9-to-7 hardcode was quietly rendering an 8pm visit in
+   no cell at all, which reads as "nothing booked". */
+const DAY_START_HOUR = 9;
+const DAY_END_HOUR = 19;
 
 type View = "day" | "week" | "list";
 
@@ -151,6 +159,13 @@ export default async function SchedulePage({
   const seenCount = visits.filter((visit) => visit.status === "Completed").length;
   const unconfirmedCount = visits.filter((visit) => visit.status === "Pending").length;
 
+  // The week grid's rows: the default working window, stretched to hold every
+  // visit actually in it, so an early or evening booking always has a cell.
+  const visitHours = visits.map((visit) => visitMoment(visit.appointmentDate, visit.appointmentTime).getHours());
+  const firstHour = Math.min(DAY_START_HOUR, ...visitHours);
+  const lastHour = Math.max(DAY_END_HOUR, ...visitHours);
+  const weekHours = Array.from({ length: lastHour - firstHour + 1 }, (_, index) => firstHour + index);
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -159,7 +174,7 @@ export default async function SchedulePage({
         actions={
           <Link
             href="/dashboard/appointments/new"
-            className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+            className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
           >
             Book a visit
           </Link>
@@ -178,7 +193,7 @@ export default async function SchedulePage({
               href={listHref(BASE, query, { view: option, page: 1 })}
               role="tab"
               aria-selected={view === option}
-              className={`inline-flex min-h-11 items-center rounded-[0.45rem] px-3.5 text-[13px] font-semibold ${
+              className={`inline-flex min-h-11 items-center rounded-chip px-3.5 text-[length:var(--text-secondary)] leading-[var(--text-secondary-lh)] font-semibold ${
                 view === option ? "bg-secondary text-heading" : "text-text-muted hover:bg-muted"
               }`}
             >
@@ -207,15 +222,27 @@ export default async function SchedulePage({
           </Link>
           <Link
             href={listHref(BASE, query, { date: isoDate(today), page: 1 })}
-            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
           >
             Today
           </Link>
+          <Suspense fallback={<div className="h-11 w-36 rounded-control bg-muted" />}>
+            <DateJump key={isoDate(anchor)} value={isoDate(anchor)} />
+          </Suspense>
         </div>
       </div>
 
       <section className="flex flex-col gap-3 rounded-card border border-border bg-card p-4 shadow-[var(--shadow)]">
         <div className="flex flex-wrap items-center gap-3">
+          {/* The q filter has been parsed and applied since this page was
+              written — the control for it was never rendered, so "No visits
+              match" was reachable only by hand-editing the URL. */}
+          <Suspense fallback={<div className="h-11 flex-[1_1_240px] rounded-control bg-muted" />}>
+            <ListSearch
+              placeholder="Name, phone or treatment — filters as you type"
+              label="Search the schedule"
+            />
+          </Suspense>
           <FilterChips
             basePath={BASE}
             query={query}
@@ -266,7 +293,10 @@ export default async function SchedulePage({
                   key={visit.id}
                   className="grid grid-cols-1 items-center gap-3 border-t border-border px-5.5 py-2.5 sm:grid-cols-[84px_minmax(0,1fr)] lg:grid-cols-[84px_minmax(0,1fr)_150px_150px_120px]"
                 >
-                  <div className="text-[13px] font-semibold tabular-nums text-heading">
+                  {/* The time leads the row the receptionist scans down to find
+                      "now" — the same size ChairList settled on for the same
+                      column, for the reason documented there. */}
+                  <div className="text-[length:var(--text-section)] leading-none font-semibold tabular-nums text-heading">
                     {visit.appointmentTime}
                   </div>
                   <div className="min-w-0">
@@ -286,10 +316,17 @@ export default async function SchedulePage({
                       </span>
                     </div>
                     <p className="truncate text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
-                      {visit.treatment} · {visit.phone}
+                      {visit.treatment} ·{" "}
+                      <a
+                        href={`tel:${visit.phone.replace(/[^+\d]/g, "")}`}
+                        title={`Call ${visit.patientName}`}
+                        className="tabular-nums underline-offset-2 hover:text-primary hover:underline"
+                      >
+                        {visit.phone}
+                      </a>
                     </p>
                   </div>
-                  <div className="text-[13px] text-text-muted">
+                  <div className="text-[length:var(--text-secondary)] text-text-muted">
                     {visit.chair?.name || visit.provider?.name || "No chair set"}
                   </div>
                   <StatusSelect
@@ -299,7 +336,7 @@ export default async function SchedulePage({
                   />
                   <Link
                     href={`${BASE}/${visit.id}`}
-                    className="inline-flex min-h-11 items-center justify-center rounded-control border border-border-strong bg-card px-3 text-[13px] font-semibold text-heading hover:bg-muted"
+                    className="inline-flex min-h-11 items-center justify-center rounded-control border border-border-strong bg-card px-3 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
                   >
                     Open
                   </Link>
@@ -314,17 +351,17 @@ export default async function SchedulePage({
         <section className="overflow-x-auto rounded-card border border-border bg-card shadow-[var(--shadow)]">
           <div className="min-w-[900px]">
             <div className="grid grid-cols-[84px_repeat(7,1fr)] border-b border-border bg-muted">
-              <div className="p-2.5 text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
+              <div className="p-2.5 text-[length:var(--text-micro)] leading-[var(--text-micro-lh)] font-semibold tracking-[0.14em] text-text-muted uppercase">
                 Time
               </div>
               {Array.from({ length: 7 }, (_, index) => {
                 const day = new Date(weekStart.getTime() + index * DAY);
                 return (
                   <div key={index} className="border-l border-border p-2.5">
-                    <div className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
+                    <div className="text-[length:var(--text-micro)] leading-[var(--text-micro-lh)] font-semibold tracking-[0.14em] text-text-muted uppercase">
                       {day.toLocaleDateString("en-IN", { weekday: "short" })}
                     </div>
-                    <div className="text-[13px] font-semibold tabular-nums text-heading">
+                    <div className="text-[length:var(--text-secondary)] leading-[var(--text-secondary-lh)] font-semibold tabular-nums text-heading">
                       {day.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                     </div>
                   </div>
@@ -332,7 +369,7 @@ export default async function SchedulePage({
               })}
             </div>
 
-            {WEEK_HOURS.map((hour) => (
+            {weekHours.map((hour) => (
               <div
                 key={hour}
                 className="grid min-h-14 grid-cols-[84px_repeat(7,1fr)] border-b border-border last:border-b-0"
@@ -357,7 +394,7 @@ export default async function SchedulePage({
                           key={visit.id}
                           href={`${BASE}/${visit.id}`}
                           title={`${visit.appointmentTime} · ${visit.patientName} · ${visit.treatment}`}
-                          className={`block rounded-[0.4rem] border-l-2 px-1.5 py-1 ${
+                          className={`block rounded-chip border-l-2 px-1.5 py-1 ${
                             visit.status === "Pending"
                               ? "border-l-warning bg-warning-bg"
                               : visit.status === "Completed"
@@ -368,7 +405,7 @@ export default async function SchedulePage({
                           <span className="block truncate text-xs font-semibold text-heading">
                             {visit.patientName}
                           </span>
-                          <span className="block truncate text-[11px] text-text-muted">
+                          <span className="block truncate text-[length:var(--text-micro)] text-text-muted">
                             {visit.treatment}
                           </span>
                         </Link>
@@ -376,7 +413,8 @@ export default async function SchedulePage({
                       {inCell.length === 0 && (
                         <Link
                           href={`/dashboard/appointments/new?date=${isoDate(day)}&time=${String(hour).padStart(2, "0")}:00`}
-                          className="text-[11px] text-text-muted/70 hover:text-primary"
+                          aria-label={`Book ${day.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })} at ${((hour + 11) % 12) + 1}${hour < 12 ? "am" : "pm"}`}
+                          className="flex min-h-11 flex-1 items-center rounded-chip px-1.5 text-[length:var(--text-secondary)] leading-[var(--text-secondary-lh)] font-semibold text-text-muted/70 hover:bg-primary-soft hover:text-primary"
                         >
                           + book
                         </Link>
@@ -435,29 +473,26 @@ export default async function SchedulePage({
                     <span className="font-semibold">{visit.patientName}</span>
                   )}
                 </ListCell>
-                <ListCell secondary>
-                  <span className="tabular-nums text-text-muted">{visit.phone}</span>
+                <ListCell secondary interactive>
+                  <a
+                    href={`tel:${visit.phone.replace(/[^+\d]/g, "")}`}
+                    title={`Call ${visit.patientName}`}
+                    className="tabular-nums text-text-muted underline-offset-2 hover:text-primary hover:underline"
+                  >
+                    {visit.phone}
+                  </a>
                 </ListCell>
                 <ListCell secondary>
                   <span className="text-text-muted">{visit.treatment}</span>
                 </ListCell>
                 <ListCell>
-                  <span
-                    className={`inline-flex items-center rounded-pill px-2.5 py-1 text-xs font-semibold ${
-                      visit.status === "Completed"
-                        ? "bg-success-bg text-success"
-                        : visit.status === "Pending"
-                          ? "bg-warning-bg text-warning"
-                          : visit.status === "Cancelled" || visit.status === "No-show"
-                            ? "bg-danger-bg text-danger"
-                            : "bg-muted text-heading"
-                    }`}
-                  >
-                    {STATUS_LABELS[visit.status] ?? visit.status}
-                  </span>
+                  <StatusBadge status={visit.status as AppointmentStatus} />
                 </ListCell>
                 <ListCell align="right" interactive>
-                  <Link href={`${BASE}/${visit.id}`} className="text-xs font-semibold text-primary">
+                  <Link
+                    href={`${BASE}/${visit.id}`}
+                    className="inline-flex min-h-11 items-center text-[length:var(--text-secondary)] leading-[var(--text-secondary-lh)] font-semibold text-primary"
+                  >
                     Open
                   </Link>
                 </ListCell>

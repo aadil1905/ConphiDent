@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import type { PatientMatch } from "@/app/api/patients/lookup/route";
@@ -65,6 +65,7 @@ const chip = (on: boolean) =>
 export default function BookAVisit({
   days,
   chairs,
+  todayIso,
   defaultIso,
   defaultTime,
   defaultPatientName,
@@ -72,12 +73,34 @@ export default function BookAVisit({
 }: {
   days: BookableDay[];
   chairs: string[];
+  /** The clinic's own today — the floor for the further-out date picker. */
+  todayIso: string;
   defaultIso?: string;
   defaultTime?: string;
   defaultPatientName?: string;
   defaultPhone?: string;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Moves the whole seven-day window to the chosen date — the server anchors
+  // its grid on ?date=, so a recall months out books from this same screen.
+  // Whoever is already picked or typed rides along in the params the page
+  // reads back (?patient= / ?name= / ?phone=), so nothing is retyped.
+  const jumpWindow = (iso: string) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("date", iso);
+    params.delete("time");
+    if (picked && !isNew && picked.id) {
+      params.set("patient", String(picked.id));
+    } else {
+      const name = (picked?.name ?? who).trim();
+      if (name) params.set("name", name);
+      if (phone.trim()) params.set("phone", phone.trim());
+    }
+    router.push(`/dashboard/appointments/new?${params.toString()}`);
+  };
   const timer = useRef<number | null>(null);
   const saveTimer = useRef<number | null>(null);
   // The submit button sits at the bottom of a long page while the fields it
@@ -95,6 +118,7 @@ export default function BookAVisit({
   const [draft, setDraft] = useState<Draft | null>(null);
   const [who, setWho] = useState(defaultPatientName ?? "");
   const [matches, setMatches] = useState<PatientMatch[]>([]);
+  const [lookupFailed, setLookupFailed] = useState(false);
   const [picked, setPicked] = useState<PatientMatch | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [phone, setPhone] = useState(defaultPhone ?? "");
@@ -105,7 +129,6 @@ export default function BookAVisit({
 
   const [reason, setReason] = useState<string>(VISIT_TYPES[0].value);
   const [note, setNote] = useState("");
-  const [remind, setRemind] = useState(true);
 
   const [tried, setTried] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -157,6 +180,7 @@ export default function BookAVisit({
     if (timer.current) window.clearTimeout(timer.current);
     if (text.trim().length < 2) {
       setMatches([]);
+      setLookupFailed(false);
       return;
     }
     timer.current = window.setTimeout(async () => {
@@ -165,8 +189,13 @@ export default function BookAVisit({
         if (!response.ok) throw new Error(String(response.status));
         const body = (await response.json()) as { matches: PatientMatch[] };
         setMatches(body.matches);
+        setLookupFailed(false);
       } catch {
+        // Failing silently here used to leave "add as a new patient" as the
+        // only visible row, which quietly steered a receptionist into creating
+        // a duplicate record whenever the lookup was down.
         setMatches([]);
+        setLookupFailed(true);
       }
     }, DEBOUNCE_MS);
   };
@@ -261,7 +290,7 @@ export default function BookAVisit({
             role="status"
             className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-warning-border bg-warning-bg px-4 py-3"
           >
-            <span className="text-[13px] text-warning">
+            <span className="text-[length:var(--text-secondary)] text-warning">
               You had a half-finished booking for {draft.who}. Want it back?
             </span>
             <span className="flex gap-2">
@@ -290,7 +319,7 @@ export default function BookAVisit({
                   setDraftOffered(false);
                   look(draft.who);
                 }}
-                className="min-h-11 cursor-pointer rounded-control border border-warning bg-card px-3.5 text-[13px] font-semibold text-warning"
+                className="min-h-11 cursor-pointer rounded-control border border-warning bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-warning"
               >
                 Restore it
               </button>
@@ -304,7 +333,7 @@ export default function BookAVisit({
                   }
                   setDraftOffered(false);
                 }}
-                className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading"
+                className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading"
               >
                 Start fresh
               </button>
@@ -336,7 +365,7 @@ export default function BookAVisit({
                     placeholder="Start typing — e.g. Meera, or 99870"
                     autoComplete="off"
                     aria-invalid={tried && !picked}
-                    className={`min-h-[46px] w-full rounded-control border bg-card pr-3 pl-9 text-[15px] text-foreground ${
+                    className={`min-h-[46px] w-full rounded-control border bg-card pr-3 pl-9 text-[length:var(--text-body)] text-foreground ${
                       tried && !picked ? "border-danger-mark" : "border-border-strong"
                     }`}
                   />
@@ -347,6 +376,13 @@ export default function BookAVisit({
                   </p>
                 )}
               </div>
+
+              {who.trim().length >= 2 && lookupFailed && (
+                <p role="alert" className="rounded-chip border-l-[3px] border-l-warning bg-warning-bg px-3 py-2.5 text-[length:var(--text-secondary)] text-warning">
+                  The patient search didn&rsquo;t come back — check the connection before adding
+                  them as new, or they may end up in the list twice.
+                </p>
+              )}
 
               {who.trim().length >= 2 && (
                 <div className="overflow-hidden rounded-control border border-border">
@@ -383,7 +419,7 @@ export default function BookAVisit({
                     className="flex min-h-12 w-full cursor-pointer items-center gap-2.5 border-t border-border bg-background px-3.5 py-2.5 text-left hover:bg-muted"
                   >
                     <Plus className="h-4 w-4 text-primary" aria-hidden />
-                    <span className="text-[13px] font-semibold text-heading">
+                    <span className="text-[length:var(--text-secondary)] font-semibold text-heading">
                       Add &ldquo;{who.trim()}&rdquo; as a new patient
                     </span>
                   </button>
@@ -393,11 +429,11 @@ export default function BookAVisit({
           ) : (
             <>
               <div className="flex flex-wrap items-center gap-3 rounded-control border border-border-strong px-3.5 py-3">
-                <span className="grid h-10 w-10 flex-none place-items-center rounded-pill bg-secondary text-[13px] font-bold text-heading">
+                <span className="grid h-10 w-10 flex-none place-items-center rounded-pill bg-secondary text-[length:var(--text-secondary)] font-bold text-heading">
                   {initialsOf(picked.name)}
                 </span>
                 <span className="min-w-0 flex-[1_1_200px]">
-                  <span className="block text-[15px] font-semibold text-heading">{picked.name}</span>
+                  <span className="block text-[length:var(--text-body)] font-semibold text-heading">{picked.name}</span>
                   <span className="block text-xs text-text-muted">
                     {picked.phone
                       ? `${picked.phone} · ${picked.detail}`
@@ -410,14 +446,14 @@ export default function BookAVisit({
                     setPicked(null);
                     setIsNew(false);
                   }}
-                  className="min-h-11 flex-none cursor-pointer rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+                  className="min-h-11 flex-none cursor-pointer rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
                 >
                   Change
                 </button>
               </div>
 
               {picked.alert && (
-                <p className="rounded-[0.4rem] border-l-[3px] border-l-warning bg-warning-bg px-3 py-2.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-warning">
+                <p className="rounded-chip border-l-[3px] border-l-warning bg-warning-bg px-3 py-2.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-warning">
                   {picked.alert}
                 </p>
               )}
@@ -432,7 +468,7 @@ export default function BookAVisit({
                     placeholder="+91 98XXX XXXXX"
                     inputMode="tel"
                     aria-invalid={tried && isNew && phone.replace(/\D/g, "").length < 10}
-                    className={`min-h-[46px] rounded-control border bg-card px-3 text-[15px] tabular-nums text-foreground ${
+                    className={`min-h-[46px] rounded-control border bg-card px-3 text-[length:var(--text-body)] tabular-nums text-foreground ${
                       tried && isNew && phone.replace(/\D/g, "").length < 10
                         ? "border-danger-mark"
                         : "border-border-strong"
@@ -471,18 +507,40 @@ export default function BookAVisit({
                 aria-pressed={index === dayIndex}
                 className={`min-h-[68px] min-w-[92px] flex-none px-2.5 py-2 text-left ${chip(index === dayIndex)}`}
               >
-                <span className="block text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
+                <span className="block text-[length:var(--text-micro)] font-semibold tracking-[0.14em] text-text-muted uppercase">
                   {item.dow}
                 </span>
-                <span className="block text-[15px] font-semibold tabular-nums">{item.date}</span>
+                <span className="block text-[length:var(--text-body)] font-semibold tabular-nums">{item.date}</span>
                 <span
-                  className={`block text-[11px] ${item.slots.length ? "text-success" : item.closed ? "text-text-muted" : "text-warning"}`}
+                  className={`block text-[length:var(--text-micro)] ${item.slots.length ? "text-success" : item.closed ? "text-text-muted" : "text-warning"}`}
                 >
                   {item.slots.length ? `${item.slots.length} free` : item.closed ? "closed" : "nothing set up"}
                 </span>
               </button>
             ))}
           </div>
+
+          {/* Recalls land months away; the strip is a window, not the limit. */}
+          <label className="flex flex-wrap items-center gap-2.5 text-xs font-semibold text-text-muted">
+            Further out?
+            <input
+              type="date"
+              min={todayIso}
+              defaultValue={days[0]?.iso}
+              onChange={(event) => jumpWindow(event.target.value)}
+              aria-label="Show the week around another date"
+              className="min-h-11 cursor-pointer rounded-control border border-input bg-card px-3 text-[length:var(--text-secondary)] font-semibold text-heading"
+            />
+            {days[0] && days[0].iso !== todayIso && (
+              <button
+                type="button"
+                onClick={() => jumpWindow(todayIso)}
+                className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-3 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
+              >
+                Back to this week
+              </button>
+            )}
+          </label>
 
           {day.slots.length > 0 ? (
             <div>
@@ -503,7 +561,7 @@ export default function BookAVisit({
                       {pretty(time)}
                     </span>
                     {chairs.length > 0 && (
-                      <span className="text-[11px] whitespace-nowrap text-text-muted">
+                      <span className="text-[length:var(--text-micro)] whitespace-nowrap text-text-muted">
                         {chairs[index % chairs.length]}
                       </span>
                     )}
@@ -512,7 +570,7 @@ export default function BookAVisit({
               </div>
             </div>
           ) : (
-            <p className="rounded-[0.4rem] border-l-[3px] border-l-warning bg-warning-bg px-3.5 py-3 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-warning">
+            <p className="rounded-chip border-l-[3px] border-l-warning bg-warning-bg px-3.5 py-3 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-warning">
               {day.closed
                 ? `The clinic is closed on ${day.label}. Pick another day.`
                 : `Nothing is set up for ${day.label} yet. Pick another day, or book a time manually — it will still save.`}
@@ -562,23 +620,19 @@ export default function BookAVisit({
               className="resize-y rounded-control border border-border bg-card px-3 py-2.5 text-sm text-foreground"
             />
           </label>
-          <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm">
-            <input
-              type="checkbox"
-              checked={remind}
-              onChange={(event) => setRemind(event.target.checked)}
-              className="h-[18px] w-[18px] accent-primary"
-            />
-            <span>Send a WhatsApp reminder the evening before</span>
-          </label>
+          {/* The reminder checkbox that used to sit here promised "WhatsApp,
+              evening before" — and was never sent with the booking. Nothing in
+              the API schedules a reminder at booking time; reminders are sent
+              from the visit with SendReminderButton. A control that does
+              nothing either way is worse than no control. */}
         </section>
       </div>
 
       {/* --- Summary -------------------------------------------------------- */}
       <aside className="flex flex-col gap-6">
         <div className={`${card} flex flex-col gap-3 px-5.5 py-4`}>
-          <h2 className="text-[15px] font-semibold text-heading">This booking</h2>
-          <dl className="flex flex-col gap-2.5 text-[13px]">
+          <h2 className="text-[length:var(--text-body)] font-semibold text-heading">This booking</h2>
+          <dl className="flex flex-col gap-2.5 text-[length:var(--text-secondary)]">
             {[
               {
                 label: "Patient",
@@ -591,14 +645,9 @@ export default function BookAVisit({
                 muted: !chosen,
               },
               { label: "Reason", value: reason, muted: false },
-              {
-                label: "Reminder",
-                value: remind ? "WhatsApp, evening before" : "No reminder",
-                muted: false,
-              },
             ].map((row) => (
               <div key={row.label}>
-                <dt className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
+                <dt className="text-[length:var(--text-micro)] font-semibold tracking-[0.14em] text-text-muted uppercase">
                   {row.label}
                 </dt>
                 <dd className={`tabular-nums ${row.muted ? "text-warning" : "text-foreground"}`}>
@@ -611,7 +660,7 @@ export default function BookAVisit({
             type="button"
             disabled={saving}
             onClick={() => void book(false)}
-            className="min-h-12 cursor-pointer rounded-control border border-primary bg-primary text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-70"
+            className="min-h-12 cursor-pointer rounded-control border border-primary bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary-hover disabled:opacity-70"
           >
             {saving ? "Booking…" : "Book it"}
           </button>
@@ -619,7 +668,7 @@ export default function BookAVisit({
             type="button"
             disabled={saving}
             onClick={() => void book(true)}
-            className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card text-[13px] font-semibold text-heading hover:bg-muted disabled:opacity-70"
+            className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted disabled:opacity-70"
           >
             Book and add another
           </button>

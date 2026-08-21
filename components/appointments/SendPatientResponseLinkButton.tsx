@@ -42,7 +42,7 @@ export default function SendPatientResponseLinkButton({ appointmentId }: { appoi
         type="button"
         onClick={() => gate.ask(() => void sendLink())}
         disabled={sending}
-        className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted disabled:opacity-70"
+        className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-control border border-border-strong bg-card px-4 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted disabled:opacity-70"
       >
         {sending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Link2 className="size-4" aria-hidden />}
         {sending ? "Making the link…" : "Let them confirm it themselves"}

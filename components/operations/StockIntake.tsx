@@ -69,7 +69,7 @@ export function AddItemButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex min-h-11 cursor-pointer items-center rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white whitespace-nowrap hover:bg-primary-hover"
+        className="inline-flex min-h-11 cursor-pointer items-center rounded-control border border-primary bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground whitespace-nowrap hover:bg-primary-hover"
       >
         Add an item
       </button>
@@ -77,7 +77,7 @@ export function AddItemButton() {
         <Overlay side onClose={() => setOpen(false)}>
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-[17px] font-semibold text-heading">Add an item</h2>
+              <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Add an item</h2>
               <p className="mt-0.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
                 Name and unit are enough — everything else can wait.
               </p>
@@ -138,7 +138,7 @@ export function AddItemButton() {
             <button
               type="submit"
               disabled={pending}
-              className="mt-1 min-h-12 cursor-pointer rounded-control border border-primary bg-primary text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+              className="mt-1 min-h-12 cursor-pointer rounded-control border border-primary bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
             >
               {pending ? "Adding…" : "Put it in the cupboard"}
             </button>
@@ -192,7 +192,7 @@ export function ReceiveStockButton({ id, name, unit }: { id: number; name: strin
       </button>
       {open && (
         <Overlay onClose={() => setOpen(false)}>
-          <h2 className="text-[17px] font-semibold text-heading">Stock arrived for {name}?</h2>
+          <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Stock arrived for {name}?</h2>
           <p className="mt-0.5 mb-3.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
             It goes on the ledger as a batch — expiry first, so nothing old hides at the back.
           </p>
@@ -212,14 +212,14 @@ export function ReceiveStockButton({ id, name, unit }: { id: number; name: strin
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted"
+                className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-4 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
               >
                 Not now
               </button>
               <button
                 type="submit"
                 disabled={pending}
-                className="min-h-11 cursor-pointer rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+                className="min-h-11 cursor-pointer rounded-control border border-primary bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
               >
                 {pending ? "Adding…" : "Add it"}
               </button>

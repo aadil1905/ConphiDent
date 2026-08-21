@@ -39,7 +39,7 @@ export default async function AddXrayPage({
       actions={
         <BackLink
           fallback={patient ? `/dashboard/patients/${patient.id}/xrays` : "/dashboard/imaging"}
-          className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+          className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
         >
           {patient ? "Back to their X-rays" : "Back to Imaging"}
         </BackLink>

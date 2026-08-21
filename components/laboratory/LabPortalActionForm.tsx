@@ -9,7 +9,7 @@ export function LabPortalActionForm({ token, actionType, label, children, destru
   return <form action={formAction} className="space-y-3 rounded-card border bg-card p-4">
     <input type="hidden" name="actionType" value={actionType}/>
     {children}
-    <button disabled={pending} className={`rounded-control px-4 py-2 text-sm font-semibold disabled:opacity-60 ${destructive ? "border border-danger-border bg-card text-danger" : "bg-primary text-white"}`}>{pending ? "Saving..." : label}</button>
+    <button disabled={pending} className={`rounded-control px-4 py-2 text-sm font-semibold disabled:opacity-60 ${destructive ? "border border-danger-border bg-card text-danger" : "bg-primary text-primary-foreground"}`}>{pending ? "Saving..." : label}</button>
     {state.message && <p aria-live="polite" className={`text-sm ${state.ok ? "text-success" : "text-danger"}`}>{state.message}</p>}
   </form>;
 }

@@ -146,7 +146,7 @@ export default function MedicineCombobox({
                   </span>
                 </span>
                 {entry.used > 0 && (
-                  <span className="flex-none text-[11px] whitespace-nowrap text-text-muted">
+                  <span className="flex-none text-[length:var(--text-micro)] whitespace-nowrap text-text-muted">
                     used {entry.used}×
                   </span>
                 )}

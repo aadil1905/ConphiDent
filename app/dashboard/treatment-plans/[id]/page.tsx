@@ -101,7 +101,7 @@ export default async function TreatmentPlanPage({ params }: { params: Promise<{ 
           {canEdit && (
             <Link
               href={`${BASE}/${plan.id}/edit`}
-              className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+              className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
             >
               Edit this plan
             </Link>
@@ -109,14 +109,14 @@ export default async function TreatmentPlanPage({ params }: { params: Promise<{ 
           {can(user.role, "manageBilling") && (
             <Link
               href={`/dashboard/billing/new?patientId=${plan.patientId}`}
-              className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+              className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
             >
               Raise an invoice
             </Link>
           )}
           <Link
             href={`/dashboard/appointments/new?patientId=${plan.patientId}`}
-            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
           >
             Book the next sitting
           </Link>
@@ -126,21 +126,21 @@ export default async function TreatmentPlanPage({ params }: { params: Promise<{ 
       <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
         <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr))]">
           <div>
-            <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">Plan is worth</p>
+            <p className="text-[length:var(--text-micro)] font-semibold tracking-[0.14em] text-text-muted uppercase">Plan is worth</p>
             <p className="text-[length:var(--text-page)] leading-[var(--text-page-lh)] font-semibold tracking-[-0.01em] text-heading tabular-nums">
               {priced > 0 ? rupees(priced) : "not priced"}
             </p>
           </div>
           <div>
-            <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">Invoiced so far</p>
+            <p className="text-[length:var(--text-micro)] font-semibold tracking-[0.14em] text-text-muted uppercase">Invoiced so far</p>
             <p className="text-[length:var(--text-page)] leading-[var(--text-page-lh)] font-semibold tracking-[-0.01em] text-heading tabular-nums">{rupees(invoiced)}</p>
           </div>
           <div>
-            <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">Collected</p>
-            <p className="text-[22px] leading-tight font-bold tabular-nums text-success">{rupees(collected)}</p>
+            <p className="text-[length:var(--text-micro)] font-semibold tracking-[0.14em] text-text-muted uppercase">Collected</p>
+            <p className="text-[length:var(--text-metric)] leading-[var(--text-metric-lh)] font-bold tabular-nums text-success">{rupees(collected)}</p>
           </div>
           <div>
-            <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">Still to bill</p>
+            <p className="text-[length:var(--text-micro)] font-semibold tracking-[0.14em] text-text-muted uppercase">Still to bill</p>
             <p className="text-[length:var(--text-page)] leading-[var(--text-page-lh)] font-semibold tracking-[-0.01em] text-heading tabular-nums">
               {rupees(Math.max(0, priced - invoiced))}
             </p>
@@ -176,13 +176,13 @@ export default async function TreatmentPlanPage({ params }: { params: Promise<{ 
                 key={item.id}
                 className="flex items-center justify-between gap-3 border-t border-border px-5.5 py-2.5"
               >
-                <span className="text-[13px] text-foreground">{item.name}</span>
-                <span className="text-[13px] font-semibold tabular-nums text-heading">{rupees(item.price)}</span>
+                <span className="text-[length:var(--text-secondary)] text-foreground">{item.name}</span>
+                <span className="text-[length:var(--text-secondary)] font-semibold tabular-nums text-heading">{rupees(item.price)}</span>
               </div>
             ))}
             <div className="flex items-center justify-between gap-3 border-t border-border bg-muted px-5.5 py-2.5">
-              <span className="text-[13px] font-semibold text-heading">Total</span>
-              <span className="text-[13px] font-bold tabular-nums text-heading">{rupees(itemsTotal)}</span>
+              <span className="text-[length:var(--text-secondary)] font-semibold text-heading">Total</span>
+              <span className="text-[length:var(--text-secondary)] font-bold tabular-nums text-heading">{rupees(itemsTotal)}</span>
             </div>
           </>
         )}
@@ -219,16 +219,16 @@ export default async function TreatmentPlanPage({ params }: { params: Promise<{ 
               >
                 <Link
                   href={`/dashboard/billing/${invoice.id}`}
-                  className="text-[13px] font-semibold tabular-nums text-primary hover:underline"
+                  className="text-[length:var(--text-secondary)] font-semibold tabular-nums text-primary hover:underline"
                 >
                   {invoice.invoiceNumber}
                 </Link>
-                <span title={exactStamp(invoice.issueDate)} className="text-[13px] text-text-muted">
+                <span title={exactStamp(invoice.issueDate)} className="text-[length:var(--text-secondary)] text-text-muted">
                   raised {humanTime(invoice.issueDate, now)}
                 </span>
-                <span className="text-[13px] tabular-nums">{rupees(invoice.totalAmount)}</span>
+                <span className="text-[length:var(--text-secondary)] tabular-nums">{rupees(invoice.totalAmount)}</span>
                 <span
-                  className={`text-[13px] font-semibold tabular-nums ${due > 0 ? "text-danger" : "text-success"}`}
+                  className={`text-[length:var(--text-secondary)] font-semibold tabular-nums ${due > 0 ? "text-danger" : "text-success"}`}
                 >
                   {due > 0 ? `${rupees(due)} left` : "Paid"}
                 </span>

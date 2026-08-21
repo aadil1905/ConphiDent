@@ -17,7 +17,7 @@ export default async function PrescriberProfilePage({ searchParams }: { searchPa
           title="How you sign"
           description="This identity is frozen into every script you issue. It is yours, not the clinic's — a clinic registration cannot sign for you."
         />
-        <Link href="/dashboard/prescriptions/new" className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted">
+        <Link href="/dashboard/prescriptions/new" className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-4 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted">
           Back to prescribing
         </Link>
       </div>
@@ -54,7 +54,7 @@ export default async function PrescriberProfilePage({ searchParams }: { searchPa
             <span className="text-xs font-normal text-text-muted">Leave it blank for the standard digitally-issued line.</span>
           </label>
           <div className="flex justify-end sm:col-span-2">
-            <button className="inline-flex min-h-11 cursor-pointer items-center rounded-control border border-primary bg-primary px-5 text-[13px] font-semibold text-white hover:bg-primary-hover">
+            <button className="inline-flex min-h-11 cursor-pointer items-center rounded-control border border-primary bg-primary px-5 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover">
               Save how you sign
             </button>
           </div>

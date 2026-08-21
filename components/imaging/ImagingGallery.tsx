@@ -67,7 +67,7 @@ function Viewer({ study, canAnnotate, close }: { study: ImagingGalleryStudy; can
     <div role="dialog" aria-modal="true" aria-label={`${study.modalityLabel} viewer`} className="fixed inset-0 z-[95] flex flex-col bg-[#0b1f27] text-white">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
         <div>
-          <p className="text-[15px] font-semibold">{study.modalityLabel}</p>
+          <p className="text-[length:var(--text-body)] font-semibold">{study.modalityLabel}</p>
           <p className="text-xs text-white/70">
             {study.patient?.fullName || "No name on this one"} · {timeLabel(study.acquisitionDate)}
           </p>
@@ -125,7 +125,7 @@ function Viewer({ study, canAnnotate, close }: { study: ImagingGalleryStudy; can
             <div className="grid h-full min-h-[420px] place-items-center text-center">
               <div>
                 <FileImage className="mx-auto size-12 text-white/50" />
-                <p className="mt-3 text-[15px] font-semibold">
+                <p className="mt-3 text-[length:var(--text-body)] font-semibold">
                   {loadFailed ? "That secure link timed out." : "This file needs a viewer we do not have."}
                 </p>
                 <p className="mx-auto mt-1 max-w-md text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-white/70">
@@ -135,7 +135,7 @@ function Viewer({ study, canAnnotate, close }: { study: ImagingGalleryStudy; can
                   <button
                     type="button"
                     onClick={() => { setLoadFailed(false); router.refresh(); }}
-                    className="mt-4 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-control border border-white/25 px-3 text-[13px] font-semibold text-white hover:bg-white/10"
+                    className="mt-4 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-control border border-white/25 px-3 text-[length:var(--text-secondary)] font-semibold text-white hover:bg-white/10"
                   >
                     <RefreshCw className="size-4" />Get a fresh link
                   </button>
@@ -149,7 +149,7 @@ function Viewer({ study, canAnnotate, close }: { study: ImagingGalleryStudy; can
           <p className="rounded-control border border-[var(--gold-on-ink)]/40 bg-[var(--gold-on-ink)]/10 px-3 py-2.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-[var(--gold-on-ink)]">
             Not for diagnosis unless this screen and viewer have been checked here first.
           </p>
-          <dl className="mt-4 grid gap-3 text-[13px]">
+          <dl className="mt-4 grid gap-3 text-[length:var(--text-secondary)]">
             <div>
               <dt className="text-white/60">Patient</dt>
               <dd className="font-semibold">{study.patient?.fullName || "No name yet — match it first"}</dd>
@@ -172,19 +172,19 @@ function Viewer({ study, canAnnotate, close }: { study: ImagingGalleryStudy; can
             </div>
           </dl>
           {asset ? (
-            <a href={asset.accessUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex min-h-11 items-center rounded-control border border-white/25 px-3 text-[13px] font-semibold text-white hover:bg-white/10">
+            <a href={asset.accessUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex min-h-11 items-center rounded-control border border-white/25 px-3 text-[length:var(--text-secondary)] font-semibold text-white hover:bg-white/10">
               Open the original
             </a>
           ) : null}
 
           {canAnnotate && asset?.renderable ? (
             <div className="mt-5 border-t border-white/10 pt-4">
-              <p className="text-[15px] font-semibold">Mark something on it</p>
+              <p className="text-[length:var(--text-body)] font-semibold">Mark something on it</p>
               <p className="mt-0.5 text-xs text-white/70">Markers sit on top — the image itself is never touched.</p>
               <button
                 type="button"
                 onClick={() => { setPlacing(true); setPoint(null); }}
-                className="mt-3 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-control border border-white/25 px-3 text-[13px] font-semibold text-white hover:bg-white/10"
+                className="mt-3 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-control border border-white/25 px-3 text-[length:var(--text-secondary)] font-semibold text-white hover:bg-white/10"
               >
                 <Focus className="size-4" />{placing ? "Now tap the spot…" : "Place a marker"}
               </button>
@@ -194,16 +194,16 @@ function Viewer({ study, canAnnotate, close }: { study: ImagingGalleryStudy; can
                   <input type="hidden" name="assetId" value={asset.id} />
                   <input type="hidden" name="x" value={point.x} />
                   <input type="hidden" name="y" value={point.y} />
-                  <input name="toothCode" inputMode="numeric" maxLength={2} placeholder="Tooth number (optional)" className="min-h-11 w-full rounded-control border border-white/25 bg-[#0b1f27] px-3 text-[13px] text-white" />
-                  <textarea name="label" required minLength={2} maxLength={500} rows={2} placeholder="What you can see there" className="mt-2 w-full rounded-control border border-white/25 bg-[#0b1f27] p-3 text-[13px] text-white" />
+                  <input name="toothCode" inputMode="numeric" maxLength={2} placeholder="Tooth number (optional)" className="min-h-11 w-full rounded-control border border-white/25 bg-[#0b1f27] px-3 text-[length:var(--text-secondary)] text-white" />
+                  <textarea name="label" required minLength={2} maxLength={500} rows={2} placeholder="What you can see there" className="mt-2 w-full rounded-control border border-white/25 bg-[#0b1f27] p-3 text-[length:var(--text-secondary)] text-white" />
                 </ImagingActionForm>
               ) : null}
             </div>
           ) : null}
 
           {study.report ? (
-            <div className="mt-5 border-t border-white/10 pt-4 text-[13px]">
-              <p className="text-[15px] font-semibold">Signed reading · v{study.report.version}</p>
+            <div className="mt-5 border-t border-white/10 pt-4 text-[length:var(--text-secondary)]">
+              <p className="text-[length:var(--text-body)] font-semibold">Signed reading · v{study.report.version}</p>
               <p className="mt-0.5 text-white/70">
                 {study.report.authorName}{study.report.signedAt ? ` · ${timeLabel(study.report.signedAt)}` : ""}
               </p>
@@ -238,7 +238,7 @@ export default function ImagingGallery({
 
   if (!studies.length) {
     return (
-      <div className="rounded-card border border-dashed border-border-strong bg-card px-5.5 py-8 text-center text-[13px] text-text-muted">
+      <div className="rounded-card border border-dashed border-border-strong bg-card px-5.5 py-8 text-center text-[length:var(--text-secondary)] text-text-muted">
         {emptyMessage}
       </div>
     );
@@ -249,7 +249,7 @@ export default function ImagingGallery({
       <div className="flex flex-col gap-6">
         {groups.map(([date, items]) => (
           <section key={date}>
-            <h3 className="mb-2.5 text-[13px] font-semibold text-heading">
+            <h3 className="mb-2.5 text-[length:var(--text-secondary)] font-semibold text-heading">
               {date}
               <span className="ml-1.5 font-normal text-text-muted">
                 · {items.length} X-ray{items.length === 1 ? "" : "s"}
@@ -301,11 +301,11 @@ export default function ImagingGallery({
                         </p>
                       </div>
                       <div className="flex flex-none flex-col items-end gap-1">
-                        <span className={`rounded-pill px-2 py-0.5 text-[11px] font-semibold ${stateTone(study)}`}>
+                        <span className={`rounded-pill px-2 py-0.5 text-[length:var(--text-micro)] font-semibold ${stateTone(study)}`}>
                           {stateWord(study)}
                         </span>
                         {study.treatmentStage ? (
-                          <span className="rounded-pill bg-muted px-2 py-0.5 text-[11px] font-semibold text-text-muted">
+                          <span className="rounded-pill bg-muted px-2 py-0.5 text-[length:var(--text-micro)] font-semibold text-text-muted">
                             {study.treatmentStage === "PRE_TREATMENT" ? "Before" : study.treatmentStage === "POST_TREATMENT" ? "After" : "Other"}
                           </span>
                         ) : null}
@@ -321,7 +321,7 @@ export default function ImagingGallery({
                     <button
                       type="button"
                       onClick={() => setSelectedId(study.id)}
-                      className="mt-3.5 min-h-11 w-full cursor-pointer rounded-control border border-border-strong bg-card text-[13px] font-semibold text-heading hover:bg-muted"
+                      className="mt-3.5 min-h-11 w-full cursor-pointer rounded-control border border-border-strong bg-card text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
                     >
                       Open it
                     </button>

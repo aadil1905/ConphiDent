@@ -36,7 +36,7 @@ export default function DeleteAppointmentDialog({ appointmentId }: Props) {
         type="button"
         onClick={() => setOpen(true)}
         disabled={loading}
-        className="inline-flex min-h-11 cursor-pointer items-center rounded-control border border-danger-border bg-card px-4 text-[13px] font-semibold text-danger hover:bg-danger-bg disabled:opacity-70"
+        className="inline-flex min-h-11 cursor-pointer items-center rounded-control border border-danger-border bg-card px-4 text-[length:var(--text-secondary)] font-semibold text-danger hover:bg-danger-bg disabled:opacity-70"
       >
         {loading ? "Archiving…" : "Archive this visit"}
       </button>

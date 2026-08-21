@@ -49,7 +49,7 @@ export default function LogEnquiry({
               minLength={2}
               maxLength={120}
               placeholder="Kavita Shirke"
-              className="min-h-11 rounded-control border border-border bg-card px-3 text-[13px] text-foreground"
+              className="min-h-11 rounded-control border border-border bg-card px-3 text-[length:var(--text-secondary)] text-foreground"
             />
             <span className="text-xs text-text-muted">A first name is enough to start.</span>
           </label>
@@ -63,7 +63,7 @@ export default function LogEnquiry({
               pattern="[0-9 +\-]{10,20}"
               title="We need 10 digits to message them."
               placeholder="98204 41127"
-              className="min-h-11 rounded-control border border-border bg-card px-3 text-[13px] tabular-nums text-foreground"
+              className="min-h-11 rounded-control border border-border bg-card px-3 text-[length:var(--text-secondary)] tabular-nums text-foreground"
             />
             <span className="text-xs text-text-muted">We need 10 digits to message them.</span>
           </label>
@@ -80,7 +80,7 @@ export default function LogEnquiry({
                     defaultChecked={index === 0}
                     className="peer sr-only"
                   />
-                  <span className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3 text-[13px] font-semibold text-heading peer-checked:border-primary peer-checked:bg-primary-soft peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary">
+                  <span className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3 text-[length:var(--text-secondary)] font-semibold text-heading peer-checked:border-primary peer-checked:bg-primary-soft peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary">
                     {want}
                   </span>
                 </label>
@@ -94,7 +94,7 @@ export default function LogEnquiry({
             type="submit"
             name="intent"
             value="queue"
-            className="inline-flex min-h-11 cursor-pointer items-center rounded-control bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-hover"
+            className="inline-flex min-h-11 cursor-pointer items-center rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-hover"
           >
             Add to the queue
           </button>

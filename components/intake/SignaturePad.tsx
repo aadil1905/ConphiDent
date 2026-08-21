@@ -136,7 +136,7 @@ export default function SignaturePad({ onChange, invalid, ref }: SignaturePadPro
           className="block h-40 w-full cursor-crosshair touch-none"
         />
         {empty && (
-          <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[15px] text-text-muted">
+          <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[length:var(--text-body)] text-text-muted">
             Draw your signature here
           </span>
         )}
@@ -148,7 +148,7 @@ export default function SignaturePad({ onChange, invalid, ref }: SignaturePadPro
       <button
         type="button"
         onClick={clear}
-        className="min-h-12 self-start rounded-control border border-[rgba(23,107,135,0.25)] bg-white px-3.5 text-[15px] font-semibold text-heading"
+        className="min-h-12 self-start rounded-control border border-[rgba(23,107,135,0.25)] bg-white px-3.5 text-[length:var(--text-body)] font-semibold text-heading"
       >
         Start again
       </button>

@@ -244,7 +244,7 @@ const inputClass = "mt-2 min-h-11 w-full rounded-control border border-input bg-
  </div>
  <label className="mt-4 flex items-start gap-3 rounded-card border border-success-border bg-success-bg p-4 text-sm leading-6 text-success"><input required type="checkbox" name="consentConfirmed" value="1" className="mt-1 size-4" /><span>I confirmed the patient agreed to receive this private intake link on the WhatsApp number above.</span></label>
  <div className="mt-6 flex justify-end">
- <button type="button" onClick={createAndSend} disabled={working} className="inline-flex min-h-11 items-center gap-2 rounded-control bg-primary px-6 text-sm font-semibold text-white disabled:opacity-60">
+ <button type="button" onClick={createAndSend} disabled={working} className="inline-flex min-h-11 items-center gap-2 rounded-control bg-primary px-6 text-sm font-semibold text-primary-foreground disabled:opacity-60">
  {working ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
  Create and send on WhatsApp
  </button>
@@ -268,7 +268,7 @@ const inputClass = "mt-2 min-h-11 w-full rounded-control border border-input bg-
  <a href={request.link} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-control border bg-card text-sm font-semibold"><ExternalLink className="size-4" /> Open on this device</a>
  <button type="button" onClick={() => refreshStatus(true)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-control border bg-card text-sm font-semibold"><RefreshCw className="size-4" /> Check status</button>
  </div>
- {request.status === "COMPLETED" && <div className="flex justify-end"><button type="button" onClick={() => router.push(`/dashboard/patients/${request.patientId}`)} className="inline-flex min-h-11 items-center gap-2 rounded-control bg-primary px-6 text-sm font-semibold text-white"><CheckCircle2 className="size-4" /> Open patient profile</button></div>}
+ {request.status === "COMPLETED" && <div className="flex justify-end"><button type="button" onClick={() => router.push(`/dashboard/patients/${request.patientId}`)} className="inline-flex min-h-11 items-center gap-2 rounded-control bg-primary px-6 text-sm font-semibold text-primary-foreground"><CheckCircle2 className="size-4" /> Open patient profile</button></div>}
  </div>
  )}
  </div>

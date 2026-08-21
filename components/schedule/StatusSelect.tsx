@@ -63,7 +63,7 @@ export default function StatusSelect({
       value={value}
       onChange={(event) => change(event.target.value)}
       aria-label={`Status for ${patientName}`}
-      className={`min-h-11 cursor-pointer rounded-control border px-2.5 text-[13px] font-semibold ${
+      className={`min-h-11 cursor-pointer rounded-control border px-2.5 text-[length:var(--text-secondary)] font-semibold ${
         TONE[value] ?? "bg-card text-heading border-border-strong"
       }`}
     >

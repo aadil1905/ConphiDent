@@ -56,7 +56,7 @@ export default async function BillingIdentityPage() {
           <PrintButton label="Print a test bill" tone="outline" />
           <Link
             href="/dashboard/billing"
-            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
           >
             Back to Money
           </Link>

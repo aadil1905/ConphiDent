@@ -154,7 +154,7 @@ export default async function InvoiceDetailPage({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span
-            className={`inline-flex items-center rounded-pill px-3 py-1.5 text-[13px] font-semibold ${
+            className={`inline-flex items-center rounded-pill px-3 py-1.5 text-[length:var(--text-secondary)] font-semibold ${
               status === "Settled"
                 ? "bg-success-bg text-success"
                 : status === "Overdue"
@@ -167,7 +167,7 @@ export default async function InvoiceDetailPage({
           <Link
             href={`/dashboard/billing/${invoice.id}/print`}
             target="_blank"
-            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
           >
             Print
           </Link>
@@ -178,7 +178,7 @@ export default async function InvoiceDetailPage({
       {REFUSALS[error ?? ""] && (
         <p
           role="alert"
-          className="rounded-control border border-danger-border bg-danger-bg px-3.5 py-3 text-[13px] text-danger"
+          className="rounded-control border border-danger-border bg-danger-bg px-3.5 py-3 text-[length:var(--text-secondary)] text-danger"
         >
           {REFUSALS[error ?? ""]}
         </p>
@@ -214,11 +214,11 @@ export default async function InvoiceDetailPage({
                   {clinicName}
                 </p>
                 {document.legalName && document.legalName !== clinicName && (
-                  <p className="mt-0.5 text-[11px] text-text-muted">{document.legalName}</p>
+                  <p className="mt-0.5 text-[length:var(--text-micro)] text-text-muted">{document.legalName}</p>
                 )}
               </div>
             </div>
-            <div className="min-w-0 text-left text-[11.5px] leading-relaxed text-text-muted sm:text-right">
+            <div className="min-w-0 text-left text-[length:var(--text-micro)] leading-relaxed text-text-muted sm:text-right">
               <p className="max-w-[34ch]">{document.address || "Clinic address available on request"}</p>
               <p>{[document.phone, document.email].filter(Boolean).join(" · ")}</p>
               {document.gstin && <p>GSTIN {document.gstin}</p>}
@@ -231,18 +231,18 @@ export default async function InvoiceDetailPage({
               <p className="text-[10px] font-semibold tracking-[0.14em] text-[var(--gold)] uppercase">
                 {document.type.replaceAll("_", " ")}
               </p>
-              <p className="mt-1 text-[15px] font-semibold tabular-nums">{document.documentNumber}</p>
+              <p className="mt-1 text-[length:var(--text-body)] font-semibold tabular-nums">{document.documentNumber}</p>
             </div>
             <div>
               <p className="text-[10px] font-semibold tracking-[0.14em] text-text-muted uppercase">Billed to</p>
-              <p className="mt-1 text-[14px] font-semibold">{document.patient.fullName}</p>
+              <p className="mt-1 text-[length:var(--text-dense)] font-semibold">{document.patient.fullName}</p>
               {document.patient.phone && (
-                <p className="text-[11.5px] text-text-muted tabular-nums">{document.patient.phone}</p>
+                <p className="text-[length:var(--text-micro)] text-text-muted tabular-nums">{document.patient.phone}</p>
               )}
             </div>
             <div>
               <p className="text-[10px] font-semibold tracking-[0.14em] text-text-muted uppercase">Issued</p>
-              <p className="mt-1 text-[14px] font-semibold tabular-nums">
+              <p className="mt-1 text-[length:var(--text-dense)] font-semibold tabular-nums">
                 {document.issuedAt.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
               </p>
             </div>
@@ -250,7 +250,7 @@ export default async function InvoiceDetailPage({
               <p className="text-[10px] font-semibold tracking-[0.14em] text-text-muted uppercase">
                 {document.outstandingAmount > 0 ? "Balance due" : "Status"}
               </p>
-              <p className={`mt-1 text-[14px] font-semibold tabular-nums ${document.outstandingAmount > 0 ? "text-danger" : "text-success"}`}>
+              <p className={`mt-1 text-[length:var(--text-dense)] font-semibold tabular-nums ${document.outstandingAmount > 0 ? "text-danger" : "text-success"}`}>
                 {document.outstandingAmount > 0
                   ? `₹${document.outstandingAmount.toLocaleString("en-IN")}`
                   : "Paid in full"}
@@ -259,7 +259,7 @@ export default async function InvoiceDetailPage({
           </div>
 
           <div className="px-6 pt-5 sm:px-8">
-            <table className="w-full text-[13.5px]">
+            <table className="w-full text-[length:var(--text-secondary)]">
               <thead>
                 <tr className="border-b border-border-strong text-left text-[10.5px] font-semibold tracking-[0.1em] text-text-muted uppercase">
                   <th className="pb-2.5 font-semibold">Treatment</th>
@@ -290,7 +290,7 @@ export default async function InvoiceDetailPage({
               </tbody>
             </table>
 
-            <div className="ml-auto mt-4 w-full max-w-[18rem] text-[13.5px]">
+            <div className="ml-auto mt-4 w-full max-w-[18rem] text-[length:var(--text-secondary)]">
               {document.discountAmount > 0 && (
                 <>
                   <div className="flex justify-between py-1 text-text-muted">
@@ -310,13 +310,13 @@ export default async function InvoiceDetailPage({
                 </div>
               )}
               <div className="mt-1 flex items-baseline justify-between border-t border-heading pt-2.5">
-                <span className="font-[family-name:var(--font-display)] text-[15px] font-semibold">Total</span>
+                <span className="font-[family-name:var(--font-display)] text-[length:var(--text-body)] font-semibold">Total</span>
                 <span className="font-[family-name:var(--font-display)] text-[20px] font-semibold tabular-nums">
                   ₹{document.totalAmount.toLocaleString("en-IN")}
                 </span>
               </div>
               {document.paidAmount > 0 && (
-                <div className="flex justify-between py-1 text-[12.5px] text-success">
+                <div className="flex justify-between py-1 text-[length:var(--text-secondary)] text-success">
                   <span>Received so far</span>
                   <span className="tabular-nums">₹{document.paidAmount.toLocaleString("en-IN")}</span>
                 </div>
@@ -342,7 +342,7 @@ export default async function InvoiceDetailPage({
                 <span className="font-semibold text-heading">How to pay:</span> {document.paymentDetails}
               </p>
             )}
-            <p className="border-t border-border pt-3 text-[11px]">
+            <p className="border-t border-border pt-3 text-[length:var(--text-micro)]">
               {document.footer || `Thank you for trusting ${clinicName} with your care.`}
             </p>
           </div>
@@ -479,7 +479,7 @@ export default async function InvoiceDetailPage({
         <aside className="flex flex-col gap-6">
           <div className="flex flex-col gap-3 rounded-card border border-border bg-card p-4 shadow-[var(--shadow)]">
             <div>
-              <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
+              <p className="text-[length:var(--text-micro)] font-semibold tracking-[0.14em] text-text-muted uppercase">
                 Still owing
               </p>
               <p
@@ -514,7 +514,7 @@ export default async function InvoiceDetailPage({
             <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] font-semibold text-heading">
               {invoice.patient.fullName.split(" ")[0]}&rsquo;s account
             </p>
-            <div className="flex justify-between gap-3 text-[13px]">
+            <div className="flex justify-between gap-3 text-[length:var(--text-secondary)]">
               <span className="text-text-muted">Owes across all bills</span>
               <span
                 className={`font-semibold tabular-nums ${lifetimeBalance > 0 ? "text-danger" : "text-success"}`}
@@ -522,11 +522,11 @@ export default async function InvoiceDetailPage({
                 {rupees(lifetimeBalance)}
               </span>
             </div>
-            <div className="flex justify-between gap-3 text-[13px]">
+            <div className="flex justify-between gap-3 text-[length:var(--text-secondary)]">
               <span className="text-text-muted">Paid with you so far</span>
               <span className="font-semibold tabular-nums text-heading">{rupees(lifetimePaid)}</span>
             </div>
-            <div className="flex justify-between gap-3 text-[13px]">
+            <div className="flex justify-between gap-3 text-[length:var(--text-secondary)]">
               <span className="text-text-muted">Plans not yet billed</span>
               <span className="font-semibold tabular-nums text-heading">
                 {rupees(plansPending._sum.estimatedCost ?? 0)}
@@ -549,7 +549,7 @@ export default async function InvoiceDetailPage({
               </p>
               <Link
                 href={`/dashboard/billing/new?patientId=${invoice.patientId}`}
-                className="inline-flex min-h-11 items-center justify-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+                className="inline-flex min-h-11 items-center justify-center rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
               >
                 Raise a replacement
               </Link>

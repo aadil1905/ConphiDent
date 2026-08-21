@@ -191,7 +191,7 @@ export default async function StockPage({
                   name="q"
                   defaultValue={q}
                   placeholder="Item name"
-                  className="w-[160px] min-w-0 border-0 bg-transparent text-[13px] text-foreground outline-none placeholder:text-text-muted"
+                  className="w-[160px] min-w-0 border-0 bg-transparent text-[length:var(--text-secondary)] text-foreground outline-none placeholder:text-text-muted"
                 />
               </label>
             </form>
@@ -207,7 +207,7 @@ export default async function StockPage({
             href={tabHref(item.key)}
             role="tab"
             aria-selected={tab === item.key}
-            className={`inline-flex min-h-11 flex-none items-center gap-1.5 border-b-2 px-3.5 text-[13px] font-semibold ${
+            className={`inline-flex min-h-11 flex-none items-center gap-1.5 border-b-2 px-3.5 text-[length:var(--text-secondary)] font-semibold ${
               tab === item.key
                 ? "border-b-primary text-heading"
                 : "border-b-transparent text-text-muted hover:text-heading"
@@ -215,12 +215,12 @@ export default async function StockPage({
           >
             {item.label}
             {item.key === "stock" && lowItems.length > 0 && (
-              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-pill bg-danger-bg px-1.5 text-[11px] font-bold text-danger">
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-pill bg-danger-bg px-1.5 text-[length:var(--text-micro)] font-bold text-danger">
                 {lowItems.length}
               </span>
             )}
             {item.key === "orders" && orders.length > 0 && (
-              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-pill bg-secondary px-1.5 text-[11px] font-bold text-heading">
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-pill bg-secondary px-1.5 text-[length:var(--text-micro)] font-bold text-heading">
                 {orders.length}
               </span>
             )}
@@ -307,7 +307,7 @@ export default async function StockPage({
           {/* --- The cupboard -------------------------------------------- */}
           <section className="overflow-x-auto rounded-card border border-border bg-card shadow-[var(--shadow)]">
             <div className="min-w-[900px]">
-              <div className="grid grid-cols-[minmax(180px,1.4fr)_130px_150px_150px_270px] gap-3 border-b border-border bg-muted px-5.5 py-2.5 text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
+              <div className="grid grid-cols-[minmax(180px,1.4fr)_130px_150px_150px_270px] gap-3 border-b border-border bg-muted px-5.5 py-2.5 text-[length:var(--text-micro)] font-semibold tracking-[0.14em] text-text-muted uppercase">
                 <span>Item</span>
                 <span>In the cupboard</span>
                 <span>How long it lasts</span>
@@ -317,7 +317,7 @@ export default async function StockPage({
 
               {shown.length === 0 && (
                 <div className="flex flex-col items-center gap-1.5 px-5.5 pt-8 pb-10 text-center">
-                  <p className="text-[15px] font-semibold text-heading">
+                  <p className="text-[length:var(--text-body)] font-semibold text-heading">
                     {show === "low" && !q ? "Nothing running low. Nice." : q ? `Nothing matches “${q}”` : "No items yet"}
                   </p>
                   <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
@@ -333,7 +333,7 @@ export default async function StockPage({
               {shown.map((item) => (
                 <div
                   key={item.id}
-                  className={`grid grid-cols-[minmax(180px,1.4fr)_130px_150px_150px_270px] items-center gap-3 border-b border-border/70 px-5.5 py-2.5 text-[13px] last:border-b-0 ${
+                  className={`grid grid-cols-[minmax(180px,1.4fr)_130px_150px_150px_270px] items-center gap-3 border-b border-border/70 px-5.5 py-2.5 text-[length:var(--text-secondary)] last:border-b-0 ${
                     item.quantity <= 0 || item.expired
                       ? "border-l-[3px] border-l-danger-mark"
                       : item.low || item.expiringSoon
@@ -403,7 +403,7 @@ export default async function StockPage({
               </p>
             </div>
             <details className="w-full">
-              <summary className="inline-flex min-h-11 cursor-pointer items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted">
+              <summary className="inline-flex min-h-11 cursor-pointer items-center rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted">
                 See what each treatment uses
               </summary>
               <div className="mt-3 grid gap-4 lg:grid-cols-2">
@@ -506,7 +506,7 @@ export default async function StockPage({
                           submitClassName="min-h-11 rounded-control border border-danger-border bg-card px-3 text-xs font-semibold text-danger"
                         >
                           <input type="hidden" name="batchId" value={batch.id} />
-                          <div className="text-[13px]">
+                          <div className="text-[length:var(--text-secondary)]">
                             <p className="font-semibold text-heading">{item.name}</p>
                             <p className="text-xs text-text-muted">
                               {batch.batchNumber} · {batch.availableQuantity} {item.unit}
@@ -592,7 +592,7 @@ export default async function StockPage({
                   <div className="mt-2 flex flex-col gap-2.5">
                     {order.items.map((line) => (
                       <div key={line.id} className="rounded-control border border-border p-3">
-                        <div className="flex flex-wrap items-baseline justify-between gap-2 text-[13px]">
+                        <div className="flex flex-wrap items-baseline justify-between gap-2 text-[length:var(--text-secondary)]">
                           <span className="font-semibold text-heading">{line.inventoryItem.name}</span>
                           <span className="text-text-muted">
                             ordered {line.quantity} · received {line.receivedQuantity}
@@ -645,7 +645,7 @@ export default async function StockPage({
               { label: "Sitting on the shelf", value: rupees(shelfValue), note: "current stock at cost", tone: "text-heading" },
             ].map((tile) => (
               <div key={tile.label} className="rounded-card border border-border bg-card px-4 py-3.5 shadow-[var(--shadow)]">
-                <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">{tile.label}</p>
+                <p className="text-[length:var(--text-micro)] font-semibold tracking-[0.14em] text-text-muted uppercase">{tile.label}</p>
                 <p className={`text-[length:var(--text-metric)] leading-[var(--text-metric-lh)] font-bold tabular-nums ${tile.tone}`}>{tile.value}</p>
                 <p className="text-xs text-text-muted">{tile.note}</p>
               </div>
@@ -660,7 +660,7 @@ export default async function StockPage({
                   Who touched what, and why. Nothing here can be edited — only added to.
                 </p>
               </div>
-              <div className="grid grid-cols-[150px_minmax(160px,1fr)_110px_minmax(160px,1fr)_130px] gap-3 border-b border-border bg-muted px-5.5 py-2.5 text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
+              <div className="grid grid-cols-[150px_minmax(160px,1fr)_110px_minmax(160px,1fr)_130px] gap-3 border-b border-border bg-muted px-5.5 py-2.5 text-[length:var(--text-micro)] font-semibold tracking-[0.14em] text-text-muted uppercase">
                 <span>When</span>
                 <span>Item</span>
                 <span>Change</span>
@@ -673,7 +673,7 @@ export default async function StockPage({
               {movements.map((move) => (
                 <div
                   key={move.id}
-                  className="grid grid-cols-[150px_minmax(160px,1fr)_110px_minmax(160px,1fr)_130px] items-center gap-3 border-b border-border/70 px-5.5 py-2.5 text-[13px] last:border-b-0"
+                  className="grid grid-cols-[150px_minmax(160px,1fr)_110px_minmax(160px,1fr)_130px] items-center gap-3 border-b border-border/70 px-5.5 py-2.5 text-[length:var(--text-secondary)] last:border-b-0"
                 >
                   <span className="text-text-muted" title={exactStamp(move.createdAt)}>
                     {humanTime(move.createdAt, now)}

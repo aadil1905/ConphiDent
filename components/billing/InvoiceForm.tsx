@@ -242,7 +242,7 @@ export default function InvoiceForm({
           <button
             type="button"
             onClick={() => setLines((current) => [...current, blankLine()])}
-            className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+            className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
           >
             <Plus className="h-4 w-4" aria-hidden />
             Add a line
@@ -306,7 +306,7 @@ export default function InvoiceForm({
           ))}
         </div>
 
-        <div className="mt-4 flex flex-col gap-1.5 border-t border-border pt-3.5 text-[13px]">
+        <div className="mt-4 flex flex-col gap-1.5 border-t border-border pt-3.5 text-[length:var(--text-secondary)]">
           <div className="flex justify-between text-text-muted">
             <span>Before anything is taken off</span>
             <span className="tabular-nums">{money(totals.subtotal)}</span>
@@ -376,7 +376,7 @@ export default function InvoiceForm({
           type="button"
           onClick={() => setShowExtras((open) => !open)}
           aria-expanded={showExtras}
-          className="cursor-pointer text-[13px] font-semibold text-primary hover:underline"
+          className="cursor-pointer text-[length:var(--text-secondary)] font-semibold text-primary hover:underline"
         >
           {showExtras ? "Hide the extras" : "Add a note, terms or a due date"}
         </button>
@@ -407,7 +407,7 @@ export default function InvoiceForm({
           <button
             type="button"
             onClick={() => router.back()}
-            className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted"
+            className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-4 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
           >
             Cancel
           </button>
@@ -415,7 +415,7 @@ export default function InvoiceForm({
             type="submit"
             disabled={!canSave}
             aria-busy={saving}
-            className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-control border border-primary bg-primary px-5 text-[13px] font-semibold text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:border-border-strong disabled:bg-muted disabled:text-text-muted"
+            className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-control border border-primary bg-primary px-5 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover disabled:cursor-not-allowed disabled:border-border-strong disabled:bg-muted disabled:text-text-muted"
           >
             {saving ? <Pending label="Raising…" /> : `Raise this ${DOCUMENT_TYPES.find((type) => type.value === documentType)?.label.toLowerCase()}`}
           </button>

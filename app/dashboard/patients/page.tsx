@@ -156,7 +156,7 @@ export default async function PatientsPage({
         actions={
           <Link
             href={listHref(BASE, query, { add: "1" })}
-            className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+            className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
           >
             Add patient
           </Link>
@@ -225,15 +225,23 @@ export default async function PatientsPage({
                   {row.name}
                 </ListLink>
                 {row.flag && (
-                  <span className="inline-flex items-center rounded-pill bg-warning-bg px-2 py-0.5 text-[11px] font-semibold text-warning">
+                  <span className="inline-flex items-center rounded-pill bg-warning-bg px-2 py-0.5 text-[length:var(--text-micro)] font-semibold text-warning">
                     {row.flag.length > 34 ? `${row.flag.slice(0, 34)}…` : row.flag}
                   </span>
                 )}
               </div>
               <p className="truncate text-xs text-text-muted">{row.meta}</p>
             </ListCell>
-            <ListCell secondary>
-              <span className="tabular-nums text-text-muted">{row.phone}</span>
+            <ListCell secondary interactive>
+              {/* tel: so calling back is one tap — the desk phone, the tablet
+                  and the reception mobile all resolve it. */}
+              <a
+                href={`tel:${row.phone.replace(/[^+\d]/g, "")}`}
+                title={`Call ${row.name}`}
+                className="tabular-nums text-text-muted underline-offset-2 hover:text-primary hover:underline"
+              >
+                {row.phone}
+              </a>
             </ListCell>
             <ListCell align="right" secondary>
               <span className="tabular-nums">{row.visits}</span>

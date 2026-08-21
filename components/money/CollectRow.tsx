@@ -127,9 +127,9 @@ export default function CollectRow({
             setAmount(String(outstanding));
             setOpen(open === "pay" ? null : "pay");
           }}
-          className={`min-h-11 flex-1 cursor-pointer rounded-control border px-3 text-[13px] font-semibold whitespace-nowrap disabled:opacity-70 ${
+          className={`min-h-11 flex-1 cursor-pointer rounded-control border px-3 text-[length:var(--text-secondary)] font-semibold whitespace-nowrap disabled:opacity-70 ${
             collectable
-              ? "border-primary bg-primary text-white hover:bg-primary-hover"
+              ? "border-primary bg-primary text-primary-foreground hover:bg-primary-hover"
               : "border-border-strong bg-card text-heading hover:bg-muted"
           }`}
         >
@@ -162,7 +162,7 @@ export default function CollectRow({
               onChange={(event) => setAmount(event.target.value)}
               inputMode="numeric"
               autoFocus
-              className="min-h-11 rounded-control border border-border-strong bg-card px-3 text-[15px] tabular-nums text-foreground"
+              className="min-h-11 rounded-control border border-border-strong bg-card px-3 text-[length:var(--text-body)] tabular-nums text-foreground"
             />
           </label>
           <div className="flex flex-wrap gap-1.5" role="group" aria-label="How they paid">
@@ -172,7 +172,7 @@ export default function CollectRow({
                 type="button"
                 onClick={() => setMethod(option)}
                 aria-pressed={method === option}
-                className={`min-h-11 cursor-pointer rounded-pill border px-3 text-[13px] font-semibold text-heading ${
+                className={`min-h-11 cursor-pointer rounded-pill border px-3 text-[length:var(--text-secondary)] font-semibold text-heading ${
                   method === option ? "border-primary bg-secondary" : "border-border-strong bg-card"
                 }`}
               >
@@ -184,19 +184,19 @@ export default function CollectRow({
             <button
               type="button"
               onClick={take}
-              className="min-h-11 flex-1 cursor-pointer rounded-control border border-primary bg-primary text-[13px] font-semibold text-white hover:bg-primary-hover"
+              className="min-h-11 flex-1 cursor-pointer rounded-control border border-primary bg-primary text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
             >
               Take it
             </button>
             <button
               type="button"
               onClick={() => setOpen(null)}
-              className="min-h-11 flex-none cursor-pointer rounded-control border border-border-strong bg-card px-3 text-[13px] font-semibold text-heading hover:bg-muted"
+              className="min-h-11 flex-none cursor-pointer rounded-control border border-border-strong bg-card px-3 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
             >
               Cancel
             </button>
           </div>
-          <p className="text-[11px] text-text-muted">Receipt goes out on WhatsApp automatically.</p>
+          <p className="text-[length:var(--text-micro)] text-text-muted">Receipt goes out on WhatsApp automatically.</p>
         </div>
       )}
 
@@ -208,14 +208,14 @@ export default function CollectRow({
           <Link
             href={`/dashboard/billing/${invoiceId}`}
             role="menuitem"
-            className="block min-h-11 border-b border-border/70 px-3.5 py-2.5 text-[13px] text-foreground hover:bg-muted"
+            className="block min-h-11 border-b border-border/70 px-3.5 py-2.5 text-[length:var(--text-secondary)] text-foreground hover:bg-muted"
           >
             Open the invoice
           </Link>
           <Link
             href={`/dashboard/billing/${invoiceId}/print`}
             role="menuitem"
-            className="block min-h-11 border-b border-border/70 px-3.5 py-2.5 text-[13px] text-foreground hover:bg-muted"
+            className="block min-h-11 border-b border-border/70 px-3.5 py-2.5 text-[length:var(--text-secondary)] text-foreground hover:bg-muted"
           >
             Print the invoice
           </Link>
@@ -227,7 +227,7 @@ export default function CollectRow({
                 setOpen(null);
                 setConfirmVoid(true);
               }}
-              className="block min-h-11 w-full cursor-pointer px-3.5 py-2.5 text-left text-[13px] text-danger hover:bg-danger-bg"
+              className="block min-h-11 w-full cursor-pointer px-3.5 py-2.5 text-left text-[length:var(--text-secondary)] text-danger hover:bg-danger-bg"
             >
               Void this invoice
             </button>
@@ -248,7 +248,7 @@ export default function CollectRow({
             onClick={(event) => event.stopPropagation()}
             className="flex w-full max-w-[460px] flex-col gap-3 rounded-card border border-border-strong bg-card p-5.5 shadow-[var(--shadow-overlay)]"
           >
-            <h2 id={`void-${invoiceId}`} className="text-[17px] font-semibold text-heading">
+            <h2 id={`void-${invoiceId}`} className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">
               Void {invoiceNumber} for {rupees(total)}?
             </h2>
             <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
@@ -260,14 +260,14 @@ export default function CollectRow({
               <button
                 type="button"
                 onClick={() => setConfirmVoid(false)}
-                className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+                className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
               >
                 Keep it
               </button>
               <button
                 type="button"
                 onClick={doVoid}
-                className="min-h-11 cursor-pointer rounded-control border border-danger-mark bg-danger-mark px-4 text-[13px] font-semibold text-white"
+                className="min-h-11 cursor-pointer rounded-control border border-danger-mark bg-danger-mark px-4 text-[length:var(--text-secondary)] font-semibold text-white"
               >
                 Void it
               </button>

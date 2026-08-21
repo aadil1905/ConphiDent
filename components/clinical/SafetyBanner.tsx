@@ -40,7 +40,7 @@ export default function SafetyBanner({
               taking it down, and treating them as the same is how an unchecked
               answer quietly becomes a confirmed fact. */}
           {safety.allergiesUnreviewed && (
-            <p className="mt-0.5 text-[13px] text-danger">
+            <p className="mt-0.5 text-[length:var(--text-secondary)] text-danger">
               As the patient reported it at intake. Nobody at the clinic has confirmed it yet.
             </p>
           )}
@@ -48,7 +48,7 @@ export default function SafetyBanner({
         {recordHref && (
           <Link
             href={recordHref}
-            className="inline-flex min-h-11 flex-none items-center text-[13px] font-semibold text-danger underline underline-offset-2"
+            className="inline-flex min-h-11 flex-none items-center text-[length:var(--text-secondary)] font-semibold text-danger underline underline-offset-2"
           >
             Change this
           </Link>
@@ -75,7 +75,7 @@ export default function SafetyBanner({
       {recordHref && (
         <Link
           href={recordHref}
-          className="inline-flex min-h-11 flex-none items-center text-[13px] font-semibold text-primary underline underline-offset-2"
+          className="inline-flex min-h-11 flex-none items-center text-[length:var(--text-secondary)] font-semibold text-primary underline underline-offset-2"
         >
           Write it down
         </Link>

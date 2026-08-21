@@ -23,7 +23,7 @@ export default async function EditPatientPage({ params }: { params: Promise<{ id
         actions={
           <Link
             href={`/dashboard/patients/${patient.id}`}
-            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
           >
             Back to their file
           </Link>

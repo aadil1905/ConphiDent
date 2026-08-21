@@ -22,7 +22,7 @@ export default function PageSize({ value }: { value: number }) {
       <select
         value={String(value)}
         onChange={(event) => change(event.target.value)}
-        className="min-h-11 rounded-control border border-border-strong bg-card px-2 text-[13px] text-foreground"
+        className="min-h-11 rounded-control border border-border-strong bg-card px-2 text-[length:var(--text-secondary)] text-foreground"
       >
         {PAGE_SIZES.map((size) => (
           <option key={size} value={size}>

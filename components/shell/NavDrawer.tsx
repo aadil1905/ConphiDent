@@ -46,7 +46,7 @@ function Section({
         href={item.href}
         onClick={onClose}
         aria-current={active ? "page" : undefined}
-        className={`group relative flex min-h-11 items-center gap-3 rounded-control px-2.5 py-2.5 text-[13.5px] transition-colors duration-150 ${
+        className={`group relative flex min-h-11 items-center gap-3 rounded-control px-2.5 py-2.5 text-[length:var(--text-secondary)] transition-colors duration-150 ${
           active
             ? "bg-primary-soft font-semibold text-heading"
             : "font-medium text-foreground hover:bg-muted"
@@ -67,7 +67,7 @@ function Section({
         />
         <span className="flex-1 truncate">{item.label}</span>
         {count > 0 && (
-          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-pill bg-primary px-1.5 text-[11px] font-bold tabular-nums text-white">
+          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-pill bg-primary px-1.5 text-[length:var(--text-micro)] font-bold tabular-nums text-primary-foreground">
             {count > 99 ? "99+" : count}
           </span>
         )}
@@ -86,7 +86,7 @@ function Section({
                 href={child.href}
                 onClick={onClose}
                 aria-current={childActive ? "page" : undefined}
-                className={`flex min-h-9 items-center rounded-control px-2.5 py-1.5 text-[13px] transition-colors duration-150 ${
+                className={`flex min-h-9 items-center rounded-control px-2.5 py-1.5 text-[length:var(--text-secondary)] transition-colors duration-150 ${
                   childActive
                     ? "bg-primary-soft font-semibold text-heading"
                     : "text-text-muted hover:bg-muted hover:text-heading"
@@ -184,8 +184,8 @@ export default function NavDrawer({
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <div className="truncate text-[13px] font-semibold text-heading">{clinicName}</div>
-            <div className="truncate text-[11px] text-text-muted">{branch}</div>
+            <div className="truncate text-[length:var(--text-secondary)] font-semibold text-heading">{clinicName}</div>
+            <div className="truncate text-[length:var(--text-micro)] text-text-muted">{branch}</div>
           </div>
           <button
             type="button"

@@ -231,16 +231,22 @@ export default async function Patient360Page({
       {tab && <ScrollToSection target={tab} />}
       <header className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          <span className="grid h-11 w-11 flex-none place-items-center rounded-pill bg-secondary text-[15px] font-bold text-heading">
+          <span className="grid h-11 w-11 flex-none place-items-center rounded-pill bg-secondary text-[length:var(--text-body)] font-bold text-heading">
             {initials}
           </span>
           <div className="min-w-0 flex-1">
-            <BackLink fallback="/dashboard/patients" className="text-xs font-semibold text-primary hover:underline">
+            {/* min-h-11 with the negative margin keeps the 44px target without
+                growing the header — the primary escape from the record was a
+                16px-tall link. */}
+            <BackLink
+              fallback="/dashboard/patients"
+              className="-my-3 inline-flex min-h-11 items-center text-xs font-semibold text-primary hover:underline"
+            >
               ← Patients
             </BackLink>
             <div className="flex flex-wrap items-baseline gap-2.5">
-              <h1 className="text-[length:var(--text-page)] leading-[var(--text-page-lh)] font-semibold tracking-[-0.01em] text-heading">{patient.fullName}</h1>
-              <span className="text-[13px] text-text-muted">
+              <h1 className="text-[length:var(--text-page)] leading-[var(--text-page-lh)] font-semibold text-heading">{patient.fullName}</h1>
+              <span className="text-[length:var(--text-secondary)] text-text-muted">
                 {[age !== null && `${age} y`, patient.gender, patient.phone].filter(Boolean).join(" · ")}
               </span>
             </div>
@@ -251,7 +257,7 @@ export default async function Patient360Page({
           {canSeeClinical && (
             <Link
               href={`/dashboard/clinical-workspace/${patient.id}?fromPatient=1`}
-              className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+              className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
             >
               View case paper
             </Link>
@@ -265,7 +271,7 @@ export default async function Patient360Page({
             <a
               key={option}
               href={`#${option}`}
-              className="inline-flex min-h-11 flex-none items-center px-3.5 text-[13px] font-semibold text-text-muted hover:text-heading"
+              className="inline-flex min-h-11 flex-none items-center px-3.5 text-[length:var(--text-secondary)] font-semibold text-text-muted hover:text-heading"
             >
               {option}
               {tabCounts[option] && (
@@ -289,14 +295,20 @@ export default async function Patient360Page({
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <p className="text-xs font-semibold text-heading">Details</p>
           {canSeeMoney && balance > 0 && (
-            <span className="text-[13px] font-semibold tabular-nums text-danger">
+            <span className="text-[length:var(--text-secondary)] font-semibold tabular-nums text-danger">
               {rupees(balance)} due
               {oldestUnpaid && ` · oldest ${overdueBy(oldestUnpaid.issueDate, now) ?? "raised today"}`}
             </span>
           )}
         </div>
         <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
-          {whatsappOn ? `WhatsApp · ${patient.phone}` : patient.phone}
+          <a
+            href={`tel:${patient.phone.replace(/[^+\d]/g, "")}`}
+            title={`Call ${patient.fullName}`}
+            className="tabular-nums underline-offset-2 hover:text-primary hover:underline"
+          >
+            {patient.phone}
+          </a>
           <br />
           {patient.email || "No email on file"}
           <br />
@@ -309,12 +321,25 @@ export default async function Patient360Page({
             year: "numeric",
           })}
         </p>
-        <Link
-          href={`/dashboard/patients/${patient.id}/edit`}
-          className="inline-flex min-h-11 w-fit items-center rounded-control border border-border-strong bg-card px-3 text-[13px] font-semibold text-heading hover:bg-muted"
-        >
-          Edit details
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/dashboard/patients/${patient.id}/edit`}
+            className="inline-flex min-h-11 w-fit items-center rounded-control border border-border-strong bg-card px-3 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
+          >
+            Edit details
+          </Link>
+          {/* Entitlement-gated, not role-gated: a clinic that never bought
+              WhatsApp gets no send affordance anywhere on the record. The
+              same gate the Patients list row action uses. */}
+          {whatsappOn && (
+            <Link
+              href={`/dashboard/conversations?phone=${encodeURIComponent(patient.phone)}`}
+              className="inline-flex min-h-11 w-fit items-center rounded-control border border-border-strong bg-card px-3 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
+            >
+              Message on WhatsApp
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="grid items-start gap-5">
@@ -337,11 +362,11 @@ export default async function Patient360Page({
                       key={visit.id}
                       className="grid grid-cols-1 items-center gap-3 border-t border-border px-5.5 py-2.5 sm:grid-cols-[170px_minmax(0,1fr)_140px_150px]"
                     >
-                      <span title={exactStamp(moment)} className="text-[13px] tabular-nums">
+                      <span title={exactStamp(moment)} className="text-[length:var(--text-secondary)] tabular-nums">
                         {moment.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })},{" "}
                         {visit.appointmentTime || clockTime(moment)}
                       </span>
-                      <span className="text-[13px] text-text-muted">
+                      <span className="text-[length:var(--text-secondary)] text-text-muted">
                         {visit.treatment}
                         {visit.provider?.name ? ` · ${visit.provider.name}` : ""}
                       </span>
@@ -358,7 +383,7 @@ export default async function Patient360Page({
                       </Pill>
                       <Link
                         href={`/dashboard/appointments/${visit.id}`}
-                        className="inline-flex min-h-11 items-center justify-center rounded-control border border-border-strong bg-card px-3 text-[13px] font-semibold text-heading hover:bg-muted"
+                        className="inline-flex min-h-11 items-center justify-center rounded-control border border-border-strong bg-card px-3 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
                       >
                         Open
                       </Link>
@@ -376,7 +401,7 @@ export default async function Patient360Page({
                   <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Mouth as it stands</h2>
                   <Link
                     href={`/dashboard/clinical-workspace/${patient.id}?fromPatient=1`}
-                    className="text-[13px] font-semibold text-primary hover:underline"
+                    className="text-[length:var(--text-secondary)] font-semibold text-primary hover:underline"
                   >
                     Open charting →
                   </Link>
@@ -402,7 +427,7 @@ export default async function Patient360Page({
                   {can(user.role, "issuePrescription") && (
                     <Link
                       href={`/dashboard/prescriptions/new?patientId=${patient.id}`}
-                      className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-3.5 text-[13px] font-semibold text-white hover:bg-primary-hover"
+                      className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-3.5 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
                     >
                       Prescribe
                     </Link>
@@ -418,7 +443,7 @@ export default async function Patient360Page({
                         <div className="flex flex-wrap items-baseline justify-between gap-2">
                           <Link
                             href={`/dashboard/prescriptions/${script.id}`}
-                            className="text-[13px] font-semibold text-primary hover:underline"
+                            className="text-[length:var(--text-secondary)] font-semibold text-primary hover:underline"
                           >
                             {script.prescribedOn.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                             {script.diagnosis ? ` · ${script.diagnosis}` : ""}
@@ -469,7 +494,7 @@ export default async function Patient360Page({
                 </div>
                 <Link
                   href={`/dashboard/treatment-plans/new?patientId=${patient.id}`}
-                  className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-3.5 text-[13px] font-semibold text-white hover:bg-primary-hover"
+                  className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-3.5 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
                 >
                   New plan
                 </Link>
@@ -495,7 +520,7 @@ export default async function Patient360Page({
                         >
                           {plan.title}
                         </Link>
-                        <span className="text-[13px] font-semibold tabular-nums text-heading">
+                        <span className="text-[length:var(--text-secondary)] font-semibold tabular-nums text-heading">
                           {priced > 0 ? rupees(priced) : "not priced"}
                         </span>
                       </div>
@@ -528,13 +553,13 @@ export default async function Patient360Page({
                         <span className="ml-auto flex gap-2">
                           <Link
                             href={`/dashboard/treatment-plans/${plan.id}`}
-                            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3 text-[13px] font-semibold text-heading hover:bg-muted"
+                            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
                           >
                             Open plan
                           </Link>
                           <Link
                             href={`/dashboard/treatment-plans/${plan.id}/edit`}
-                            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3 text-[13px] font-semibold text-heading hover:bg-muted"
+                            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
                           >
                             Edit
                           </Link>
@@ -562,7 +587,7 @@ export default async function Patient360Page({
                 </div>
                 <Link
                   href={`/dashboard/billing/new?patientId=${patient.id}`}
-                  className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-3.5 text-[13px] font-semibold text-white hover:bg-primary-hover"
+                  className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-3.5 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
                 >
                   Raise an invoice
                 </Link>
@@ -583,22 +608,22 @@ export default async function Patient360Page({
                     >
                       <Link
                         href={`/dashboard/billing/${invoice.id}`}
-                        className="text-[13px] font-semibold tabular-nums text-primary hover:underline"
+                        className="text-[length:var(--text-secondary)] font-semibold tabular-nums text-primary hover:underline"
                       >
                         {invoice.invoiceNumber}
                       </Link>
-                      <span className="truncate text-[13px] text-text-muted">
+                      <span className="truncate text-[length:var(--text-secondary)] text-text-muted">
                         {invoice.lineItems.map((line) => line.description).join(", ") || "Treatment"}
                       </span>
-                      <span className="text-[13px] tabular-nums">{rupees(invoice.totalAmount)}</span>
+                      <span className="text-[length:var(--text-secondary)] tabular-nums">{rupees(invoice.totalAmount)}</span>
                       <Pill tone={due <= 0 ? "good" : late ? "bad" : "warn"}>
                         {due <= 0 ? "Paid" : late ? `Unpaid, ${late}` : `${rupees(due)} left`}
                       </Pill>
                       <Link
                         href={`/dashboard/billing/${invoice.id}`}
-                        className={`inline-flex min-h-11 items-center justify-center rounded-control border px-3 text-[13px] font-semibold ${
+                        className={`inline-flex min-h-11 items-center justify-center rounded-control border px-3 text-[length:var(--text-secondary)] font-semibold ${
                           due > 0
-                            ? "border-primary bg-primary text-white hover:bg-primary-hover"
+                            ? "border-primary bg-primary text-primary-foreground hover:bg-primary-hover"
                             : "border-border-strong bg-card text-heading hover:bg-muted"
                         }`}
                       >
@@ -619,7 +644,7 @@ export default async function Patient360Page({
                   {can(user.role, "uploadImaging") && (
                     <Link
                       href={`/dashboard/imaging/new?patient=${patient.id}`}
-                      className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-3.5 text-[13px] font-semibold text-white hover:bg-primary-hover"
+                      className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-3.5 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
                     >
                       Add an X-ray
                     </Link>
@@ -640,16 +665,16 @@ export default async function Patient360Page({
                     key={study.id}
                     className="grid grid-cols-1 items-center gap-3 border-t border-border px-5.5 py-2.5 sm:grid-cols-[120px_minmax(0,1fr)_140px_130px]"
                   >
-                    <span className="text-[13px] font-semibold tabular-nums text-heading">
+                    <span className="text-[length:var(--text-secondary)] font-semibold tabular-nums text-heading">
                       {study.accessionNumber || study.modality}
                     </span>
-                    <span className="text-[13px] text-text-muted">
+                    <span className="text-[length:var(--text-secondary)] text-text-muted">
                       {[study.description, study.toothCodes.join(", ")].filter(Boolean).join(" · ") ||
                         study.modality}
                     </span>
                     <span
                       title={exactStamp(study.acquisitionDate)}
-                      className="text-[13px] tabular-nums text-text-muted"
+                      className="text-[length:var(--text-secondary)] tabular-nums text-text-muted"
                     >
                       {study.acquisitionDate.toLocaleDateString("en-IN", {
                         day: "numeric",
@@ -659,7 +684,7 @@ export default async function Patient360Page({
                     </span>
                     <Link
                       href={`/dashboard/imaging?study=${encodeURIComponent(study.id)}`}
-                      className="text-right text-xs font-semibold text-primary"
+                      className="inline-flex min-h-11 items-center justify-end text-[length:var(--text-secondary)] font-semibold text-primary"
                     >
                       Open
                     </Link>

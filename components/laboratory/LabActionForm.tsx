@@ -8,7 +8,7 @@ import { useConfirmSubmit } from "@/components/ui/confirm-submit";
 type Action = (previous: LaboratoryActionState, formData: FormData) => Promise<LaboratoryActionState>;
 
 const DEFAULT_BUTTON =
-  "min-h-11 cursor-pointer rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover disabled:opacity-60";
+  "min-h-11 cursor-pointer rounded-control border border-primary bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover disabled:opacity-60";
 
 export function LabActionForm({
   action,
@@ -59,7 +59,7 @@ export function LabActionForm({
         {pending ? pendingLabel : label}
       </button>
       {state.message && (
-        <p aria-live="polite" className={`text-[13px] ${state.ok ? "text-success" : "text-danger"}`}>
+        <p aria-live="polite" className={`text-[length:var(--text-secondary)] ${state.ok ? "text-success" : "text-danger"}`}>
           {state.message}
         </p>
       )}

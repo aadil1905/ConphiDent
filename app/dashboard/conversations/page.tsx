@@ -234,13 +234,13 @@ export default async function MessagesInboxPage({
       {totalCount === 0 && !q ? (
         <section className="flex flex-col items-center gap-2 rounded-card border border-border bg-card px-6 py-14 text-center shadow-[var(--shadow)]">
           <MessagesSquare className="h-8 w-8 text-primary" strokeWidth={1.6} aria-hidden />
-          <h2 className="text-[15px] font-semibold text-heading">Your inbox is ready</h2>
+          <h2 className="text-[length:var(--text-body)] font-semibold text-heading">Your inbox is ready</h2>
           <p className="max-w-xl text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
             Connect the clinic&rsquo;s WhatsApp number and every patient chat lands here on its own.
           </p>
           <Link
             href="/dashboard/settings/whatsapp"
-            className="mt-2 inline-flex min-h-11 items-center rounded-control bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+            className="mt-2 inline-flex min-h-11 items-center rounded-control bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
           >
             Connect WhatsApp
           </Link>
@@ -260,7 +260,7 @@ export default async function MessagesInboxPage({
                     name="q"
                     defaultValue={q}
                     placeholder="Name or number"
-                    className="min-w-0 flex-1 border-0 bg-transparent text-[13px] text-foreground outline-none placeholder:text-text-muted"
+                    className="min-w-0 flex-1 border-0 bg-transparent text-[length:var(--text-secondary)] text-foreground outline-none placeholder:text-text-muted"
                   />
                 </label>
               </form>
@@ -308,11 +308,11 @@ export default async function MessagesInboxPage({
                       thread.needsReply ? "border-l-[3px] border-l-primary" : "border-l-[3px] border-l-transparent"
                     }`}
                   >
-                    <span className="grid h-11 w-11 place-items-center rounded-pill bg-muted text-[13px] font-semibold text-heading">
+                    <span className="grid h-11 w-11 place-items-center rounded-pill bg-muted text-[length:var(--text-secondary)] font-semibold text-heading">
                       {initialsOf(name)}
                     </span>
                     <span className="flex min-w-0 flex-col gap-px">
-                      <span className={`truncate text-[13px] text-heading ${thread.needsReply ? "font-bold" : "font-semibold"}`}>
+                      <span className={`truncate text-[length:var(--text-secondary)] text-heading ${thread.needsReply ? "font-bold" : "font-semibold"}`}>
                         {name}
                       </span>
                       <span className="truncate text-xs text-text-muted">
@@ -321,17 +321,17 @@ export default async function MessagesInboxPage({
                           : "No messages yet"}
                       </span>
                       {tag && (
-                        <span className={`mt-0.5 self-start rounded-pill px-2 py-0.5 text-[11px] font-semibold ${tag.tone}`}>
+                        <span className={`mt-0.5 self-start rounded-pill px-2 py-0.5 text-[length:var(--text-micro)] font-semibold ${tag.tone}`}>
                           {tag.label}
                         </span>
                       )}
                     </span>
                     <span className="flex flex-col items-end gap-1">
-                      <span className="text-[11px] whitespace-nowrap text-text-muted" title={exactStamp(thread.lastMessageAt)}>
+                      <span className="text-[length:var(--text-micro)] whitespace-nowrap text-text-muted" title={exactStamp(thread.lastMessageAt)}>
                         {humanTime(thread.lastMessageAt, now)}
                       </span>
                       {thread.waitingCount > 0 && (
-                        <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-pill bg-primary px-1 text-[11px] font-bold text-white">
+                        <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-pill bg-primary px-1 text-[length:var(--text-micro)] font-bold text-primary-foreground">
                           {thread.waitingCount}
                         </span>
                       )}
@@ -340,7 +340,7 @@ export default async function MessagesInboxPage({
                 );
               })}
               <div className="flex flex-col gap-1.5 px-3 pt-3.5 pb-4">
-                <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">Older chats</p>
+                <p className="text-[length:var(--text-micro)] font-semibold tracking-[0.14em] text-text-muted uppercase">Older chats</p>
                 <p className="text-xs text-text-muted">
                   {threads.length >= totalCount
                     ? `That is every chat — ${totalCount} in all.`
@@ -429,7 +429,7 @@ export default async function MessagesInboxPage({
                         {newDay && (
                           <div className="my-3 flex items-center gap-3" aria-hidden>
                             <span className="h-px flex-1 bg-border" />
-                            <span className="rounded-pill bg-muted px-2.5 py-1 text-[11px] font-semibold text-text-muted">
+                            <span className="rounded-pill bg-muted px-2.5 py-1 text-[length:var(--text-micro)] font-semibold text-text-muted">
                               {dayLabel(message.createdAt, now)}
                             </span>
                             <span className="h-px flex-1 bg-border" />
@@ -444,7 +444,7 @@ export default async function MessagesInboxPage({
                           <div
                             className={`wa__bubble ${ours ? "wa__bubble--out" : "wa__bubble--in"} ${
                               startsRun ? "wa__bubble--first" : ""
-                            } px-3 py-2 text-[13.5px] leading-[1.45] whitespace-pre-line shadow-[0_1px_1px_rgba(0,0,0,0.10)] text-[var(--wa-bubble-text)] ${
+                            } px-3 py-2 text-[length:var(--text-secondary)] leading-[1.45] whitespace-pre-line shadow-[0_1px_1px_rgba(0,0,0,0.10)] text-[var(--wa-bubble-text)] ${
                               ours ? "bg-[var(--wa-out)]" : "bg-[var(--wa-in)]"
                             } ${
                               // Square off the corner facing the run so a turn
@@ -458,7 +458,7 @@ export default async function MessagesInboxPage({
                           </div>
 
                           {endsRun && (
-                            <div className="mt-0.5 flex items-center gap-1.5 px-1 text-[11px] text-text-muted">
+                            <div className="mt-0.5 flex items-center gap-1.5 px-1 text-[length:var(--text-micro)] text-text-muted">
                               <span title={exactStamp(message.createdAt)}>{clockTime(message.createdAt)}</span>
                               {state && <span className={`font-semibold ${state.tone}`}>{state.label}</span>}
                             </div>
@@ -518,7 +518,7 @@ export default async function MessagesInboxPage({
                         tone: "text-heading",
                       },
                     ].map((row) => (
-                      <div key={row.label} className="flex justify-between gap-3 text-[13px]">
+                      <div key={row.label} className="flex justify-between gap-3 text-[length:var(--text-secondary)]">
                         <span className="text-text-muted">{row.label}</span>
                         <span className={`text-right font-semibold ${row.tone}`}>{row.value}</span>
                       </div>
@@ -555,7 +555,7 @@ export default async function MessagesInboxPage({
                   <Link
                     key={action.label}
                     href={action.linkTo}
-                    className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3 text-[13px] font-semibold text-heading hover:bg-muted"
+                    className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
                   >
                     {action.label}
                   </Link>

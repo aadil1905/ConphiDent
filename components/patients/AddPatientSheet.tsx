@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, X } from "lucide-react";
 import { toast } from "sonner";
 import { addPatientAction, type AddPatientResult } from "@/app/dashboard/patients/actions";
@@ -22,10 +22,21 @@ const EMPTY: Draft = { fullName: "", phone: "", age: "", flag: "", sendIntake: t
  */
 export default function AddPatientSheet({ whatsappOn }: { whatsappOn: boolean }) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const open = searchParams.get("add") === "1";
 
-  return open ? <Sheet whatsappOn={whatsappOn} onClose={() => router.back()} router={router} /> : null;
+  // Close by stripping ?add=1 rather than router.back(): the sheet is also
+  // reached by direct link (search's "Add them as a new patient"), where
+  // back() walks out of Patients entirely instead of dismissing the sheet.
+  const close = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("add");
+    const search = params.toString();
+    router.replace(search ? `${pathname}?${search}` : pathname, { scroll: false });
+  };
+
+  return open ? <Sheet whatsappOn={whatsappOn} onClose={close} router={router} /> : null;
 }
 
 function Sheet({
@@ -61,6 +72,8 @@ function Sheet({
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    // Focus returns to whoever opened the sheet — NavDrawer's contract.
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     panel.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -82,7 +95,10 @@ function Sheet({
       }
     };
     document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      opener?.focus();
+    };
   }, [onClose]);
 
   const put = <K extends keyof Draft>(key: K, value: Draft[K]) => {
@@ -120,8 +136,8 @@ function Sheet({
   };
 
   const fieldClass = (name: string) =>
-    `min-h-[46px] rounded-control border bg-card px-3 text-[15px] text-foreground ${
-      error?.field === name ? "border-danger-mark" : "border-border"
+    `min-h-[46px] rounded-control border bg-card px-3 text-[length:var(--text-body)] text-foreground ${
+      error?.field === name ? "border-danger-mark" : "border-input"
     }`;
 
   return (
@@ -140,7 +156,7 @@ function Sheet({
       >
         <div className="flex items-baseline justify-between gap-3">
           <div>
-            <h2 id="add-patient-title" className="text-lg font-semibold text-heading">
+            <h2 id="add-patient-title" className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">
               Add a patient
             </h2>
             <p className="mt-1 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
@@ -174,7 +190,7 @@ function Sheet({
                   setDraft({ ...EMPTY, ...offered.value });
                   setDismissed(true);
                 }}
-                className="inline-flex min-h-11 cursor-pointer items-center rounded-control border border-border-strong bg-card px-3 text-[13px] font-semibold text-heading hover:bg-muted"
+                className="inline-flex min-h-11 cursor-pointer items-center rounded-control border border-border-strong bg-card px-3 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
               >
                 Pick it up
               </button>
@@ -184,7 +200,7 @@ function Sheet({
                   clearDraft(DRAFT_NAME);
                   setDismissed(true);
                 }}
-                className="inline-flex min-h-11 cursor-pointer items-center rounded-control px-3 text-[13px] font-semibold text-text-muted hover:bg-muted"
+                className="inline-flex min-h-11 cursor-pointer items-center rounded-control px-3 text-[length:var(--text-secondary)] font-semibold text-text-muted hover:bg-muted"
               >
                 Start fresh
               </button>
@@ -252,7 +268,7 @@ function Sheet({
         {error && (
           <p
             role="alert"
-            className="flex items-start gap-2.5 rounded-control border border-danger-border bg-danger-bg px-3 py-2.5 text-[13px] text-danger"
+            className="flex items-start gap-2.5 rounded-control border border-danger-border bg-danger-bg px-3 py-2.5 text-[length:var(--text-secondary)] text-danger"
           >
             <AlertCircle className="mt-0.5 h-4 w-4 flex-none" strokeWidth={2.2} aria-hidden />
             <span>{error.message}</span>
@@ -264,7 +280,7 @@ function Sheet({
             type="button"
             disabled={saving}
             onClick={() => void save(false)}
-            className="min-h-[46px] cursor-pointer rounded-control border border-primary bg-primary px-5.5 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-70"
+            className="min-h-[46px] cursor-pointer rounded-control border border-primary bg-primary px-5.5 text-sm font-semibold text-primary-foreground hover:bg-primary-hover disabled:opacity-70"
           >
             {saving ? "Saving…" : "Save patient"}
           </button>

@@ -118,7 +118,7 @@ function Tile({ tile }: { tile: GlanceTile }) {
         <span className={`grid h-[22px] w-[22px] flex-none place-items-center rounded-chip ${tone.plate} ${tone.ink}`}>
           <Icon className="h-[13px] w-[13px]" strokeWidth={2} aria-hidden />
         </span>
-        <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-text-muted">
+        <span className="min-w-0 flex-1 truncate text-[length:var(--text-secondary)] font-semibold text-text-muted">
           {tile.label}
         </span>
       </span>
@@ -158,7 +158,7 @@ function Tile({ tile }: { tile: GlanceTile }) {
         )}
       </span>
 
-      <span className="mt-[3px] block h-[19px] truncate text-[12.5px] text-text-muted">
+      <span className="mt-[3px] block h-[19px] truncate text-[length:var(--text-secondary)] text-text-muted">
         {tile.compare}
       </span>
 
@@ -182,7 +182,7 @@ function Tile({ tile }: { tile: GlanceTile }) {
         <circle cx={lastX} cy={lastY} r={2.4} fill="currentColor" className={tone.ink} />
       </svg>
 
-      <span className="mt-[11px] flex items-center justify-between gap-2 text-[11.5px] font-semibold whitespace-nowrap text-text-muted">
+      <span className="mt-[11px] flex items-center justify-between gap-2 text-[length:var(--text-micro)] font-semibold whitespace-nowrap text-text-muted">
         <span className="min-w-0 truncate">{tile.footLabel}</span>
         <span className={`flex-none tabular-nums ${tone.ink}`}>{tile.footPct}%</span>
       </span>

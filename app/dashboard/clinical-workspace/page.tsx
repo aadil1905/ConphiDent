@@ -43,7 +43,7 @@ function Pill({ tone, children }: { tone: "danger" | "warning" | "success" | "mu
   } as const;
   return (
     <span
-      className={`inline-flex items-center justify-center rounded-pill px-2.5 py-[5px] text-xs font-semibold whitespace-nowrap ${tones[tone]}`}
+      className={`inline-flex items-center justify-center rounded-pill px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${tones[tone]}`}
     >
       {children}
     </span>
@@ -222,7 +222,7 @@ export default async function ClinicalPage({
             <Link
               key={item.href}
               href={item.href}
-              className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3 text-[13px] font-semibold text-heading hover:bg-muted"
+              className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
             >
               {item.label}
             </Link>
@@ -244,7 +244,7 @@ export default async function ClinicalPage({
               </p>
               <Link
                 href="/dashboard/patients?add=1"
-                className="mt-2 inline-flex min-h-11 items-center rounded-control bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+                className="mt-2 inline-flex min-h-11 items-center rounded-control bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
               >
                 Add a patient
               </Link>
@@ -271,7 +271,7 @@ export default async function ClinicalPage({
                     </div>
                     <Link
                       href={`${BASE}/${patient.id}`}
-                      className="inline-flex min-h-11 items-center justify-center rounded-control border border-primary bg-primary px-3.5 text-[13px] font-semibold text-white hover:bg-primary-hover"
+                      className="inline-flex min-h-11 items-center justify-center rounded-control border border-primary bg-primary px-3.5 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
                     >
                       Start charting
                     </Link>
@@ -292,7 +292,7 @@ export default async function ClinicalPage({
         <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
           <div className="mb-1.5 flex items-center gap-2">
             <span className="h-2.5 w-2.5 rounded-pill bg-text-muted" aria-hidden />
-            <h2 className="text-[13px] font-bold tracking-[0.14em] text-text-muted uppercase">
+            <h2 className="text-[length:var(--text-secondary)] font-bold tracking-[0.14em] text-text-muted uppercase">
               Nobody in the chair
             </h2>
           </div>
@@ -322,7 +322,7 @@ export default async function ClinicalPage({
                 <span className="h-2.5 w-2.5 rounded-pill bg-success" aria-hidden />
                 <h2
                   id={`in-chair-${encounter.id}`}
-                  className="text-[13px] font-bold tracking-[0.14em] text-success uppercase"
+                  className="text-[length:var(--text-secondary)] font-bold tracking-[0.14em] text-success uppercase"
                 >
                   In the chair now
                 </h2>
@@ -336,7 +336,7 @@ export default async function ClinicalPage({
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-baseline gap-2.5">
                       <span className="text-xl font-bold text-heading">{patient.fullName}</span>
-                      <span title={exactStamp(encounter.occurredAt)} className="text-[13px] text-text-muted">
+                      <span title={exactStamp(encounter.occurredAt)} className="text-[length:var(--text-secondary)] text-text-muted">
                         {[
                           age !== null ? `${age} y` : null,
                           patient.gender,
@@ -372,13 +372,13 @@ export default async function ClinicalPage({
                 <div className="flex flex-col gap-2">
                   <Link
                     href={`${BASE}/${patient.id}`}
-                    className="inline-flex min-h-12 items-center justify-center rounded-control border border-primary bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-hover"
+                    className="inline-flex min-h-12 items-center justify-center rounded-control border border-primary bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-hover"
                   >
                     Start charting
                   </Link>
                   <Link
                     href={`/dashboard/patients/${patient.id}`}
-                    className="inline-flex min-h-11 items-center justify-center rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted"
+                    className="inline-flex min-h-11 items-center justify-center rounded-control border border-border-strong bg-card px-4 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
                   >
                     Open their record
                   </Link>
@@ -415,7 +415,7 @@ export default async function ClinicalPage({
             >
               <span
                 title={exactStamp(visit.appointmentDate)}
-                className="text-[13px] font-semibold tabular-nums text-heading"
+                className="text-[length:var(--text-secondary)] font-semibold tabular-nums text-heading"
               >
                 {visit.appointmentTime || clockTime(visit.appointmentDate)}
               </span>
@@ -442,14 +442,14 @@ export default async function ClinicalPage({
               {visit.patientId ? (
                 <Link
                   href={`${BASE}/${visit.patientId}`}
-                  className="inline-flex min-h-11 items-center justify-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold whitespace-nowrap text-heading hover:bg-muted"
+                  className="inline-flex min-h-11 items-center justify-center rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold whitespace-nowrap text-heading hover:bg-muted"
                 >
                   Chart early
                 </Link>
               ) : (
                 <Link
                   href={`/dashboard/appointments/${visit.id}`}
-                  className="inline-flex min-h-11 items-center justify-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold whitespace-nowrap text-heading hover:bg-muted"
+                  className="inline-flex min-h-11 items-center justify-center rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold whitespace-nowrap text-heading hover:bg-muted"
                 >
                   Link a patient
                 </Link>
@@ -471,7 +471,7 @@ export default async function ClinicalPage({
         {seen.length === 0 ? (
           <div className="flex flex-col items-center gap-2 px-5.5 pt-6 pb-8 text-center">
             <Stethoscope className="h-6 w-6 text-text-muted" strokeWidth={1.6} aria-hidden />
-            <p className="text-[15px] font-semibold text-heading">Nobody through the chair yet.</p>
+            <p className="text-[length:var(--text-body)] font-semibold text-heading">Nobody through the chair yet.</p>
             <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
               Patients land here once their visit is marked as seen.
             </p>
@@ -486,7 +486,7 @@ export default async function ClinicalPage({
                 key={visit.id}
                 className="grid items-center gap-x-3 gap-y-1.5 border-t border-border px-5.5 py-2.5 sm:grid-cols-[84px_minmax(0,1fr)_150px_160px]"
               >
-                <span className="text-[13px] tabular-nums text-text-muted">
+                <span className="text-[length:var(--text-secondary)] tabular-nums text-text-muted">
                   {visit.appointmentTime || clockTime(visit.appointmentDate)}
                 </span>
                 <div className="min-w-0">
@@ -498,7 +498,7 @@ export default async function ClinicalPage({
                 </span>
                 <Link
                   href={openHref}
-                  className="inline-flex min-h-11 items-center justify-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold whitespace-nowrap text-heading hover:bg-muted"
+                  className="inline-flex min-h-11 items-center justify-center rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold whitespace-nowrap text-heading hover:bg-muted"
                 >
                   Open chart
                 </Link>

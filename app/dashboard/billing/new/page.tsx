@@ -68,7 +68,7 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
       context={
         <>
           <RailCard title="This document">
-            <div className="flex items-baseline justify-between gap-2 text-[13px]">
+            <div className="flex items-baseline justify-between gap-2 text-[length:var(--text-secondary)]">
               <span className="text-text-muted">Number</span>
               <span className="font-semibold tabular-nums text-heading">{invoiceNumberPreview}</span>
             </div>
@@ -80,7 +80,7 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
 
           {selectedPatient && (
             <RailCard title={`${firstName}'s account`}>
-              <div className="flex items-baseline justify-between gap-2 text-[13px]">
+              <div className="flex items-baseline justify-between gap-2 text-[length:var(--text-secondary)]">
                 <span className="text-text-muted">Already owes</span>
                 <span
                   className={`font-semibold tabular-nums ${openBalance > 0 ? "text-danger" : "text-success"}`}

@@ -202,7 +202,7 @@ export default async function ImagingPage({
           <>
           <Link
             href="/dashboard/imaging/new"
-            className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+            className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
           >
             Add an X-ray
           </Link>
@@ -214,7 +214,7 @@ export default async function ImagingPage({
                 name="q"
                 defaultValue={q}
                 placeholder="Patient or tooth"
-                className="w-[180px] min-w-0 border-0 bg-transparent text-[13px] text-foreground outline-none placeholder:text-text-muted"
+                className="w-[180px] min-w-0 border-0 bg-transparent text-[length:var(--text-secondary)] text-foreground outline-none placeholder:text-text-muted"
               />
             </label>
           </form>
@@ -307,7 +307,7 @@ export default async function ImagingPage({
       {studies.length === 0 ? (
         <section className="flex flex-col items-center gap-2 rounded-card border border-border bg-card px-5.5 pt-9 pb-11 text-center shadow-[var(--shadow)]">
           <ScanLine className="h-7 w-7 text-text-muted" strokeWidth={1.8} aria-hidden />
-          <p className="text-[15px] font-semibold text-heading">
+          <p className="text-[length:var(--text-body)] font-semibold text-heading">
             {show === "unread" && !q
               ? "Everything has been read. Nice."
               : q
@@ -333,17 +333,17 @@ export default async function ImagingPage({
           <Link
             aria-disabled={page === 1}
             href={`${BASE}?${new URLSearchParams({ ...(q ? { q } : {}), ...(show !== "unread" ? { show } : {}), page: String(Math.max(1, page - 1)) })}`}
-            className={`inline-flex min-h-11 items-center rounded-control border border-border-strong px-3.5 text-[13px] font-semibold text-heading ${page === 1 ? "pointer-events-none opacity-40" : "hover:bg-muted"}`}
+            className={`inline-flex min-h-11 items-center rounded-control border border-border-strong px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading ${page === 1 ? "pointer-events-none opacity-40" : "hover:bg-muted"}`}
           >
             Back
           </Link>
-          <span className="text-[13px] tabular-nums text-text-muted">
+          <span className="text-[length:var(--text-secondary)] tabular-nums text-text-muted">
             Page {page} of {pages}
           </span>
           <Link
             aria-disabled={page === pages}
             href={`${BASE}?${new URLSearchParams({ ...(q ? { q } : {}), ...(show !== "unread" ? { show } : {}), page: String(Math.min(pages, page + 1)) })}`}
-            className={`inline-flex min-h-11 items-center rounded-control border border-border-strong px-3.5 text-[13px] font-semibold text-heading ${page === pages ? "pointer-events-none opacity-40" : "hover:bg-muted"}`}
+            className={`inline-flex min-h-11 items-center rounded-control border border-border-strong px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading ${page === pages ? "pointer-events-none opacity-40" : "hover:bg-muted"}`}
           >
             Next
           </Link>
@@ -377,7 +377,7 @@ export default async function ImagingPage({
                   className="flex items-center justify-between gap-3 border-t border-border/70 px-5.5 py-3 hover:bg-muted"
                 >
                   <span className="min-w-0">
-                    <span className="block text-[13px] font-semibold text-heading">
+                    <span className="block text-[length:var(--text-secondary)] font-semibold text-heading">
                       {item.patient.fullName}
                     </span>
                     <span className="block text-xs text-text-muted">

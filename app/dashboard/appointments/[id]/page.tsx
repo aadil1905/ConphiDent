@@ -29,7 +29,7 @@ export default async function AppointmentDetailsPage({ params }: Props) {
       <section className="flex flex-col items-center gap-2 rounded-card border border-border bg-card px-5.5 py-14 text-center shadow-[var(--shadow)]">
         <h1 className="text-lg font-semibold text-heading">That visit is not here any more</h1>
         <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">It may have been archived, or the link is old.</p>
-        <Link href="/dashboard/appointments" className="mt-2 inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted">
+        <Link href="/dashboard/appointments" className="mt-2 inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-4 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted">
           Back to the schedule
         </Link>
       </section>
@@ -61,7 +61,7 @@ export default async function AppointmentDetailsPage({ params }: Props) {
             />
             <Link
               href="/dashboard/appointments"
-              className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted"
+              className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-4 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
             >
               Back to the schedule
             </Link>
@@ -74,11 +74,11 @@ export default async function AppointmentDetailsPage({ params }: Props) {
         <dl className="mt-3.5 grid gap-4 sm:grid-cols-2">
           <div>
             <dt className="text-xs font-semibold text-text-muted">Patient</dt>
-            <dd className="mt-0.5 text-[15px] font-semibold text-heading">{appointment.patientName}</dd>
+            <dd className="mt-0.5 text-[length:var(--text-body)] font-semibold text-heading">{appointment.patientName}</dd>
           </div>
           <div>
             <dt className="text-xs font-semibold text-text-muted">Phone</dt>
-            <dd className="mt-0.5 text-[15px] font-semibold tabular-nums text-heading">
+            <dd className="mt-0.5 text-[length:var(--text-body)] font-semibold tabular-nums text-heading">
               <a href={`tel:${appointment.phone}`} className="hover:underline">{appointment.phone}</a>
             </dd>
           </div>
@@ -87,21 +87,21 @@ export default async function AppointmentDetailsPage({ params }: Props) {
           <div className="mt-4 flex flex-wrap gap-2">
             <Link
               href={`/dashboard/patients/${appointment.patientId}`}
-              className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted"
+              className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-4 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
             >
               Open patient 360
             </Link>
             {needsIntake ? (
               <Link
                 href={`/dashboard/patient-intake?name=${encodeURIComponent(appointment.patientName)}&phone=${encodeURIComponent(appointment.phone)}`}
-                className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+                className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
               >
                 Finish their intake
               </Link>
             ) : (
               <Link
                 href={`/dashboard/patients/${appointment.patientId}/edit`}
-                className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+                className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
               >
                 Continue medical history
               </Link>
@@ -115,19 +115,19 @@ export default async function AppointmentDetailsPage({ params }: Props) {
         <dl className="mt-3.5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <dt className="text-xs font-semibold text-text-muted">Day</dt>
-            <dd className="mt-0.5 text-[15px] font-semibold text-heading">{day}</dd>
+            <dd className="mt-0.5 text-[length:var(--text-body)] font-semibold text-heading">{day}</dd>
           </div>
           <div>
             <dt className="text-xs font-semibold text-text-muted">Time</dt>
-            <dd className="mt-0.5 text-[15px] font-semibold tabular-nums text-heading">{appointment.appointmentTime}</dd>
+            <dd className="mt-0.5 text-[length:var(--text-body)] font-semibold tabular-nums text-heading">{appointment.appointmentTime}</dd>
           </div>
           <div>
             <dt className="text-xs font-semibold text-text-muted">Reason</dt>
-            <dd className="mt-0.5 text-[15px] font-semibold text-heading">{appointment.treatment}</dd>
+            <dd className="mt-0.5 text-[length:var(--text-body)] font-semibold text-heading">{appointment.treatment}</dd>
           </div>
           <div>
             <dt className="text-xs font-semibold text-text-muted">Booked from</dt>
-            <dd className="mt-0.5 text-[15px] font-semibold text-heading capitalize">{appointment.source || "clinic"}</dd>
+            <dd className="mt-0.5 text-[length:var(--text-body)] font-semibold text-heading capitalize">{appointment.source || "clinic"}</dd>
           </div>
         </dl>
         {appointment.notes ? (

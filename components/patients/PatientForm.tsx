@@ -35,7 +35,7 @@ function firstIssue(body: PatientResponse) {
 
 const field = (bad: boolean) =>
   `min-h-11 w-full rounded-control border bg-card px-3 text-sm text-foreground outline-none ${
-    bad ? "border-danger-mark" : "border-border"
+    bad ? "border-danger-mark" : "border-input"
   }`;
 
 export default function PatientForm({
@@ -155,7 +155,7 @@ export default function PatientForm({
               className={field(has("fullName"))}
             />
             {has("fullName") && (
-              <span className="text-[13px] text-danger">
+              <span className="text-[length:var(--text-secondary)] text-danger">
                 {problems.find((problem) => problem.field === "fullName")?.text}
               </span>
             )}
@@ -174,7 +174,7 @@ export default function PatientForm({
               className={`${field(has("phone"))} tabular-nums`}
             />
             {has("phone") ? (
-              <span className="text-[13px] text-danger">
+              <span className="text-[length:var(--text-secondary)] text-danger">
                 {problems.find((problem) => problem.field === "phone")?.text}
               </span>
             ) : (
@@ -244,7 +244,7 @@ export default function PatientForm({
         {problems.length > 0 && (
           <p
             role="alert"
-            className="flex items-start gap-2.5 rounded-control border border-danger-border bg-danger-bg px-3.5 py-3 text-[13px] text-danger"
+            className="flex items-start gap-2.5 rounded-control border border-danger-border bg-danger-bg px-3.5 py-3 text-[length:var(--text-secondary)] text-danger"
           >
             <AlertCircle className="mt-0.5 h-4 w-4 flex-none" strokeWidth={2.2} aria-hidden />
             <span>
@@ -261,7 +261,7 @@ export default function PatientForm({
           type="button"
           onClick={() => router.back()}
           disabled={saving}
-          className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-5 text-[13px] font-semibold text-heading hover:bg-muted disabled:opacity-70"
+          className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted disabled:opacity-70"
         >
           Cancel
         </button>
@@ -269,7 +269,7 @@ export default function PatientForm({
           type="submit"
           disabled={saving}
           aria-busy={saving}
-          className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-control border border-primary bg-primary px-6 text-[13px] font-semibold text-white hover:bg-primary-hover disabled:opacity-70"
+          className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-control border border-primary bg-primary px-6 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover disabled:opacity-70"
         >
           {saving ? <Pending label="Saving…" /> : mode === "create" ? "Add them" : "Save"}
         </button>

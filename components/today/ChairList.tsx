@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { AlertTriangle, Check, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { markArrivedAction, markCompletedAction, undoArrivedAction } from "@/app/dashboard/today-actions";
+import EmptyState from "@/components/lists/EmptyState";
 
 export type ChairVisit = {
   id: number;
@@ -106,18 +107,13 @@ export default function ChairList({
       </div>
 
       {visits.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 border-t border-border px-5.5 pt-8 pb-10 text-center">
-          <Clock className="h-6.5 w-6.5 text-text-muted" strokeWidth={1.8} aria-hidden />
-          <p className="text-[15px] font-semibold text-heading">The diary is empty today</p>
-          <p className="max-w-[26rem] text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
-            A quiet day is a good day to ring the people waiting on a callback.
-          </p>
-          <Link
-            href="/dashboard/appointments/new"
-            className="mt-2 inline-flex min-h-11 items-center rounded-control bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
-          >
-            Book a visit
-          </Link>
+        <div className="border-t border-border">
+          <EmptyState
+            icon={Clock}
+            title="The diary is empty today"
+            body="A quiet day is a good day to ring the people waiting on a callback."
+            action={{ label: "Book a visit", href: "/dashboard/appointments/new" }}
+          />
         </div>
       ) : (
         visits.map((visit) => {
@@ -175,10 +171,10 @@ export default function ChairList({
                     type="button"
                     disabled={isArrived}
                     onClick={() => arrive(visit)}
-                    className={`inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-control border px-3 text-[13px] font-semibold whitespace-nowrap ${
+                    className={`inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-control border px-3 text-[length:var(--text-secondary)] font-semibold whitespace-nowrap ${
                       isArrived
                         ? "border-border bg-muted text-text-muted"
-                        : "cursor-pointer border-primary bg-primary text-white hover:bg-primary-hover"
+                        : "cursor-pointer border-primary bg-primary text-primary-foreground hover:bg-primary-hover"
                     }`}
                   >
                     {isArrived && <Check className="h-3.5 w-3.5" strokeWidth={2.4} aria-hidden />}
@@ -187,9 +183,9 @@ export default function ChairList({
                   <button
                     type="button"
                     onClick={() => complete(visit)}
-                    className={`inline-flex min-h-11 w-full items-center justify-center rounded-control border px-3 text-[13px] font-semibold whitespace-nowrap ${
+                    className={`inline-flex min-h-11 w-full items-center justify-center rounded-control border px-3 text-[length:var(--text-secondary)] font-semibold whitespace-nowrap ${
                       isArrived
-                        ? "cursor-pointer border-primary bg-primary text-white hover:bg-primary-hover"
+                        ? "cursor-pointer border-primary bg-primary text-primary-foreground hover:bg-primary-hover"
                         : "cursor-pointer border-border-strong bg-card text-heading hover:bg-muted"
                     }`}
                   >
@@ -205,7 +201,7 @@ export default function ChairList({
       <div className="border-t border-border px-5.5 py-3">
         <Link
           href="/dashboard/appointments"
-          className="text-[13px] font-semibold text-primary hover:underline"
+          className="text-[length:var(--text-secondary)] font-semibold text-primary hover:underline"
         >
           See the full day on Schedule →
         </Link>

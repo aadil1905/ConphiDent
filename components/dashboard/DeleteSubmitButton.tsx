@@ -45,7 +45,7 @@ export default function DeleteSubmitButton({
           event.preventDefault();
           setAsking(event.currentTarget);
         }}
-        className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-control border border-danger-border bg-danger-bg px-3 text-[13px] font-semibold text-danger transition hover:brightness-95 disabled:pointer-events-none disabled:opacity-70"
+        className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-control border border-danger-border bg-danger-bg px-3 text-[length:var(--text-secondary)] font-semibold text-danger transition hover:brightness-95 disabled:pointer-events-none disabled:opacity-70"
       >
         {pending ? pendingLabel : label}
       </button>

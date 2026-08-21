@@ -9,7 +9,7 @@ export default function LoginSubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="login-submit-button h-12 w-full rounded-control bg-primary font-semibold text-white transition-colors hover:bg-primary-hover disabled:pointer-events-none disabled:opacity-80"
+      className="login-submit-button h-12 w-full rounded-control bg-primary font-semibold text-primary-foreground transition-colors hover:bg-primary-hover disabled:pointer-events-none disabled:opacity-80"
     >
       {pending ? (
         <span className="inline-flex items-center justify-center gap-2">

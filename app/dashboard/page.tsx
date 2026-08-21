@@ -7,6 +7,7 @@ import { todayMetrics } from "@/lib/metrics";
 import ChairList, { type ChairVisit } from "@/components/today/ChairList";
 import GlanceStrip, { type GlanceTile } from "@/components/today/GlanceStrip";
 import ModuleGrid, { type ModuleTile } from "@/components/today/ModuleGrid";
+import PageHeader from "@/components/lists/PageHeader";
 import { NAV_DESTINATIONS, NAV_SETTINGS, visibleHrefs } from "@/components/shell/nav-items";
 import { getFeatureEntitlements } from "@/lib/features";
 import { PERMISSIONS, type Permission } from "@/lib/permissions";
@@ -483,19 +484,15 @@ export default async function TodayPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-[length:var(--text-page)] leading-[var(--text-page-lh)] font-semibold tracking-[-0.01em] text-heading">Today</h1>
-          <p className="mt-1 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
-            {now.toLocaleDateString("en-IN", {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            })}
-          </p>
-        </div>
-      </header>
+      <PageHeader
+        title="Today"
+        sub={now.toLocaleDateString("en-IN", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })}
+      />
 
       <GlanceStrip tiles={glanceTiles} />
 
@@ -525,14 +522,14 @@ export default async function TodayPage() {
             </span>
             {weekChange !== null && (
               <span
-                className={`text-[13px] font-semibold ${weekChange >= 0 ? "text-success" : "text-danger"}`}
+                className={`text-[length:var(--text-secondary)] leading-[var(--text-secondary-lh)] font-semibold ${weekChange >= 0 ? "text-success" : "text-danger"}`}
               >
                 {weekChange >= 0 ? "+" : ""}
                 {weekChange}% on last week
               </span>
             )}
             {metrics.collectedToday > 0 && (
-              <span className="text-[13px] text-text-muted">
+              <span className="text-[length:var(--text-secondary)] leading-[var(--text-secondary-lh)] text-text-muted">
                 {rupees(metrics.collectedToday)} of it came in today
               </span>
             )}
@@ -553,7 +550,7 @@ export default async function TodayPage() {
                     className="flex-1 rounded-t-sm bg-primary"
                   />
                 </div>
-                <span className="text-[11px] text-text-muted">{bar.day}</span>
+                <span className="text-[length:var(--text-micro)] leading-[var(--text-micro-lh)] text-text-muted">{bar.day}</span>
               </div>
             ))}
           </div>
@@ -593,12 +590,12 @@ export default async function TodayPage() {
               }`}
             >
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-heading">{risk.title}</p>
+                <p className="text-[length:var(--text-dense)] leading-[var(--text-dense-lh)] font-semibold text-heading">{risk.title}</p>
                 <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">{risk.detail}</p>
               </div>
               <Link
                 href={risk.href}
-                className="inline-flex min-h-11 w-full items-center justify-center rounded-control border border-border-strong bg-card px-3 text-[13px] font-semibold whitespace-nowrap text-heading hover:bg-muted"
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-control border border-border-strong bg-card px-3 text-[length:var(--text-secondary)] leading-[var(--text-secondary-lh)] font-semibold whitespace-nowrap text-heading hover:bg-muted"
               >
                 {risk.actionLabel}
               </Link>

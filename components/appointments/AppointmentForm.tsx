@@ -320,9 +320,9 @@ export default function AppointmentForm({
     ? visibleServices
     : [{ id: 0, name: "New Consultation", active: true }];
 
-  const field = "min-h-11 w-full rounded-control border border-border bg-card px-3 text-sm font-normal text-foreground outline-none";
+  const field = "min-h-11 w-full rounded-control border border-input bg-card px-3 text-sm font-normal text-foreground outline-none";
   const labelClass = "flex flex-col gap-1.5 text-xs font-semibold text-heading";
-  const errorClass = "text-[13px] font-normal text-danger";
+  const errorClass = "text-[length:var(--text-secondary)] font-normal text-danger";
 
   return (
     <form ref={unsavedFormRef} onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
@@ -385,7 +385,7 @@ export default function AppointmentForm({
             )}
             <input type="hidden" {...register("appointmentTime")} />
             {!selectableTimes.length ? (
-              <span className="text-[13px] font-normal text-text-muted">
+              <span className="text-[length:var(--text-secondary)] font-normal text-text-muted">
                 Nothing is set up for this day yet. Pick another day, or type a time here — it will still save.
               </span>
             ) : null}
@@ -446,7 +446,7 @@ export default function AppointmentForm({
               rows={4}
               maxLength={5000}
               placeholder="Anything the team should know before they arrive"
-              className="rounded-control border border-border bg-card p-3 text-sm font-normal text-foreground outline-none"
+              className="rounded-control border border-input bg-card p-3 text-sm font-normal text-foreground outline-none"
               {...register("notes")}
             />
             {errors.notes ? <span className={errorClass}>{errors.notes.message}</span> : null}
@@ -459,7 +459,7 @@ export default function AppointmentForm({
           type="button"
           disabled={loading}
           onClick={() => router.push(returnTo || "/dashboard/appointments")}
-          className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted disabled:opacity-60"
+          className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-control border border-border-strong bg-card px-4 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted disabled:opacity-60"
         >
           Go back
         </button>
@@ -467,7 +467,7 @@ export default function AppointmentForm({
           type="submit"
           disabled={loading}
           aria-busy={loading}
-          className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-control border border-primary bg-primary px-5 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+          className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-control border border-primary bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
         >
           {loading ? (
             <Pending label={mode === "create" ? "Booking…" : "Saving…"} />

@@ -142,7 +142,7 @@ export default async function LaboratoryPage({
         actions={
           <Link
             href="/dashboard/laboratory/new"
-            className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+            className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
           >
             New lab order
           </Link>
@@ -159,7 +159,7 @@ export default async function LaboratoryPage({
             key={tile.label}
             className="rounded-card border border-border bg-card px-4 py-3.5 shadow-[var(--shadow)]"
           >
-            <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
+            <p className="text-[length:var(--text-micro)] font-semibold tracking-[0.14em] text-text-muted uppercase">
               {tile.label}
             </p>
             <p className={`text-[length:var(--text-metric)] leading-[var(--text-metric-lh)] font-bold tabular-nums ${tile.tone}`}>{tile.value}</p>
@@ -337,7 +337,7 @@ export default async function LaboratoryPage({
                   <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(6rem,1fr))]">
                     {stats.map((stat) => (
                       <div key={stat.label}>
-                        <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
+                        <p className="text-[length:var(--text-micro)] font-semibold tracking-[0.14em] text-text-muted uppercase">
                           {stat.label}
                         </p>
                         <p className={`text-[17px] font-bold tabular-nums ${stat.tone}`}>{stat.value}</p>
@@ -391,7 +391,7 @@ export default async function LaboratoryPage({
         </div>
 
         <details className="mt-4 border-t border-border/70 pt-3">
-          <summary className="cursor-pointer text-[13px] font-semibold text-heading">
+          <summary className="cursor-pointer text-[length:var(--text-secondary)] font-semibold text-heading">
             Add a lab to the list
           </summary>
           <div className="mt-3">

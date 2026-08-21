@@ -47,7 +47,7 @@ function sentenceFor(item: StructuredMedication) {
 }
 
 function chipClass(on: boolean) {
-  return `min-h-11 cursor-pointer rounded-control border px-3 text-[13px] font-semibold whitespace-nowrap ${
+  return `min-h-11 cursor-pointer rounded-control border px-3 text-[length:var(--text-secondary)] font-semibold whitespace-nowrap ${
     on ? "border-primary bg-secondary text-heading" : "border-border-strong bg-card text-heading hover:bg-muted"
   }`;
 }
@@ -132,7 +132,7 @@ export default function PrescriptionForm({ patients, templates = [], initialPati
               <p className="font-semibold text-heading">Finish your prescriber identity first</p>
               <p className="mt-0.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-foreground">Add your registration number before issuing. What you type here stays until you leave the page.</p>
             </div>
-            <Link href="/dashboard/prescriptions/profile" className="inline-flex min-h-11 shrink-0 items-center rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover">Add it now</Link>
+            <Link href="/dashboard/prescriptions/profile" className="inline-flex min-h-11 shrink-0 items-center rounded-control border border-primary bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover">Add it now</Link>
           </div>
         ) : null}
 
@@ -169,7 +169,7 @@ export default function PrescriptionForm({ patients, templates = [], initialPati
               <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">The medicines</h2>
               <p className="mt-0.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">Type three letters — strength, form and route come with the medicine. You only choose how often and how long.</p>
             </div>
-            <button type="button" onClick={() => setItems((current) => [...current, blankMedicine()])} className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted">
+            <button type="button" onClick={() => setItems((current) => [...current, blankMedicine()])} className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-control border border-border-strong bg-card px-4 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted">
               <Plus className="size-4" aria-hidden />Another medicine
             </button>
           </div>
@@ -223,7 +223,7 @@ export default function PrescriptionForm({ patients, templates = [], initialPati
                       {option}
                     </button>
                   ))}
-                  <label className="ml-1 flex min-h-11 items-center gap-2 text-[13px] font-semibold text-heading">
+                  <label className="ml-1 flex min-h-11 items-center gap-2 text-[length:var(--text-secondary)] font-semibold text-heading">
                     <input type="checkbox" checked={Boolean(item.asNeeded)} onChange={(event) => update(index, "asNeeded", event.target.checked)} className="size-4 accent-[var(--primary)]" />
                     Only when needed
                   </label>
@@ -232,7 +232,7 @@ export default function PrescriptionForm({ patients, templates = [], initialPati
                 <p className="mt-3 rounded-chip bg-muted px-3 py-2 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-foreground">{sentenceFor(item)}</p>
 
                 <details className="mt-3 rounded-control border border-border px-3 py-2.5">
-                  <summary className="cursor-pointer text-[13px] font-semibold text-primary">More options — brand, quantity, exact dose, reason</summary>
+                  <summary className="cursor-pointer text-[length:var(--text-secondary)] font-semibold text-primary">More options — brand, quantity, exact dose, reason</summary>
                   <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <MedicineField label="How much each time *" value={item.dose} placeholder="1" onChange={(value) => update(index, "dose", value)} />
                     <MedicineField label="Unit *" value={item.doseUnit} placeholder="tablet" onChange={(value) => update(index, "doseUnit", value)} />
@@ -246,7 +246,7 @@ export default function PrescriptionForm({ patients, templates = [], initialPati
                     <MedicineField label="Quantity to dispense" value={item.quantity || ""} placeholder="10 tablets" onChange={(value) => update(index, "quantity", value)} />
                     <MedicineField label="Why it is prescribed" value={item.indication || ""} placeholder="e.g. post-extraction cover" onChange={(value) => update(index, "indication", value)} />
                     <MedicineField label="Most in a day" value={item.maxDose || ""} placeholder="Max 3 a day" onChange={(value) => update(index, "maxDose", value)} />
-                    <label className="flex min-h-11 items-center gap-2 self-end rounded-control border border-border bg-card px-3 text-[13px] font-semibold text-heading sm:col-span-2">
+                    <label className="flex min-h-11 items-center gap-2 self-end rounded-control border border-border bg-card px-3 text-[length:var(--text-secondary)] font-semibold text-heading sm:col-span-2">
                       <input type="checkbox" checked={item.substitutionAllowed !== false} onChange={(event) => update(index, "substitutionAllowed", event.target.checked)} className="size-4 accent-[var(--primary)]" />
                       Any brand is fine
                     </label>
@@ -266,10 +266,10 @@ export default function PrescriptionForm({ patients, templates = [], initialPati
               <AlertTriangle className="mt-0.5 size-5 shrink-0 text-danger" aria-hidden />
               <div className="min-w-0">
                 <p className="font-semibold text-danger">Read before you issue</p>
-                <ul className="mt-1.5 list-disc space-y-1 pl-5 text-[13px] text-danger">
+                <ul className="mt-1.5 list-disc space-y-1 pl-5 text-[length:var(--text-secondary)] text-danger">
                   {visibleWarnings.map((warning) => <li key={warning}>{warning}</li>)}
                 </ul>
-                <label className="mt-3 flex items-start gap-2 rounded-chip bg-card px-3 py-2.5 text-[13px] font-semibold text-heading">
+                <label className="mt-3 flex items-start gap-2 rounded-chip bg-card px-3 py-2.5 text-[length:var(--text-secondary)] font-semibold text-heading">
                   <input type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} className="mt-0.5 size-4 accent-[var(--primary)]" />
                   <span>I read these against the patient&rsquo;s record and this script is what I intend.</span>
                 </label>
@@ -287,8 +287,8 @@ export default function PrescriptionForm({ patients, templates = [], initialPati
         </section>
 
         <footer className="flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end">
-          <button type="button" onClick={() => router.back()} className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted">Go back</button>
-          <button type="submit" disabled={!canSave} aria-busy={saving} className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-control border border-primary bg-primary px-5 text-sm font-semibold text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60">
+          <button type="button" onClick={() => router.back()} className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-control border border-border-strong bg-card px-4 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted">Go back</button>
+          <button type="submit" disabled={!canSave} aria-busy={saving} className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-control border border-primary bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60">
             {saving ? <Pending label="Issuing…" /> : editingPrescription ? "Issue the corrected version" : "Issue the script"}
           </button>
         </footer>
@@ -307,14 +307,14 @@ export default function PrescriptionForm({ patients, templates = [], initialPati
         ) : null}
 
         <div className="flex flex-col gap-2.5 rounded-card border border-border bg-card p-4 shadow-[var(--shadow)]">
-          <p className="text-[15px] font-semibold text-heading">Start from a set</p>
+          <p className="text-[length:var(--text-body)] font-semibold text-heading">Start from a set</p>
           <p className="text-xs text-text-muted">Your clinic&rsquo;s usual combinations. You can edit anything after.</p>
           {templates.length === 0 ? (
             <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">No sets yet — save the script below and it appears here.</p>
           ) : (
             templates.map((template) => (
               <button key={template.id} type="button" onClick={() => applyTemplate(template)} className="cursor-pointer rounded-control border border-border-strong bg-card px-3 py-2.5 text-left hover:bg-muted">
-                <span className="block text-[13px] font-semibold text-heading">{template.name}</span>
+                <span className="block text-[length:var(--text-secondary)] font-semibold text-heading">{template.name}</span>
                 <span className="block text-xs text-text-muted">{template.diagnosis || `${template.items.length} ${template.items.length === 1 ? "medicine" : "medicines"}`}</span>
               </button>
             ))
@@ -323,17 +323,17 @@ export default function PrescriptionForm({ patients, templates = [], initialPati
             <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">Save this script as a set
               <input value={templateName} onChange={(event) => setTemplateName(event.target.value)} placeholder="e.g. After an extraction" className={field} />
             </label>
-            <button type="button" onClick={saveTemplate} disabled={savingTemplate} className="mt-2 w-full cursor-pointer rounded-control border border-border-strong bg-card px-3 py-2.5 text-[13px] font-semibold text-heading hover:bg-muted disabled:opacity-60">
+            <button type="button" onClick={saveTemplate} disabled={savingTemplate} className="mt-2 w-full cursor-pointer rounded-control border border-border-strong bg-card px-3 py-2.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted disabled:opacity-60">
               {savingTemplate ? "Saving…" : "Save the set"}
             </button>
-            <Link href="/dashboard/prescriptions/templates" className="mt-2 inline-block text-[13px] font-semibold text-primary hover:underline">Manage your sets</Link>
+            <Link href="/dashboard/prescriptions/templates" className="mt-2 inline-block text-[length:var(--text-secondary)] font-semibold text-primary hover:underline">Manage your sets</Link>
           </div>
         </div>
 
         {/* Grows as the script does, so you can see what the patient gets
             without leaving the form. */}
         <div className="flex flex-col gap-2.5 rounded-card border border-border bg-card p-4 shadow-[var(--shadow)]">
-          <p className="text-[15px] font-semibold text-heading">What they will get</p>
+          <p className="text-[length:var(--text-body)] font-semibold text-heading">What they will get</p>
           <p className="text-xs text-text-muted">
             {patient ? `Printed for ${patient.fullName}.` : "Pick a patient and this fills in."} It
             reads exactly like this on the printed script.
@@ -341,7 +341,7 @@ export default function PrescriptionForm({ patients, templates = [], initialPati
           <ol className="flex flex-col gap-2.5">
             {items.map((item, index) => (
               <li key={index} className="border-t border-border pt-2.5 first:border-t-0 first:pt-0">
-                <span className="block text-[13px] font-semibold text-heading">
+                <span className="block text-[length:var(--text-secondary)] font-semibold text-heading">
                   {item.genericName.trim()
                     ? `${index + 1}. ${item.genericName.trim()}${item.strength ? ` ${item.strength}` : ""}`
                     : `${index + 1}. Nothing picked yet`}

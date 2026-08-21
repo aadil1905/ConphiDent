@@ -75,7 +75,7 @@ export default function AppShell({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+      if ((event.metaKey || event.ctrlKey) && event.key?.toLowerCase() === "k") {
         event.preventDefault();
         setPaletteOpen((open) => !open);
       }

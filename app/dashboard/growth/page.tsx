@@ -120,7 +120,7 @@ export default async function GrowthPage({
       actions={
         <Link
           href={listHref(BASE, view, { log: "1", invalid: "" })}
-          className="inline-flex min-h-11 items-center rounded-control bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+          className="inline-flex min-h-11 items-center rounded-control bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
         >
           Log an enquiry
         </Link>
@@ -138,7 +138,7 @@ export default async function GrowthPage({
           <RailCard title="This month so far">
             {funnel.map((step) => (
               <div key={step.label} className="flex flex-col gap-1">
-                <div className="flex items-baseline justify-between gap-2 text-[13px]">
+                <div className="flex items-baseline justify-between gap-2 text-[length:var(--text-secondary)]">
                   <span className="text-text-muted">{step.label}</span>
                   <span className="font-semibold tabular-nums text-heading">{step.value}</span>
                 </div>
@@ -241,7 +241,7 @@ export default async function GrowthPage({
           </p>
         ) : (
           metrics.sources.slice(0, 6).map((source) => (
-            <div key={source.label} className="flex items-baseline justify-between gap-3 text-[13px]">
+            <div key={source.label} className="flex items-baseline justify-between gap-3 text-[length:var(--text-secondary)]">
               <span className="text-foreground">{source.label}</span>
               <span className="tabular-nums text-text-muted">
                 {source.enquiries} · {source.treated} treated
@@ -264,7 +264,7 @@ export default async function GrowthPage({
           </p>
         ) : (
           metrics.lossReasons.slice(0, 6).map((reason) => (
-            <div key={reason.label} className="flex items-baseline justify-between gap-3 text-[13px]">
+            <div key={reason.label} className="flex items-baseline justify-between gap-3 text-[length:var(--text-secondary)]">
               <span className="text-foreground">{reason.label}</span>
               <span className="tabular-nums text-text-muted">{reason.count}</span>
             </div>

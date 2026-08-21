@@ -67,20 +67,20 @@ export function ConfirmDialog({
         onClick={(event) => event.stopPropagation()}
         className="flex w-full max-w-[460px] flex-col gap-3 rounded-card border border-border-strong bg-card p-5.5 shadow-[var(--shadow-overlay)]"
       >
-        <h2 className="text-[17px] font-semibold text-heading">{copy.title}</h2>
+        <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">{copy.title}</h2>
         <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">{copy.body}</p>
         <div className="flex flex-wrap justify-end gap-2.5">
           <button
             type="button"
             onClick={onCancel}
-            className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+            className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
           >
             {copy.keepLabel ?? "Keep it"}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className={`min-h-11 cursor-pointer rounded-control border px-4 text-[13px] font-semibold text-white ${
+            className={`min-h-11 cursor-pointer rounded-control border px-4 text-[length:var(--text-secondary)] font-semibold text-white ${
               danger ? "border-danger-mark bg-danger-mark" : "border-primary bg-primary hover:bg-primary-hover"
             }`}
           >

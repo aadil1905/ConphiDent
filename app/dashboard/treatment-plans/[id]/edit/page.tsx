@@ -17,7 +17,7 @@ export default async function EditTreatmentPlanPage({ params }: { params: Promis
       actions={
         <Link
           href={`/dashboard/treatment-plans/${plan.id}`}
-          className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted"
+          className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-4 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
         >
           See the plan
         </Link>
@@ -25,13 +25,13 @@ export default async function EditTreatmentPlanPage({ params }: { params: Promis
       context={
         <>
           <RailCard title="What this plan is worth">
-            <div className="flex items-baseline justify-between gap-2 text-[13px]">
+            <div className="flex items-baseline justify-between gap-2 text-[length:var(--text-secondary)]">
               <span className="text-text-muted">Agreed</span>
               <span className="font-semibold tabular-nums text-heading">
                 {plan.estimatedCost ? rupees(plan.estimatedCost) : "not priced"}
               </span>
             </div>
-            <div className="flex items-baseline justify-between gap-2 text-[13px]">
+            <div className="flex items-baseline justify-between gap-2 text-[length:var(--text-secondary)]">
               <span className="text-text-muted">Treatments on it</span>
               <span className="font-semibold tabular-nums text-heading">{plan.items.length}</span>
             </div>

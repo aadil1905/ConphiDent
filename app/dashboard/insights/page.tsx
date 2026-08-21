@@ -61,7 +61,7 @@ function Tile({
   const Icon = change === null ? Minus : change >= 0 ? ArrowUp : ArrowDown;
   return (
     <div className="flex flex-col gap-0.5 rounded-card border border-border bg-card px-4 py-3.5 shadow-[var(--shadow)]">
-      <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">{label}</p>
+      <p className="text-[length:var(--text-micro)] font-semibold tracking-[0.14em] text-text-muted uppercase">{label}</p>
       <p className="text-[length:var(--text-metric)] leading-[var(--text-metric-lh)] font-bold tabular-nums text-heading">{value}</p>
       <p
         className={`flex items-center gap-1.5 text-xs font-semibold ${
@@ -93,7 +93,7 @@ function Bars({
         {rows.length === 0 && <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">Nothing to show for this stretch yet.</p>}
         {rows.map((row, index) => (
           <div key={row.label} className="flex flex-col gap-1">
-            <div className="flex justify-between gap-2.5 text-[13px]">
+            <div className="flex justify-between gap-2.5 text-[length:var(--text-secondary)]">
               <span>{row.label}</span>
               <span className="font-semibold tabular-nums text-heading">{row.value}</span>
             </div>
@@ -199,7 +199,7 @@ export default async function InsightsPage({
                 key={option.key}
                 href={href({ range: option.key })}
                 aria-current={rangeKey === option.key ? "true" : undefined}
-                className={`inline-flex min-h-11 items-center rounded-control border px-3 text-[13px] font-semibold whitespace-nowrap ${
+                className={`inline-flex min-h-11 items-center rounded-control border px-3 text-[length:var(--text-secondary)] font-semibold whitespace-nowrap ${
                   rangeKey === option.key
                     ? "border-primary bg-primary-soft text-heading"
                     : "border-border bg-card text-foreground hover:bg-muted"
@@ -210,7 +210,7 @@ export default async function InsightsPage({
             ))}
             <Link
               href="/dashboard/exports"
-              className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3 text-[13px] font-semibold text-heading hover:bg-muted"
+              className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
             >
               Export
             </Link>
@@ -225,7 +225,7 @@ export default async function InsightsPage({
             href={href({ tab: option.key })}
             role="tab"
             aria-selected={tab === option.key}
-            className={`inline-flex min-h-11 flex-none items-center border-b-2 px-3.5 text-[13px] font-semibold ${
+            className={`inline-flex min-h-11 flex-none items-center border-b-2 px-3.5 text-[length:var(--text-secondary)] font-semibold ${
               tab === option.key
                 ? "border-b-primary text-heading"
                 : "border-b-transparent text-text-muted hover:text-heading"
@@ -237,8 +237,8 @@ export default async function InsightsPage({
       </div>
 
       <section className="rounded-card border border-border border-l-[3px] border-l-primary bg-card px-5.5 py-4 shadow-[var(--shadow)]">
-        <p className="text-[11px] font-semibold tracking-[0.14em] text-primary uppercase">The short version</p>
-        <p className="max-w-[62rem] text-[15px] text-pretty">{summary}</p>
+        <p className="text-[length:var(--text-micro)] font-semibold tracking-[0.14em] text-primary uppercase">The short version</p>
+        <p className="max-w-[62rem] text-[length:var(--text-body)] text-pretty">{summary}</p>
       </section>
 
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr))]">
@@ -278,7 +278,7 @@ export default async function InsightsPage({
                   title={`${week.label}: treated ${rupees(week.treated)}, collected ${rupees(week.collected)}`}
                   className="flex h-full min-w-0 flex-1 flex-col justify-end gap-1.5"
                 >
-                  <span className="text-center text-[11px] tabular-nums text-text-muted">
+                  <span className="text-center text-[length:var(--text-micro)] tabular-nums text-text-muted">
                     {short(week.treated)}
                   </span>
                   <div className="flex h-full items-end justify-center gap-[3px]">
@@ -317,7 +317,7 @@ export default async function InsightsPage({
                 {money.ageing.map((bucket) => (
                   <div
                     key={bucket.label}
-                    className="flex justify-between gap-3 border-b border-border/70 py-2 text-[13px] last:border-b-0"
+                    className="flex justify-between gap-3 border-b border-border/70 py-2 text-[length:var(--text-secondary)] last:border-b-0"
                   >
                     <span>{bucket.label}</span>
                     <span className="flex items-baseline gap-2.5">
@@ -340,7 +340,7 @@ export default async function InsightsPage({
                 ))}
                 <Link
                   href="/dashboard/billing?show=overdue"
-                  className="mt-1 inline-flex min-h-11 items-center justify-center rounded-control border border-primary bg-primary text-[13px] font-semibold text-white hover:bg-primary-hover"
+                  className="mt-1 inline-flex min-h-11 items-center justify-center rounded-control border border-primary bg-primary text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
                 >
                   Open the list to chase
                 </Link>
@@ -364,7 +364,7 @@ export default async function InsightsPage({
                   title={`${day.label}: ${day.booked} booked, ${day.completed} seen`}
                   className="flex h-full min-w-0 flex-1 flex-col justify-end gap-1.5"
                 >
-                  <span className="text-center text-[11px] tabular-nums text-text-muted">{day.booked}</span>
+                  <span className="text-center text-[length:var(--text-micro)] tabular-nums text-text-muted">{day.booked}</span>
                   <div
                     className={`rounded-t-[4px] ${
                       day.booked / dayMax > 0.9
@@ -392,7 +392,7 @@ export default async function InsightsPage({
               ].map((row) => (
                 <div
                   key={row.label}
-                  className="flex justify-between gap-3 border-b border-border/70 py-2 text-[13px] last:border-b-0"
+                  className="flex justify-between gap-3 border-b border-border/70 py-2 text-[length:var(--text-secondary)] last:border-b-0"
                 >
                   <span>{row.label}</span>
                   <span className={`font-semibold tabular-nums ${row.tone}`}>{row.value}</span>
@@ -414,7 +414,7 @@ export default async function InsightsPage({
               {funnel.map((step, index) => (
                 <div key={step.label} className="flex flex-wrap items-center gap-3">
                   <div className="flex min-w-0 flex-[1_1_300px] flex-col gap-1">
-                    <div className="flex justify-between gap-2.5 text-[13px]">
+                    <div className="flex justify-between gap-2.5 text-[length:var(--text-secondary)]">
                       <span className="font-semibold">{step.label}</span>
                       <span className="font-bold tabular-nums text-heading">{step.value}</span>
                     </div>
@@ -441,7 +441,7 @@ export default async function InsightsPage({
                 <p className="text-xs text-text-muted">Sorted by how many actually got treated.</p>
               </div>
               <div className="min-w-[460px]">
-                <div className="grid grid-cols-[minmax(120px,1fr)_100px_100px_120px] gap-3 border-b border-border bg-muted px-5.5 py-2.5 text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
+                <div className="grid grid-cols-[minmax(120px,1fr)_100px_100px_120px] gap-3 border-b border-border bg-muted px-5.5 py-2.5 text-[length:var(--text-micro)] font-semibold tracking-[0.14em] text-text-muted uppercase">
                   <span>Where from</span>
                   <span>Enquiries</span>
                   <span>Treated</span>
@@ -455,7 +455,7 @@ export default async function InsightsPage({
                 {growth.sources.map((source) => (
                   <div
                     key={source.label}
-                    className="grid grid-cols-[minmax(120px,1fr)_100px_100px_120px] items-center gap-3 border-b border-border/70 px-5.5 py-2.5 text-[13px] last:border-b-0"
+                    className="grid grid-cols-[minmax(120px,1fr)_100px_100px_120px] items-center gap-3 border-b border-border/70 px-5.5 py-2.5 text-[length:var(--text-secondary)] last:border-b-0"
                   >
                     <span className="font-semibold text-heading">{source.label}</span>
                     <span className="tabular-nums text-text-muted">{source.enquiries}</span>

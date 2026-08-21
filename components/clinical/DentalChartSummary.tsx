@@ -40,7 +40,7 @@ export default function DentalChartSummary({ entries, dentitionStage }: { entrie
 
   if (stage === "NOT_ASSESSED") {
     return (
-      <div className="rounded-control border border-dashed border-warning-border bg-warning-bg px-4 py-3.5 text-[13px] text-heading">
+      <div className="rounded-control border border-dashed border-warning-border bg-warning-bg px-4 py-3.5 text-[length:var(--text-secondary)] text-heading">
         Nobody has said which teeth this patient has yet. Open the chart and pick adult, child or mixed
         first.
       </div>
@@ -75,7 +75,7 @@ export default function DentalChartSummary({ entries, dentitionStage }: { entrie
                     aria-label={`Tooth ${pronounceFdiCode(tooth)}: ${conditionLabels[condition] || condition}`}
                     className={`inline-flex min-h-12 min-w-0 flex-col items-center justify-center rounded-chip border px-1 py-1.5 text-center ${toothClass(condition)}`}
                   >
-                    <span className="text-[13px] leading-none font-semibold tabular-nums">{tooth}</span>
+                    <span className="text-[length:var(--text-secondary)] leading-none font-semibold tabular-nums">{tooth}</span>
                   </div>
                 );
               })}

@@ -165,7 +165,7 @@ export default function BillingIdentity({
 
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-heading">Your next bill will read</span>
-            <div className="flex min-h-11 items-center rounded-control border border-dashed border-border-strong bg-muted px-3 text-[15px] font-bold tabular-nums text-heading">
+            <div className="flex min-h-11 items-center rounded-control border border-dashed border-border-strong bg-muted px-3 text-[length:var(--text-body)] font-bold tabular-nums text-heading">
               {sampleNumber}
             </div>
             <span className="text-xs text-text-muted">
@@ -236,23 +236,23 @@ export default function BillingIdentity({
       </Card>
 
       <section className={card}>
-        <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase print:hidden">
+        <p className="text-[length:var(--text-micro)] font-semibold tracking-[0.14em] text-text-muted uppercase print:hidden">
           Live preview
         </p>
         <div className="mt-2 max-w-[125mm] rounded-control border border-border p-4">
           <p className="text-sm font-bold text-heading">{clinicName}</p>
-          <p className="text-[11px] whitespace-pre-line text-text-muted">{clinicAddress}</p>
-          <p className="text-[11px] text-text-muted">
+          <p className="text-[length:var(--text-micro)] whitespace-pre-line text-text-muted">{clinicAddress}</p>
+          <p className="text-[length:var(--text-micro)] text-text-muted">
             {clinicPhone}
             {form.registrationNumber.trim() && ` · Reg. ${form.registrationNumber.trim()}`}
           </p>
 
-          <div className="mt-2.5 flex justify-between gap-2 border-y border-border py-1.5 text-[11px] text-text-muted">
+          <div className="mt-2.5 flex justify-between gap-2 border-y border-border py-1.5 text-[length:var(--text-micro)] text-text-muted">
             <span className="font-semibold tabular-nums text-heading">{sampleNumber}</span>
             <span>A bill raised today</span>
           </div>
 
-          <div className="mt-2.5 text-[11px] text-foreground">
+          <div className="mt-2.5 text-[length:var(--text-micro)] text-foreground">
             <div className="flex justify-between gap-2">
               <span>Root canal treatment · 36</span>
               <span className="tabular-nums">{rupees(9000)}</span>
@@ -269,7 +269,7 @@ export default function BillingIdentity({
             )}
           </div>
 
-          <div className="mt-1.5 flex justify-between gap-2 border-t border-border pt-1.5 text-[13px] font-bold text-heading">
+          <div className="mt-1.5 flex justify-between gap-2 border-t border-border pt-1.5 text-[length:var(--text-secondary)] font-bold text-heading">
             <span>Total</span>
             <span className="tabular-nums">{rupees(17000)}</span>
           </div>
@@ -291,7 +291,7 @@ export default function BillingIdentity({
       </section>
 
       <section className={`${card} flex flex-col gap-2.5 print:hidden`}>
-        <h2 className="text-[13px] font-semibold text-heading">
+        <h2 className="text-[length:var(--text-secondary)] font-semibold text-heading">
           {edited.length ? "About to change" : "No pending changes"}
         </h2>
         {edited.length ? (
@@ -307,7 +307,7 @@ export default function BillingIdentity({
           <button
             type="submit"
             disabled={!canSave || pending}
-            className="min-h-11 cursor-pointer rounded-control border border-primary bg-primary px-5 text-[13px] font-semibold text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:border-border-strong disabled:bg-muted disabled:text-text-muted"
+            className="min-h-11 cursor-pointer rounded-control border border-primary bg-primary px-5 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover disabled:cursor-not-allowed disabled:border-border-strong disabled:bg-muted disabled:text-text-muted"
           >
             {pending
               ? "Saving…"
@@ -321,7 +321,7 @@ export default function BillingIdentity({
             type="button"
             onClick={() => setForm(saved)}
             disabled={!edited.length}
-            className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-4 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
           >
             Discard my edits
           </button>

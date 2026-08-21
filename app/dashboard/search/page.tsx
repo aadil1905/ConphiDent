@@ -76,7 +76,7 @@ export default async function FindAnythingPage({
               className="min-h-13 w-full border-0 bg-transparent text-base text-foreground outline-none placeholder:text-text-muted"
             />
           </label>
-          <button className="min-h-13 cursor-pointer rounded-control border border-primary bg-primary px-5 text-[13px] font-semibold text-white hover:bg-primary-hover">
+          <button className="min-h-13 cursor-pointer rounded-control border border-primary bg-primary px-5 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover">
             Search
           </button>
         </form>
@@ -123,7 +123,7 @@ export default async function FindAnythingPage({
                   className="flex min-h-12 items-center rounded-control px-2.5 py-2 hover:bg-muted"
                 >
                   <span className="min-w-0">
-                    <span className="block text-[13px] font-semibold text-heading">{action.title}</span>
+                    <span className="block text-[length:var(--text-secondary)] font-semibold text-heading">{action.title}</span>
                     <span className="block truncate text-xs text-text-muted">{action.detail}</span>
                   </span>
                 </Link>
@@ -136,7 +136,7 @@ export default async function FindAnythingPage({
       {query && inScope.length === 0 && (
         <section className="flex flex-col items-center gap-2 rounded-card border border-border bg-card px-4 py-12 text-center shadow-[var(--shadow)]">
           <Search className="h-7 w-7 text-text-muted" strokeWidth={1.6} aria-hidden />
-          <p className="text-[15px] font-semibold text-heading">
+          <p className="text-[length:var(--text-body)] font-semibold text-heading">
             Nothing matches &ldquo;{query}&rdquo;
             {scope ? ` in ${(KIND_TITLES[scope] ?? scope).toLowerCase()}` : ""}
           </p>
@@ -149,7 +149,7 @@ export default async function FindAnythingPage({
             {scope ? (
               <Link
                 href={scopeHref("")}
-                className="inline-flex min-h-11 items-center rounded-control bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+                className="inline-flex min-h-11 items-center rounded-control bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
               >
                 Look in everything
               </Link>
@@ -157,13 +157,13 @@ export default async function FindAnythingPage({
               <>
                 <Link
                   href="/dashboard/patients?add=1"
-                  className="inline-flex min-h-11 items-center rounded-control bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+                  className="inline-flex min-h-11 items-center rounded-control bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
                 >
                   Add them as a new patient
                 </Link>
                 <Link
                   href="/dashboard/growth?log=1"
-                  className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted"
+                  className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-4 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
                 >
                   Log them as an enquiry
                 </Link>

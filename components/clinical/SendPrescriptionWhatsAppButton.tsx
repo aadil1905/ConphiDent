@@ -37,7 +37,7 @@ export default function SendPrescriptionWhatsAppButton({ prescriptionId }: { pre
         type="button"
         disabled={sending}
         onClick={() => gate.ask(() => void send())}
-        className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted disabled:opacity-70"
+        className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted disabled:opacity-70"
       >
         <Send className="size-3.5" aria-hidden />
         {sending ? "Sending…" : "Send on WhatsApp"}

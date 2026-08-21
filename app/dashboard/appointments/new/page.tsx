@@ -32,7 +32,6 @@ export default async function BookAVisitPage({
     patientId?: string;
     date?: string;
     time?: string;
-    returnTo?: string;
     /** An enquiry with no patient record yet still arrives with a name and number. */
     name?: string;
     phone?: string;
@@ -49,8 +48,21 @@ export default async function BookAVisitPage({
   const { byWeekday: slotsByWeekday, closedWeekdays, timezone } = await bookableSlotsByWeekday(user.clinicId);
   const clinicToday = clinicDateAtOffset(timezone, 0);
   const clinicTime = clinicNow(timezone).time;
-  const [year, month, day] = clinicToday.split("-").map(Number);
-  const windowStart = new Date(Date.UTC(year, month - 1, day));
+
+  // ?date= moves the whole seven-day window there, so a recall six months out
+  // is bookable from this screen — the strip used to stop dead at today+6.
+  // Clamped to a year; the write refuses further anyway.
+  const utcOf = (iso: string) => {
+    const [y, m, d] = iso.split("-").map(Number);
+    return Date.UTC(y, m - 1, d);
+  };
+  const requestedOffset =
+    params.date && /^\d{4}-\d{2}-\d{2}$/.test(params.date)
+      ? Math.round((utcOf(params.date) - utcOf(clinicToday)) / DAY)
+      : 0;
+  const startOffset = Math.max(0, Math.min(365, requestedOffset));
+
+  const windowStart = new Date(utcOf(clinicDateAtOffset(timezone, startOffset)));
   const windowEnd = new Date(windowStart.getTime() + DAYS_SHOWN * DAY);
 
   const [chairs, booked, patient] = await Promise.all([
@@ -78,7 +90,8 @@ export default async function BookAVisitPage({
 
   // A day's free times are the branch's configured slots minus what is booked.
   // Nothing is offered that the write would refuse — they read the same rows.
-  const days: BookableDay[] = Array.from({ length: DAYS_SHOWN }, (_, offset) => {
+  const days: BookableDay[] = Array.from({ length: DAYS_SHOWN }, (_, index) => {
+    const offset = startOffset + index;
     const iso = clinicDateAtOffset(timezone, offset);
     const weekday = weekdayOf(iso);
     const configured = slotsByWeekday.get(weekday) ?? [];
@@ -131,7 +144,7 @@ export default async function BookAVisitPage({
         actions={
           <BackLink
             fallback="/dashboard/appointments"
-            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
           >
             Back to Schedule
           </BackLink>
@@ -141,6 +154,7 @@ export default async function BookAVisitPage({
       <BookAVisit
         days={days}
         chairs={chairs.map((chair) => chair.name)}
+        todayIso={clinicToday}
         defaultIso={params.date}
         defaultTime={params.time}
         defaultPatientName={patient?.fullName ?? params.name}

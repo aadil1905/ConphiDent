@@ -16,7 +16,7 @@ import { approveLabCaseAction, createReworkAction, issueLabDeliveryAction, linkL
 const field = "min-h-11 w-full rounded-control border border-border bg-card px-3 text-sm text-foreground outline-none";
 const labelClass = "flex flex-col gap-1.5 text-xs font-semibold text-heading";
 const ghostButton =
-  "inline-flex min-h-11 items-center gap-2 rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted";
+  "inline-flex min-h-11 items-center gap-2 rounded-control border border-border-strong bg-card px-4 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted";
 
 function formatDate(value: Date | null | undefined) {
   return value ? value.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "Not recorded";
@@ -106,7 +106,7 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
               {facts.map(([label, value]) => (
                 <div key={label}>
                   <dt className="text-xs font-semibold text-text-muted">{label}</dt>
-                  <dd className="mt-0.5 text-[13px] font-semibold text-heading">{value || "—"}</dd>
+                  <dd className="mt-0.5 text-[length:var(--text-secondary)] font-semibold text-heading">{value || "—"}</dd>
                 </div>
               ))}
             </dl>
@@ -115,7 +115,7 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
                 {([["Instructions", item.notes], ["Occlusion", item.occlusionNotes], ["Bite and design", item.biteNotes]] as const)
                   .filter(([, value]) => value)
                   .map(([label, value]) => (
-                    <div key={label} className="rounded-chip bg-muted px-3 py-2.5 text-[13px]">
+                    <div key={label} className="rounded-chip bg-muted px-3 py-2.5 text-[length:var(--text-secondary)]">
                       <p className="text-xs font-semibold text-text-muted">{label}</p>
                       <p className="mt-0.5 whitespace-pre-wrap text-foreground">{value}</p>
                     </div>
@@ -141,7 +141,7 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
                     <option value="WHATSAPP_LINK">Send the link on WhatsApp</option>
                   </select>
                 </label>
-                <label className="flex items-start gap-2 text-[13px] text-foreground">
+                <label className="flex items-start gap-2 text-[length:var(--text-secondary)] text-foreground">
                   <input required type="checkbox" name="minimumNecessaryConfirmed" value="1" className="mt-0.5 size-4 accent-[var(--primary)]" />
                   This page carries only what this lab needs for this case.
                 </label>
@@ -156,7 +156,7 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
                 <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">Nothing has been sent yet.</p>
               ) : (
                 item.deliveryAttempts.map((attempt) => (
-                  <div key={attempt.id} className="flex items-center justify-between gap-3 border-t border-border/70 py-2.5 text-[13px] first:border-t-0">
+                  <div key={attempt.id} className="flex items-center justify-between gap-3 border-t border-border/70 py-2.5 text-[length:var(--text-secondary)] first:border-t-0">
                     <span className="min-w-0">
                       <span className="font-semibold text-heading">{plain(attempt.channel)}</span>
                       <span className="block text-xs text-text-muted">
@@ -180,7 +180,7 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
                 <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">Nothing said yet.</p>
               ) : (
                 item.messages.map((message) => (
-                  <div key={message.id} className={`rounded-control px-3 py-2.5 text-[13px] ${message.authorType === "LAB" ? "bg-secondary-hover" : "bg-muted"}`}>
+                  <div key={message.id} className={`rounded-control px-3 py-2.5 text-[length:var(--text-secondary)] ${message.authorType === "LAB" ? "bg-secondary-hover" : "bg-muted"}`}>
                     <p className="text-xs font-semibold text-text-muted">
                       {message.authorType === "LAB" ? item.labName : message.authorUser?.fullName || "Clinic"} · {formatDate(message.createdAt)}
                     </p>
@@ -213,7 +213,7 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
                   <a
                     key={attachment.id}
                     href={signedLabAttachmentPath(attachment.id, `clinic:${user.clinicId}`)}
-                    className="flex items-center justify-between gap-3 border-t border-border/70 py-2.5 text-[13px] first:border-t-0 hover:text-primary"
+                    className="flex items-center justify-between gap-3 border-t border-border/70 py-2.5 text-[length:var(--text-secondary)] first:border-t-0 hover:text-primary"
                   >
                     <span className="min-w-0">
                       <span className="block truncate font-semibold text-heading">{attachment.originalName}</span>
@@ -264,7 +264,7 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
                 item.imagingLinks.map((link) => {
                   const asset = link.imagingStudy.assets[0];
                   return (
-                    <div key={link.id} className="flex items-center justify-between gap-3 border-t border-border/70 py-2.5 text-[13px] first:border-t-0">
+                    <div key={link.id} className="flex items-center justify-between gap-3 border-t border-border/70 py-2.5 text-[length:var(--text-secondary)] first:border-t-0">
                       <span>
                         <span className="font-semibold text-heading">{plain(link.imagingStudy.modality)}</span>
                         <span className="block text-xs text-text-muted">
@@ -296,7 +296,7 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
                 pendingLabel="Starting…"
                 navigateToCase
                 className="mt-3.5 grid gap-3 sm:grid-cols-2"
-                buttonClassName="min-h-11 cursor-pointer rounded-control border border-danger-border bg-card px-4 text-[13px] font-semibold text-danger hover:bg-danger-bg disabled:opacity-60 sm:col-span-2"
+                buttonClassName="min-h-11 cursor-pointer rounded-control border border-danger-border bg-card px-4 text-[length:var(--text-secondary)] font-semibold text-danger hover:bg-danger-bg disabled:opacity-60 sm:col-span-2"
               >
                 <input type="hidden" name="caseId" value={item.id} />
                 <input type="hidden" name="idempotencyKey" value={randomUUID()} />
@@ -314,7 +314,7 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
                 <label className={labelClass}>New promised date *
                   <input required name="dueDate" type="date" className={field} />
                 </label>
-                <label className="flex min-h-11 items-center gap-2 text-[13px] font-semibold text-heading sm:col-span-2">
+                <label className="flex min-h-11 items-center gap-2 text-[length:var(--text-secondary)] font-semibold text-heading sm:col-span-2">
                   <input type="checkbox" name="chargeable" value="1" className="size-4 accent-[var(--primary)]" />
                   We are being charged for this remake
                 </label>
@@ -326,7 +326,7 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
             <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">Everything that has happened</h2>
             <div className="mt-3.5 grid gap-2.5 lg:grid-cols-2">
               {item.events.map((event) => (
-                <div key={event.id} className="rounded-control bg-muted px-3 py-2.5 text-[13px]">
+                <div key={event.id} className="rounded-control bg-muted px-3 py-2.5 text-[length:var(--text-secondary)]">
                   <div className="flex items-center justify-between gap-3">
                     <span className="font-semibold text-heading">{plain(event.type)}</span>
                     <time className="text-xs text-text-muted">{formatDate(event.createdAt)}</time>
@@ -358,11 +358,11 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
 
         <aside className="flex flex-col gap-6">
           <div className={`rounded-card border px-4 py-3.5 ${issues.length ? "border-warning-border bg-warning-bg" : "border-success-border bg-success-bg"}`}>
-            <h2 className="text-[13px] font-bold text-heading">
+            <h2 className="text-[length:var(--text-secondary)] font-bold text-heading">
               {issues.length ? "Before this can be approved" : "Ready to approve"}
             </h2>
             {issues.length ? (
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-[13px] text-foreground">
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-[length:var(--text-secondary)] text-foreground">
                 {issues.map((issue) => <li key={issue}>{issue}</li>)}
               </ul>
             ) : (
@@ -371,7 +371,7 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
             {["DRAFT", "REWORK"].includes(item.status) && mayApprove ? (
               <LabActionForm action={approveLabCaseAction} label="Approve it" pendingLabel="Approving…" className="mt-3.5 flex flex-col gap-3">
                 <input type="hidden" name="caseId" value={item.id} />
-                <label className="flex items-start gap-2 text-[13px] text-foreground">
+                <label className="flex items-start gap-2 text-[length:var(--text-secondary)] text-foreground">
                   <input required type="checkbox" name="approvalAttestation" value="1" className="mt-0.5 size-4 accent-[var(--primary)]" />
                   I have read the case and I am happy for it to go to the lab.
                 </label>
@@ -385,7 +385,7 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
 
           {transitions.length ? (
             <div className="rounded-card border border-border bg-card p-4 shadow-[var(--shadow)]">
-              <h2 className="text-[15px] font-semibold text-heading">Move this case on</h2>
+              <h2 className="text-[length:var(--text-body)] font-semibold text-heading">Move this case on</h2>
               <LabActionForm action={transitionLabCaseAction} label="Save the change" pendingLabel="Saving…" className="mt-3 flex flex-col gap-3">
                 <input type="hidden" name="caseId" value={item.id} />
                 <label className={labelClass}>What has happened
@@ -402,8 +402,8 @@ export default async function LaboratoryCasePage({ params }: { params: Promise<{
           ) : null}
 
           {item.materialBatchDetails || item.dispatchCarrier || item.dispatchTrackingNumber || item.dispatchNotes ? (
-            <div className="rounded-card border border-border bg-card p-4 text-[13px] shadow-[var(--shadow)]">
-              <h2 className="text-[15px] font-semibold text-heading">What the lab sent back</h2>
+            <div className="rounded-card border border-border bg-card p-4 text-[length:var(--text-secondary)] shadow-[var(--shadow)]">
+              <h2 className="text-[length:var(--text-body)] font-semibold text-heading">What the lab sent back</h2>
               {item.materialBatchDetails ? <p className="mt-1.5 text-foreground"><span className="font-semibold">Material / batch:</span> {item.materialBatchDetails}</p> : null}
               {item.dispatchCarrier || item.dispatchTrackingNumber ? (
                 <p className="mt-1.5 text-foreground">

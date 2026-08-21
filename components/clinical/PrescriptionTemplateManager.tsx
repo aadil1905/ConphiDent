@@ -106,7 +106,7 @@ export default function PrescriptionTemplateManager({ templates }: { templates: 
     }
   }
 
-  const chipButton = "inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted disabled:opacity-60";
+  const chipButton = "inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-control border border-border-strong bg-card px-4 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted disabled:opacity-60";
 
   return (
     <div className="grid items-start gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
@@ -135,7 +135,7 @@ export default function PrescriptionTemplateManager({ templates }: { templates: 
               >
                 <span className="flex items-start justify-between gap-3">
                   <span className="text-sm font-semibold text-heading">{template.name}</span>
-                  <span className={`rounded-pill px-2 py-0.5 text-[11px] font-semibold ${template.active ? "bg-success-bg text-success" : "bg-muted text-text-muted"}`}>
+                  <span className={`rounded-pill px-2 py-0.5 text-[length:var(--text-micro)] font-semibold ${template.active ? "bg-success-bg text-success" : "bg-muted text-text-muted"}`}>
                     {template.active ? "In use" : "Archived"}
                   </span>
                 </span>
@@ -203,10 +203,10 @@ export default function PrescriptionTemplateManager({ templates }: { templates: 
                 <TemplateField label="Quantity" value={item.quantity || ""} placeholder="10 tablets" onChange={(value) => updateMedicine(index, "quantity", value)} />
                 <TemplateField label="What it is for" value={item.indication || ""} onChange={(value) => updateMedicine(index, "indication", value)} />
                 <TemplateField label="Most in a day" value={item.maxDose || ""} onChange={(value) => updateMedicine(index, "maxDose", value)} />
-                <label className="flex min-h-11 items-center gap-2 self-end rounded-control border border-border bg-card px-3 text-[13px] font-semibold text-heading">
+                <label className="flex min-h-11 items-center gap-2 self-end rounded-control border border-border bg-card px-3 text-[length:var(--text-secondary)] font-semibold text-heading">
                   <input type="checkbox" checked={Boolean(item.asNeeded)} onChange={(event) => updateMedicine(index, "asNeeded", event.target.checked)} className="size-4 accent-[var(--primary)]" />Only when needed
                 </label>
-                <label className="flex min-h-11 items-center gap-2 self-end rounded-control border border-border bg-card px-3 text-[13px] font-semibold text-heading">
+                <label className="flex min-h-11 items-center gap-2 self-end rounded-control border border-border bg-card px-3 text-[length:var(--text-secondary)] font-semibold text-heading">
                   <input type="checkbox" checked={item.substitutionAllowed !== false} onChange={(event) => updateMedicine(index, "substitutionAllowed", event.target.checked)} className="size-4 accent-[var(--primary)]" />Any brand is fine
                 </label>
                 <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading sm:col-span-2 lg:col-span-4">Note for the patient
@@ -220,14 +220,14 @@ export default function PrescriptionTemplateManager({ templates }: { templates: 
         <footer className="mt-5 flex flex-col-reverse gap-2.5 border-t border-border pt-4 sm:flex-row sm:justify-between">
           <div>
             {selected?.active ? (
-              <button type="button" onClick={() => gate.ask(() => void archive())} disabled={saving} className="inline-flex min-h-11 cursor-pointer items-center rounded-control border border-danger-border bg-card px-4 text-[13px] font-semibold text-danger hover:bg-danger-bg disabled:opacity-60">
+              <button type="button" onClick={() => gate.ask(() => void archive())} disabled={saving} className="inline-flex min-h-11 cursor-pointer items-center rounded-control border border-danger-border bg-card px-4 text-[length:var(--text-secondary)] font-semibold text-danger hover:bg-danger-bg disabled:opacity-60">
                 Archive this set
               </button>
             ) : null}
           </div>
           <div className="flex gap-2.5">
             <button type="button" onClick={startNew} className={chipButton}>Start over</button>
-            <button type="submit" disabled={saving} className="inline-flex min-h-11 cursor-pointer items-center rounded-control border border-primary bg-primary px-5 text-[13px] font-semibold text-white hover:bg-primary-hover disabled:opacity-60">
+            <button type="submit" disabled={saving} className="inline-flex min-h-11 cursor-pointer items-center rounded-control border border-primary bg-primary px-5 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover disabled:opacity-60">
               {saving ? "Saving…" : selected?.active === false ? "Restore and save" : "Save the set"}
             </button>
           </div>

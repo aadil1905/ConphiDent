@@ -38,7 +38,7 @@ export default function FilterSelect({
       <select
         value={value}
         onChange={(event) => change(event.target.value)}
-        className="min-h-11 rounded-control border border-border-strong bg-card px-2.5 text-[13px] text-foreground"
+        className="min-h-11 rounded-control border border-border-strong bg-card px-2.5 text-[length:var(--text-secondary)] text-foreground"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>

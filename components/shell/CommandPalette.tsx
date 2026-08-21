@@ -42,6 +42,10 @@ export default function CommandPalette({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  // Whoever opened the palette gets focus back when it closes — the same
+  // contract NavDrawer keeps. Captured on mount, before focus moves.
+  const openerRef = useRef<HTMLElement | null>(null);
   const timerRef = useRef<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const listId = useId();
@@ -54,10 +58,35 @@ export default function CommandPalette({ onClose }: { onClose: () => void }) {
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
+    openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     inputRef.current?.focus();
+
+    // Tab must not walk out of the dialog into the page behind the scrim —
+    // the same cycle NavDrawer keeps. Arrow keys stay the way to move through
+    // results; Tab only cycles the focusable controls.
+    const trap = (event: KeyboardEvent) => {
+      if (event.key !== "Tab" || !panelRef.current) return;
+      const items = Array.from(
+        panelRef.current.querySelectorAll<HTMLElement>('input, button:not([disabled]), [tabindex]:not([tabindex="-1"])'),
+      );
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", trap);
+
     return () => {
+      document.removeEventListener("keydown", trap);
       if (timerRef.current) window.clearTimeout(timerRef.current);
       abortRef.current?.abort();
+      openerRef.current?.focus();
     };
   }, []);
 
@@ -144,6 +173,7 @@ export default function CommandPalette({ onClose }: { onClose: () => void }) {
       className="fixed inset-0 z-[95] flex items-start justify-center bg-[var(--overlay)] px-4 pt-[clamp(1rem,6vh,6rem)] pb-4 backdrop-blur-[4px] motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150"
     >
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label="Search or run a command"
@@ -164,16 +194,16 @@ export default function CommandPalette({ onClose }: { onClose: () => void }) {
             aria-controls={listId}
             aria-activedescendant={rows[activeIndex] ? `${listId}-${activeIndex}` : undefined}
             autoComplete="off"
-            className="min-w-0 flex-1 border-0 bg-transparent text-[15px] text-foreground outline-none placeholder:text-text-muted"
+            className="min-w-0 flex-1 border-0 bg-transparent text-[length:var(--text-body)] text-foreground outline-none placeholder:text-text-muted"
           />
-          <kbd className="flex-none rounded-[0.35rem] border border-border bg-muted px-1.5 py-0.5 text-[11px] font-semibold text-text-muted">
+          <kbd className="flex-none rounded-chip border border-border bg-muted px-1.5 py-0.5 text-[length:var(--text-micro)] font-semibold text-text-muted">
             Esc
           </kbd>
         </div>
 
         <div ref={listRef} id={listId} role="listbox" className="max-h-[52vh] overflow-y-auto">
           {!query.trim() && recent.length > 0 && (
-            <p className="px-4 pt-3 pb-1 text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
+            <p className="px-4 pt-3 pb-1 text-[length:var(--text-micro)] font-semibold tracking-[0.14em] text-text-muted uppercase">
               Where you were
             </p>
           )}
@@ -192,14 +222,14 @@ export default function CommandPalette({ onClose }: { onClose: () => void }) {
                 index === activeIndex ? "bg-muted" : "bg-card"
               }`}
             >
-              <span className="flex-none rounded-[0.35rem] bg-muted px-1.5 py-0.5 text-[10px] font-bold tracking-[0.14em] text-primary uppercase">
+              <span className="flex-none rounded-chip bg-muted px-1.5 py-0.5 text-[10px] font-bold tracking-[0.14em] text-primary uppercase">
                 {row.kind}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-semibold text-heading">{row.title}</span>
                 <span className="block truncate text-xs text-text-muted">{row.detail}</span>
               </span>
-              <span className="flex-none text-[11px] text-text-muted">{row.hint}</span>
+              <span className="flex-none text-[length:var(--text-micro)] text-text-muted">{row.hint}</span>
             </button>
           ))}
 
@@ -241,14 +271,14 @@ export default function CommandPalette({ onClose }: { onClose: () => void }) {
                 hint: "Open",
               })
             }
-            className="flex w-full cursor-pointer items-center gap-2 border-t border-border px-4 py-2.5 text-left text-[13px] font-semibold text-primary hover:bg-muted"
+            className="flex w-full cursor-pointer items-center gap-2 border-t border-border px-4 py-2.5 text-left text-[length:var(--text-secondary)] font-semibold text-primary hover:bg-muted"
           >
             <Search className="h-4 w-4 flex-none" aria-hidden />
             See everything matching &ldquo;{query.trim()}&rdquo;
           </button>
         )}
 
-        <div className="flex flex-wrap gap-3.5 border-t border-border bg-background px-4 py-2 text-[11px] text-text-muted">
+        <div className="flex flex-wrap gap-3.5 border-t border-border bg-background px-4 py-2 text-[length:var(--text-micro)] text-text-muted">
           <span>↑ ↓ to move</span>
           <span>Enter to open</span>
           <span>Esc to close</span>

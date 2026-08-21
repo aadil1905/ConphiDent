@@ -43,7 +43,7 @@ export default async function ExportsPage() {
       actions={
         <Link
           href="/dashboard/settings?tab=records"
-          className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+          className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
         >
           Back to Settings
         </Link>
@@ -69,7 +69,7 @@ export default async function ExportsPage() {
 
             <a
               href={sheet.href}
-              className="inline-flex min-h-11 flex-none items-center gap-2 rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+              className="inline-flex min-h-11 flex-none items-center gap-2 rounded-control border border-primary bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
             >
               <Download className="h-4 w-4" aria-hidden />
               Download

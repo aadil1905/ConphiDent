@@ -201,7 +201,7 @@ export default function GrowthQueue({
           aria-label="What to do with the ones you picked"
           className="flex flex-wrap items-center justify-between gap-3 rounded-card bg-heading px-4 py-3 text-white"
         >
-          <span className="text-[13px] font-semibold">
+          <span className="text-[length:var(--text-secondary)] font-semibold">
             {chosen.length} {chosen.length === 1 ? "person" : "people"} selected
           </span>
           <div className="flex flex-wrap items-center gap-2">
@@ -210,7 +210,7 @@ export default function GrowthQueue({
                 type="button"
                 onClick={() => setAskingToMessage(true)}
                 disabled={pending}
-                className="inline-flex min-h-11 cursor-pointer items-center rounded-control border border-white/40 px-3 text-[13px] font-semibold text-white hover:bg-white/10 disabled:opacity-60"
+                className="inline-flex min-h-11 cursor-pointer items-center rounded-control border border-white/40 px-3 text-[length:var(--text-secondary)] font-semibold text-white hover:bg-white/10 disabled:opacity-60"
               >
                 Message all of them
               </button>
@@ -224,7 +224,7 @@ export default function GrowthQueue({
                   id="growth-assignee"
                   value={assignee}
                   onChange={(event) => setAssignee(Number(event.target.value))}
-                  className="min-h-11 cursor-pointer rounded-control border border-white/40 bg-heading px-2 text-[13px] font-semibold text-white"
+                  className="min-h-11 cursor-pointer rounded-control border border-white/40 bg-heading px-2 text-[length:var(--text-secondary)] font-semibold text-white"
                 >
                   {teammates.map((mate) => (
                     <option key={mate.id} value={mate.id} className="text-heading">
@@ -236,7 +236,7 @@ export default function GrowthQueue({
                   type="button"
                   onClick={assign}
                   disabled={pending || !assignee}
-                  className="inline-flex min-h-11 cursor-pointer items-center rounded-control border border-white/40 px-3 text-[13px] font-semibold text-white hover:bg-white/10 disabled:opacity-60"
+                  className="inline-flex min-h-11 cursor-pointer items-center rounded-control border border-white/40 px-3 text-[length:var(--text-secondary)] font-semibold text-white hover:bg-white/10 disabled:opacity-60"
                 >
                   Give them to {firstName(teammates.find((mate) => mate.id === assignee)?.name ?? "")}
                 </button>
@@ -245,7 +245,7 @@ export default function GrowthQueue({
             <button
               type="button"
               onClick={() => setSelected([])}
-              className="inline-flex min-h-11 cursor-pointer items-center rounded-control bg-white/15 px-3 text-[13px] font-semibold text-white hover:bg-white/25"
+              className="inline-flex min-h-11 cursor-pointer items-center rounded-control bg-white/15 px-3 text-[length:var(--text-secondary)] font-semibold text-white hover:bg-white/25"
             >
               Clear
             </button>
@@ -283,7 +283,7 @@ export default function GrowthQueue({
         {rows.length === 0 ? (
           <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
             <CheckCheck className="h-7 w-7 text-success" strokeWidth={1.6} aria-hidden />
-            <p className="text-[15px] font-semibold text-heading">{emptyTitle}</p>
+            <p className="text-[length:var(--text-body)] font-semibold text-heading">{emptyTitle}</p>
             <p className="max-w-[32rem] text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">{emptyBody}</p>
           </div>
         ) : (
@@ -324,7 +324,7 @@ export default function GrowthQueue({
                         <span className="text-sm font-semibold text-heading">{row.name}</span>
                       )}
                       <span
-                        className={`rounded-pill px-2 py-0.5 text-[11px] font-semibold ${
+                        className={`rounded-pill px-2 py-0.5 text-[length:var(--text-micro)] font-semibold ${
                           row.isPatient ? "bg-secondary text-heading" : "bg-warning-bg text-warning"
                         }`}
                       >
@@ -338,7 +338,7 @@ export default function GrowthQueue({
                   </div>
 
                   <div className="col-span-2 min-w-0 md:col-span-1">
-                    <p className={`text-[13px] font-semibold ${toneText[row.tone]}`} title={row.dueExact}>
+                    <p className={`text-[length:var(--text-secondary)] font-semibold ${toneText[row.tone]}`} title={row.dueExact}>
                       {row.dueLabel}
                     </p>
                     <p className="text-xs text-text-muted">{row.stage}</p>
@@ -351,7 +351,7 @@ export default function GrowthQueue({
                         type="button"
                         onClick={() => reopen(row)}
                         disabled={pending}
-                        className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-control bg-primary px-3 text-[13px] font-semibold whitespace-nowrap text-white hover:bg-primary-hover disabled:opacity-60"
+                        className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-control bg-primary px-3 text-[length:var(--text-secondary)] font-semibold whitespace-nowrap text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
                       >
                         Bring them back
                       </button>
@@ -359,7 +359,7 @@ export default function GrowthQueue({
                       <>
                         <Link
                           href={row.bookHref}
-                          className="inline-flex min-h-11 items-center justify-center rounded-control bg-primary px-3 text-[13px] font-semibold whitespace-nowrap text-white hover:bg-primary-hover"
+                          className="inline-flex min-h-11 items-center justify-center rounded-control bg-primary px-3 text-[length:var(--text-secondary)] font-semibold whitespace-nowrap text-primary-foreground hover:bg-primary-hover"
                         >
                           {row.primaryLabel}
                         </Link>
@@ -400,7 +400,7 @@ export default function GrowthQueue({
             onClick={(event) => event.stopPropagation()}
             className="flex w-full max-w-[440px] flex-col gap-3 rounded-card border border-border-strong bg-card p-5 shadow-[var(--shadow-overlay)]"
           >
-            <h2 className="text-[17px] font-semibold text-heading">
+            <h2 className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">
               How did it end with {firstName(closing.name)}?
             </h2>
             <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
@@ -412,7 +412,7 @@ export default function GrowthQueue({
                   key={outcome.value}
                   type="button"
                   onClick={() => close(closing, outcome)}
-                  className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-3 text-left text-[13px] font-semibold text-heading hover:bg-muted"
+                  className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-3 text-left text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
                 >
                   {outcome.label}
                 </button>
@@ -421,7 +421,7 @@ export default function GrowthQueue({
             <button
               type="button"
               onClick={() => setClosing(null)}
-              className="self-end min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+              className="self-end min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
             >
               Keep them in the queue
             </button>

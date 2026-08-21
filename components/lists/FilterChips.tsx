@@ -37,7 +37,7 @@ export default function FilterChips({
             key={option.value || "all"}
             href={listHref(basePath, query, { [name]: active ? "" : option.value, page: 1 })}
             aria-current={active ? "true" : undefined}
-            className={`inline-flex min-h-11 items-center gap-1.5 rounded-control border px-3 text-[13px] font-semibold whitespace-nowrap ${
+            className={`inline-flex min-h-11 items-center gap-1.5 rounded-control border px-3 text-[length:var(--text-secondary)] font-semibold whitespace-nowrap ${
               active
                 ? "border-primary bg-primary-soft text-heading"
                 : "border-border bg-card text-foreground hover:bg-muted"

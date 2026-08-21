@@ -14,9 +14,9 @@ function Submit({ label, pendingLabel, tone = "primary" }: { label: string; pend
       ? "border-danger-border bg-card text-danger hover:bg-danger-bg"
       : tone === "secondary"
         ? "border-border-strong bg-card text-heading hover:bg-muted"
-        : "border-primary bg-primary text-white hover:bg-primary-hover";
+        : "border-primary bg-primary text-primary-foreground hover:bg-primary-hover";
   return (
-    <button type="submit" disabled={pending} className={`min-h-11 cursor-pointer rounded-control border px-4 text-[13px] font-semibold disabled:opacity-60 ${classes}`}>
+    <button type="submit" disabled={pending} className={`min-h-11 cursor-pointer rounded-control border px-4 text-[length:var(--text-secondary)] font-semibold disabled:opacity-60 ${classes}`}>
       {pending ? pendingLabel : label}
     </button>
   );
@@ -63,7 +63,7 @@ export default function ImagingActionForm({
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <Submit label={label} pendingLabel={pendingLabel} tone={tone} />
         {state.message ? (
-          <p role="status" className={`text-[13px] ${state.ok ? "text-success" : "text-danger"}`}>
+          <p role="status" className={`text-[length:var(--text-secondary)] ${state.ok ? "text-success" : "text-danger"}`}>
             {state.message}
           </p>
         ) : null}

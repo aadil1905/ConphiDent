@@ -112,19 +112,19 @@ export default async function PrescriptionsPage({
                 form, so nobody could set them up before writing their first. */}
             <Link
               href={`${BASE}/profile`}
-              className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+              className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
             >
               Your prescriber details
             </Link>
             <Link
               href={`${BASE}/templates`}
-              className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+              className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
             >
               Saved sets
             </Link>
             <Link
               href={`${BASE}/new`}
-              className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+              className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
             >
               Write a prescription
             </Link>
@@ -228,9 +228,9 @@ export default async function PrescriptionsPage({
               <ListCell align="right" interactive>
                 <Link
                   href={draft ? `${BASE}/${script.id}/edit` : `${BASE}/${script.id}/print`}
-                  className={`inline-flex min-h-11 items-center justify-center rounded-control px-3.5 text-[13px] font-semibold whitespace-nowrap ${
+                  className={`inline-flex min-h-11 items-center justify-center rounded-control px-3.5 text-[length:var(--text-secondary)] font-semibold whitespace-nowrap ${
                     draft
-                      ? "border border-primary bg-primary text-white hover:bg-primary-hover"
+                      ? "border border-primary bg-primary text-primary-foreground hover:bg-primary-hover"
                       : "border border-border-strong bg-card text-heading hover:bg-muted"
                   }`}
                 >

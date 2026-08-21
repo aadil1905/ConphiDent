@@ -24,7 +24,7 @@ export default function WhatsAppConsentSubmitButton({ label = "Send on WhatsApp"
           form.current = event.currentTarget.form;
           setAsking(true);
         }}
-        className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+        className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-control border border-primary bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
       >
         <MessageCircle className="size-4" aria-hidden />
         {label}

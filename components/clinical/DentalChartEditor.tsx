@@ -451,7 +451,7 @@ export default function DentalChartEditor({
               shifted, and the form landed nowhere near where the user tapped. */}
           <div className="mt-4 min-h-[7.5rem] rounded-control border border-border bg-muted/50 p-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h3 className="text-[15px] font-semibold text-heading">Record on {selectionLabel}</h3>
+              <h3 className="text-[length:var(--text-body)] font-semibold text-heading">Record on {selectionLabel}</h3>
               {selectedTeeth.length > 0 && (
                 <span className="text-xs tabular-nums text-text-muted">{selectedTeeth.join(", ")}</span>
               )}
@@ -519,7 +519,7 @@ export default function DentalChartEditor({
                               : [...current, value],
                           )
                         }
-                        className={`min-h-11 min-w-11 cursor-pointer rounded-chip border px-2.5 text-[13px] font-semibold ${
+                        className={`min-h-11 min-w-11 cursor-pointer rounded-chip border px-2.5 text-[length:var(--text-secondary)] font-semibold ${
                           surfaces.includes(value)
                             ? "border-primary bg-secondary text-heading"
                             : "border-border-strong bg-card text-heading hover:bg-muted"
@@ -542,7 +542,7 @@ export default function DentalChartEditor({
                 </label>
 
                 {result && !result.ok && (
-                  <p role="status" className="rounded-chip border border-danger-border bg-danger-bg px-3 py-2 text-[13px] text-danger">
+                  <p role="status" className="rounded-chip border border-danger-border bg-danger-bg px-3 py-2 text-[length:var(--text-secondary)] text-danger">
                     {result.message}
                   </p>
                 )}
@@ -552,7 +552,7 @@ export default function DentalChartEditor({
                     type="button"
                     onClick={record}
                     disabled={isSaving || stage === "NOT_ASSESSED"}
-                    className="min-h-12 flex-1 cursor-pointer rounded-control border border-primary bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
+                    className="min-h-12 flex-1 cursor-pointer rounded-control border border-primary bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
                   >
                     {isSaving ? "Adding…" : "Add to the chart"}
                   </button>
@@ -573,7 +573,7 @@ export default function DentalChartEditor({
                     className="rounded-control border border-border bg-card px-3.5 py-3"
                   >
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <h3 className="flex items-center gap-2 text-[13px] font-semibold text-heading">
+                      <h3 className="flex items-center gap-2 text-[length:var(--text-secondary)] font-semibold text-heading">
                         <History className="size-4 text-primary" aria-hidden />
                         Everything about tooth {oneTooth}
                       </h3>
@@ -595,7 +595,7 @@ export default function DentalChartEditor({
                         {history.entries.map((row) => (
                           <li
                             key={row.id}
-                            className={`flex flex-wrap items-baseline gap-x-2 gap-y-0.5 border-b border-border/70 py-2 text-[13px] last:border-b-0 ${
+                            className={`flex flex-wrap items-baseline gap-x-2 gap-y-0.5 border-b border-border/70 py-2 text-[length:var(--text-secondary)] last:border-b-0 ${
                               row.state === "CURRENT" ? "text-foreground" : "text-text-muted"
                             }`}
                           >
@@ -632,7 +632,7 @@ export default function DentalChartEditor({
                   className="rounded-control border border-border bg-card px-3.5 py-3"
                   onToggle={(event) => setXrayOpen(event.currentTarget.open)}
                 >
-                  <summary className="flex cursor-pointer list-none items-center gap-2 text-[13px] font-semibold text-heading">
+                  <summary className="flex cursor-pointer list-none items-center gap-2 text-[length:var(--text-secondary)] font-semibold text-heading">
                     <FileImage className="size-4 text-primary" />
                     Attach an X-ray for {selectionLabel}
                   </summary>
@@ -675,7 +675,7 @@ export default function DentalChartEditor({
                 key={entry.id}
                 className="grid items-center gap-3 border-t border-border/80 px-5.5 py-2.5 sm:grid-cols-[90px_minmax(0,1fr)_auto]"
               >
-                <span className="text-[13px] font-semibold tabular-nums text-heading">{entry.teeth}</span>
+                <span className="text-[length:var(--text-secondary)] font-semibold tabular-nums text-heading">{entry.teeth}</span>
                 <div className="min-w-0">
                   <p className="text-sm text-foreground">{entry.what}</p>
                   <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">{entry.detail}</p>

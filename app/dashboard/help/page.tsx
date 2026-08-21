@@ -56,7 +56,7 @@ export default function HelpPage() {
         actions={
           <Link
             href="/dashboard/settings?tab=records"
-            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
           >
             Back to Settings
           </Link>
@@ -73,7 +73,7 @@ export default function HelpPage() {
             <p className="mt-1.5 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">{item.answer}</p>
             <Link
               href={item.href}
-              className="mt-3 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold text-primary hover:underline"
+              className="mt-3 inline-flex min-h-11 items-center gap-1.5 text-[length:var(--text-secondary)] font-semibold text-primary hover:underline"
             >
               {item.label}
               <ArrowRight className="h-4 w-4" aria-hidden />

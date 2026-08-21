@@ -95,18 +95,18 @@ export default function TopBar({
           branch — it is what tells you whose day you are looking at. The
           freshness still has a home, on the notification panel it describes. */}
       <div className="min-w-0 flex-[1_1_200px]">
-        <p className="truncate text-[15px] font-semibold text-heading">{clinicName}</p>
+        <p className="truncate text-[length:var(--text-body)] font-semibold text-heading">{clinicName}</p>
         <p className="truncate text-xs text-text-muted">{branch}</p>
       </div>
 
       <button
         type="button"
         onClick={onOpenPalette}
-        className="flex min-h-11 flex-[1_1_220px] cursor-pointer items-center gap-2 rounded-control border border-border bg-card px-3 text-left text-[13px] text-text-muted transition-colors duration-150 hover:border-border-strong sm:max-w-[420px]"
+        className="flex min-h-11 flex-[1_1_220px] cursor-pointer items-center gap-2 rounded-control border border-border bg-card px-3 text-left text-[length:var(--text-secondary)] text-text-muted transition-colors duration-150 hover:border-border-strong sm:max-w-[420px]"
       >
         <Search className="h-[15px] w-[15px] flex-none" aria-hidden />
         <span className="flex-1 truncate">Search or jump to anything</span>
-        <kbd className="flex-none rounded-[0.35rem] border border-border bg-muted px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap text-text-muted">
+        <kbd className="flex-none rounded-chip border border-border bg-muted px-1.5 py-0.5 text-[length:var(--text-micro)] font-semibold whitespace-nowrap text-text-muted">
           {paletteHint}
         </kbd>
       </button>
@@ -117,7 +117,7 @@ export default function TopBar({
       <div className="ml-auto flex flex-none items-center gap-2">
         <Link
           href="/dashboard/appointments/new"
-          className="inline-flex min-h-11 items-center rounded-control bg-primary px-3.5 text-[13px] font-semibold whitespace-nowrap text-white transition-colors duration-150 hover:bg-primary-hover"
+          className="inline-flex min-h-11 items-center rounded-control bg-primary px-3.5 text-[length:var(--text-secondary)] font-semibold whitespace-nowrap text-primary-foreground transition-colors duration-150 hover:bg-primary-hover"
         >
           Book
         </Link>
@@ -144,8 +144,8 @@ export default function TopBar({
           {bellOpen && (
             <div className="absolute right-0 top-[calc(100%+8px)] max-h-[min(70vh,480px)] w-[340px] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-card border border-border bg-card shadow-[var(--shadow-overlay)] motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-150">
               <div className="flex items-baseline justify-between border-b border-border px-3.5 py-2.5">
-                <span className="text-[13px] font-semibold text-heading">Needs you</span>
-                <span className="text-[11px] text-text-muted">{freshness}</span>
+                <span className="text-[length:var(--text-secondary)] font-semibold text-heading">Needs you</span>
+                <span className="text-[length:var(--text-micro)] text-text-muted">{freshness}</span>
               </div>
               {alerts.length === 0 ? (
                 <p className="px-3.5 py-5 text-center text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">

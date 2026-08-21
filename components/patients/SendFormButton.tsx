@@ -32,9 +32,9 @@ export default function SendFormButton({
       type="button"
       onClick={send}
       disabled={sending}
-      className={`min-h-11 cursor-pointer rounded-control border px-3 text-[13px] font-semibold disabled:opacity-70 ${
+      className={`min-h-11 cursor-pointer rounded-control border px-3 text-[length:var(--text-secondary)] font-semibold disabled:opacity-70 ${
         primary
-          ? "border-primary bg-primary text-white hover:bg-primary-hover"
+          ? "border-primary bg-primary text-primary-foreground hover:bg-primary-hover"
           : "border-border-strong bg-card text-heading hover:bg-muted"
       }`}
     >

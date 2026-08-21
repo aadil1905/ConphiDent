@@ -39,10 +39,10 @@ function zonedLocalToIso(value: string, timeZone: string) {
 function Step({ number, title }: { number: number; title: string }) {
   return (
     <div className="flex items-center gap-2.5 border-b border-border pb-2 sm:col-span-2">
-      <span className="grid h-6 w-6 flex-none place-items-center rounded-pill bg-primary text-[11px] font-bold text-white">
+      <span className="grid h-6 w-6 flex-none place-items-center rounded-pill bg-primary text-[length:var(--text-micro)] font-bold text-primary-foreground">
         {number}
       </span>
-      <h3 className="text-[13px] font-semibold text-heading">{title}</h3>
+      <h3 className="text-[length:var(--text-secondary)] font-semibold text-heading">{title}</h3>
     </div>
   );
 }
@@ -138,7 +138,7 @@ export default function ImagingImportForm({
             type="file"
             accept=".dcm,application/dicom,image/jpeg,image/png,image/tiff"
             required
-            className="min-h-11 w-full rounded-control border border-border bg-card p-2 text-sm font-normal text-foreground file:mr-3 file:rounded-chip file:border-0 file:bg-primary file:px-3 file:py-2 file:font-semibold file:text-white"
+            className="min-h-11 w-full rounded-control border border-border bg-card p-2 text-sm font-normal text-foreground file:mr-3 file:rounded-chip file:border-0 file:bg-primary file:px-3 file:py-2 file:font-semibold file:text-primary-foreground"
           />
           <span className="text-xs font-normal text-text-muted">DICOM, JPEG, PNG or TIFF, up to 50 MB. The patient&rsquo;s name is never part of the stored filename.</span>
         </label>
@@ -149,7 +149,7 @@ export default function ImagingImportForm({
             <span className="text-xs font-normal text-text-muted">Leave it empty and it waits in the no-name queue.</span>
           </label>
         ) : (
-          <div className="rounded-control border border-success-border bg-success-bg px-3 py-2.5 text-[13px] text-success">
+          <div className="rounded-control border border-success-border bg-success-bg px-3 py-2.5 text-[length:var(--text-secondary)] text-success">
             <strong className="font-semibold">Patient linked</strong>
             <span className="mt-0.5 block text-xs">
               {clinicalContext
@@ -169,7 +169,7 @@ export default function ImagingImportForm({
               ["POST_TREATMENT", "After", "Taken after the work"],
               ["OTHER", "Something else", "Check-up or reference"],
             ].map(([value, label, hint]) => (
-              <label key={value} className="flex min-h-11 cursor-pointer items-start gap-2 rounded-control border border-border bg-card p-3 text-[13px]">
+              <label key={value} className="flex min-h-11 cursor-pointer items-start gap-2 rounded-control border border-border bg-card p-3 text-[length:var(--text-secondary)]">
                 <input type="radio" name="treatmentStage" value={value} defaultChecked={value === "PRE_TREATMENT"} className="mt-0.5 size-4 accent-[var(--primary)]" />
                 <span>
                   <strong className="block font-semibold text-heading">{label}</strong>
@@ -230,7 +230,7 @@ export default function ImagingImportForm({
       {state.kind !== "idle" ? (
         <div
           role="status"
-          className={`rounded-control border px-3 py-2.5 text-[13px] ${
+          className={`rounded-control border px-3 py-2.5 text-[length:var(--text-secondary)] ${
             state.kind === "error"
               ? "border-danger-border bg-danger-bg text-danger"
               : state.kind === "success"
@@ -259,7 +259,7 @@ export default function ImagingImportForm({
         <button
           type="submit"
           disabled={state.kind === "uploading"}
-          className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+          className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-control border border-primary bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
         >
           {state.kind === "uploading" ? `Bringing it in — ${state.progress}%` : "Bring it in"}
         </button>
@@ -271,7 +271,7 @@ export default function ImagingImportForm({
             setResetVersion((value) => value + 1);
             setState({ kind: "idle", message: "", progress: 0 });
           }}
-          className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted disabled:opacity-60"
+          className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-control border border-border-strong bg-card px-4 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted disabled:opacity-60"
         >
           Start over
         </button>

@@ -63,11 +63,11 @@ export default function RecentlyOpened() {
               href={row.href}
               className="flex min-h-12 items-center gap-2.5 rounded-control px-2.5 py-2 hover:bg-muted"
             >
-              <span className="flex h-8 w-8 flex-none items-center justify-center rounded-pill bg-secondary text-[11px] font-bold text-heading">
+              <span className="flex h-8 w-8 flex-none items-center justify-center rounded-pill bg-secondary text-[length:var(--text-micro)] font-bold text-heading">
                 {initialsOf(row.title)}
               </span>
               <span className="min-w-0">
-                <span className="block truncate text-[13px] font-semibold text-heading">{row.title}</span>
+                <span className="block truncate text-[length:var(--text-secondary)] font-semibold text-heading">{row.title}</span>
                 <span className="block truncate text-xs text-text-muted">{row.detail}</span>
               </span>
             </Link>

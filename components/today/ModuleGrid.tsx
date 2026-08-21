@@ -75,11 +75,11 @@ export default function ModuleGrid({ modules }: { modules: ModuleTile[] }) {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-semibold text-heading">{module.label}</span>
-                <span className={`block truncate text-[12.5px] ${tone.sub}`}>{module.sub}</span>
+                <span className={`block truncate text-[length:var(--text-secondary)] ${tone.sub}`}>{module.sub}</span>
               </span>
               {module.badge && (
                 <span
-                  className={`inline-flex min-w-[22px] flex-none items-center justify-center rounded-pill px-1.5 py-0.5 text-[11px] font-bold tabular-nums ${tone.badgeBg} ${tone.badgeInk}`}
+                  className={`inline-flex min-w-[22px] flex-none items-center justify-center rounded-pill px-1.5 py-0.5 text-[length:var(--text-micro)] font-bold tabular-nums ${tone.badgeBg} ${tone.badgeInk}`}
                 >
                   {module.badge}
                 </span>

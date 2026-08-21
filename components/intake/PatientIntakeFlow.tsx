@@ -37,7 +37,7 @@ const field =
 const label = "flex flex-col gap-1.5";
 const labelText = "text-xs font-semibold text-heading";
 const primaryButton =
-  "min-h-11 cursor-pointer rounded-control border border-primary bg-primary px-5 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-70";
+  "min-h-11 cursor-pointer rounded-control border border-primary bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary-hover disabled:opacity-70";
 const quietButton =
   "min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-4 text-sm font-semibold text-heading hover:bg-muted";
 
@@ -191,7 +191,7 @@ export default function PatientIntakeFlow({
           <h1 className="text-[22px] font-bold text-heading">
             Thank you, {fullName.split(" ")[0] || "you"}
           </h1>
-          <p className="mt-1.5 text-[15px] text-foreground">
+          <p className="mt-1.5 text-[length:var(--text-body)] text-foreground">
             The clinic will read this before you arrive. You can close this page.
           </p>
         </div>
@@ -204,16 +204,16 @@ export default function PatientIntakeFlow({
     <>
       <div>
         <h1 className="text-[28px] leading-tight font-bold text-heading">Before your visit</h1>
-        <p className="mt-1.5 text-[13px] text-text-muted">
+        <p className="mt-1.5 text-[length:var(--text-secondary)] text-text-muted">
           Please fill this form. It takes about 3 minutes and the clinic will see it before you arrive.
           This link is valid for 7 days.
         </p>
-        {visitLine && <p className="mt-2 text-[13px] text-foreground">{visitLine}</p>}
+        {visitLine && <p className="mt-2 text-[length:var(--text-secondary)] text-foreground">{visitLine}</p>}
       </div>
 
       {/* Step indicator, in the same quiet voice as the rest of the page. */}
       <div className="flex flex-col gap-1.5">
-        <div className="flex justify-between gap-3 text-[13px] text-text-muted">
+        <div className="flex justify-between gap-3 text-[length:var(--text-secondary)] text-text-muted">
           <span>
             Step {step + 1} of {STEPS.length} · {STEPS[step]}
           </span>
@@ -331,7 +331,7 @@ export default function PatientIntakeFlow({
           </Section>
 
           <Section title="Medical history">
-            <p className="-mt-3 text-[13px] text-text-muted">Tick anything that applies to you.</p>
+            <p className="-mt-3 text-[length:var(--text-secondary)] text-text-muted">Tick anything that applies to you.</p>
             <div className="grid gap-x-5 gap-y-2.5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))]">
               {CONDITIONS.map((name) => (
                 <label key={name} className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm">

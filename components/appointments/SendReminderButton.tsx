@@ -52,7 +52,7 @@ export default function SendReminderButton({ appointmentId, sentAt }: { appointm
         type="button"
         disabled={sending}
         onClick={() => gate.ask(() => void sendReminder())}
-        className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover disabled:opacity-70"
+        className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-control border border-primary bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover disabled:opacity-70"
       >
         {sending ? (
           <>

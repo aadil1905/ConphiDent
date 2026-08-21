@@ -90,7 +90,7 @@ export default function PaymentForm({
       <button
         type="submit"
         disabled={saving || outstanding === 0}
-        className="min-h-11 w-fit cursor-pointer rounded-control border border-primary bg-primary px-5 text-[13px] font-semibold text-white hover:bg-primary-hover disabled:opacity-70"
+        className="min-h-11 w-fit cursor-pointer rounded-control border border-primary bg-primary px-5 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover disabled:opacity-70"
       >
         {saving ? "Saving…" : "Take it"}
       </button>

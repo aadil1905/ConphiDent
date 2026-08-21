@@ -51,7 +51,7 @@ function Tile({
 }) {
   return (
     <div className="rounded-card border border-border bg-card px-4 py-3.5 shadow-[var(--shadow)]">
-      <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">{label}</p>
+      <p className="text-[length:var(--text-micro)] font-semibold tracking-[0.14em] text-text-muted uppercase">{label}</p>
       <p className={`text-[length:var(--text-metric)] leading-[var(--text-metric-lh)] font-bold tabular-nums ${tone}`}>{value}</p>
       <p className="text-xs text-text-muted">{note}</p>
     </div>
@@ -156,7 +156,7 @@ export default async function TreatmentPlansPage({
         actions={
           <Link
             href="/dashboard/treatment-plans/new"
-            className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+            className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
           >
             New plan
           </Link>
@@ -275,12 +275,12 @@ export default async function TreatmentPlansPage({
                     >
                       <span className={`block h-full ${state.bar}`} style={{ width: `${pct}%` }} />
                     </span>
-                    <span className="mt-1 block text-[11px] text-text-muted">
+                    <span className="mt-1 block text-[length:var(--text-micro)] text-text-muted">
                       {rupees(invoiced)} of {rupees(priced)} invoiced
                     </span>
                   </>
                 ) : (
-                  <span className="text-[11px] text-text-muted">no price on the plan yet</span>
+                  <span className="text-[length:var(--text-micro)] text-text-muted">no price on the plan yet</span>
                 )}
               </ListCell>
               <ListCell>
@@ -297,9 +297,9 @@ export default async function TreatmentPlansPage({
                       ? `/dashboard/appointments/new?patientId=${plan.patientId}`
                       : `${BASE}/${plan.id}/edit`
                   }
-                  className={`inline-flex min-h-11 items-center justify-center rounded-control px-3.5 text-[13px] font-semibold whitespace-nowrap ${
+                  className={`inline-flex min-h-11 items-center justify-center rounded-control px-3.5 text-[length:var(--text-secondary)] font-semibold whitespace-nowrap ${
                     chase
-                      ? "border border-primary bg-primary text-white hover:bg-primary-hover"
+                      ? "border border-primary bg-primary text-primary-foreground hover:bg-primary-hover"
                       : "border border-border-strong bg-card text-heading hover:bg-muted"
                   }`}
                 >

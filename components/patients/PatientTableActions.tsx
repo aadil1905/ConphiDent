@@ -34,20 +34,20 @@ export default function PatientTableActions({
     <div className="flex justify-end gap-2">
       <Link
         href={`/dashboard/patients/${patientId}`}
-        className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+        className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
       >
         Open
       </Link>
       <Link
         href={`/dashboard/patients/${patientId}/edit`}
-        className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+        className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
       >
         Edit
       </Link>
       <button
         type="button"
         onClick={() => gate.ask(() => void archive())}
-        className="inline-flex min-h-11 cursor-pointer items-center rounded-control border border-danger-border bg-danger-bg px-3.5 text-[13px] font-semibold text-danger hover:brightness-95"
+        className="inline-flex min-h-11 cursor-pointer items-center rounded-control border border-danger-border bg-danger-bg px-3.5 text-[length:var(--text-secondary)] font-semibold text-danger hover:brightness-95"
       >
         Take off the list
       </button>

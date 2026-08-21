@@ -22,7 +22,7 @@ type ReviewStudy = {
 };
 
 const textarea = "w-full rounded-control border border-border bg-card p-3 text-sm font-normal text-foreground outline-none";
-const summaryClass = "flex cursor-pointer list-none items-center gap-2 text-[13px] font-semibold text-heading";
+const summaryClass = "flex cursor-pointer list-none items-center gap-2 text-[length:var(--text-secondary)] font-semibold text-heading";
 
 export function ImagingReviewActions({ study, canMatch, canSign }: { study: ReviewStudy; canMatch: boolean; canSign: boolean }) {
   return (
@@ -34,7 +34,7 @@ export function ImagingReviewActions({ study, canMatch, canSign }: { study: Revi
             {study.patient?.fullName || "No name on it"} · {study.acquisitionLabel}
           </p>
         </div>
-        <span className={`rounded-pill px-2.5 py-0.5 text-[11px] font-semibold ${study.matchStatus === "UNMATCHED" ? "bg-warning-bg text-warning" : "bg-muted text-heading"}`}>
+        <span className={`rounded-pill px-2.5 py-0.5 text-[length:var(--text-micro)] font-semibold ${study.matchStatus === "UNMATCHED" ? "bg-warning-bg text-warning" : "bg-muted text-heading"}`}>
           {study.matchStatus === "UNMATCHED" ? "Needs a name" : study.status === "REVIEWED" ? "Read" : "Not read yet"}
         </span>
       </div>
@@ -136,7 +136,7 @@ export function ImagingComparisonForm() {
 
   return (
     <ImagingActionForm action={createImagingComparisonAction} label="Save the comparison" pendingLabel="Saving…" className="grid gap-3">
-      <p className="text-[15px] font-semibold text-heading">Before and after, side by side</p>
+      <p className="text-[length:var(--text-body)] font-semibold text-heading">Before and after, side by side</p>
       <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">Which patient
         <PatientSearchSelect name="comparisonPatientId" required onSelect={load} />
       </label>
@@ -145,7 +145,7 @@ export function ImagingComparisonForm() {
           <LoaderCircle className="size-4 animate-spin" aria-hidden />Finding their X-rays…
         </p>
       ) : null}
-      {error ? <p role="alert" className="text-[13px] text-danger">{error}</p> : null}
+      {error ? <p role="alert" className="text-[length:var(--text-secondary)] text-danger">{error}</p> : null}
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">The earlier one
           <select name="baselineStudyId" required defaultValue="" className={select}>

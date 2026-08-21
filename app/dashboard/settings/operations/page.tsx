@@ -88,7 +88,7 @@ export default async function ClinicOperationsPage({
         actions={
           <Link
             href="/dashboard/settings"
-            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted"
+            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
           >
             Back to Settings
           </Link>
@@ -98,7 +98,7 @@ export default async function ClinicOperationsPage({
       {refusal && (
         <p
           role="alert"
-          className="rounded-control border border-danger-border bg-danger-bg px-3.5 py-3 text-[13px] text-danger"
+          className="rounded-control border border-danger-border bg-danger-bg px-3.5 py-3 text-[length:var(--text-secondary)] text-danger"
         >
           {refusal}
         </p>
@@ -133,7 +133,7 @@ export default async function ClinicOperationsPage({
             <span className="text-xs font-semibold text-heading">What it costs</span>
             <input name="price" type="number" min="0" step="1" placeholder="Optional" className={`${field} tabular-nums`} />
           </label>
-          <button className="min-h-11 w-fit cursor-pointer rounded-control border border-primary bg-primary px-5 text-[13px] font-semibold text-white hover:bg-primary-hover">
+          <button className="min-h-11 w-fit cursor-pointer rounded-control border border-primary bg-primary px-5 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover">
             Add it
           </button>
         </form>
@@ -154,7 +154,7 @@ export default async function ClinicOperationsPage({
                     <p className="text-sm font-semibold text-heading">
                       {service.name}
                       {!service.active && (
-                        <span className="ml-2 rounded-pill bg-warning-bg px-2 py-0.5 text-[11px] font-semibold text-warning">
+                        <span className="ml-2 rounded-pill bg-warning-bg px-2 py-0.5 text-[length:var(--text-micro)] font-semibold text-warning">
                           Switched off
                         </span>
                       )}
@@ -173,7 +173,7 @@ export default async function ClinicOperationsPage({
                     <form action={toggleServiceAction}>
                       <input type="hidden" name="id" value={service.id} />
                       <input type="hidden" name="active" value={String(!service.active)} />
-                      <button className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-3.5 text-[13px] font-semibold text-heading hover:bg-muted">
+                      <button className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted">
                         {service.active ? "Switch off" : "Switch on"}
                       </button>
                     </form>
@@ -189,7 +189,7 @@ export default async function ClinicOperationsPage({
                 </div>
 
                 <details className="mt-2.5">
-                  <summary className="cursor-pointer text-[13px] font-semibold text-primary">
+                  <summary className="cursor-pointer text-[length:var(--text-secondary)] font-semibold text-primary">
                     Change the details
                   </summary>
                   <form
@@ -227,7 +227,7 @@ export default async function ClinicOperationsPage({
                         className={`${field} tabular-nums`}
                       />
                     </label>
-                    <button className="min-h-11 w-fit cursor-pointer rounded-control border border-primary bg-primary px-5 text-[13px] font-semibold text-white hover:bg-primary-hover">
+                    <button className="min-h-11 w-fit cursor-pointer rounded-control border border-primary bg-primary px-5 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover">
                       Save
                     </button>
                   </form>
@@ -301,11 +301,11 @@ export default async function ClinicOperationsPage({
                       className={`${field} tabular-nums`}
                     />
                   </label>
-                  <label className="flex min-h-11 items-center gap-2 text-[13px] font-semibold text-heading">
+                  <label className="flex min-h-11 items-center gap-2 text-[length:var(--text-secondary)] font-semibold text-heading">
                     <input name="isClosed" type="checkbox" value="true" defaultChecked={closed} />
                     Closed
                   </label>
-                  <button className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted">
+                  <button className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-4 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted">
                     Save
                   </button>
                 </div>
@@ -359,7 +359,7 @@ export default async function ClinicOperationsPage({
               placeholder="Your address, a landmark, and the hours you are open."
             />
           </label>
-          <button className="min-h-11 w-fit cursor-pointer rounded-control border border-primary bg-primary px-5 text-[13px] font-semibold text-white hover:bg-primary-hover">
+          <button className="min-h-11 w-fit cursor-pointer rounded-control border border-primary bg-primary px-5 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover">
             Save
           </button>
         </form>

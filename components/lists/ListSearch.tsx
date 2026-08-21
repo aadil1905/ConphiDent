@@ -54,14 +54,14 @@ export default function ListSearch({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         aria-label={label}
-        className="h-11 w-full rounded-control border border-border bg-card pr-9 pl-9 text-sm text-foreground placeholder:text-text-muted"
+        className="h-11 w-full rounded-control border border-input bg-card pr-10 pl-9 text-sm text-foreground placeholder:text-text-muted"
       />
       {value && (
         <button
           type="button"
           onClick={clear}
           aria-label="Clear the search"
-          className="absolute right-2 grid h-7 w-7 cursor-pointer place-items-center rounded-chip text-text-muted hover:bg-muted"
+          className="absolute right-1 grid h-9 w-9 cursor-pointer place-items-center rounded-chip text-text-muted hover:bg-muted"
         >
           <X className="h-4 w-4" aria-hidden />
         </button>

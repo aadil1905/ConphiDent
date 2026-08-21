@@ -70,7 +70,7 @@ function LinkCard({ title, sub, href, label }: { title: string; sub: string; hre
       </div>
       <Link
         href={href}
-        className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted"
+        className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-4 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
       >
         {label}
       </Link>
@@ -121,7 +121,7 @@ export default async function SettingsPage({
       {REFUSALS[params.error ?? ""] && (
         <p
           role="alert"
-          className="rounded-control border border-danger-border bg-danger-bg px-3.5 py-3 text-[13px] text-danger"
+          className="rounded-control border border-danger-border bg-danger-bg px-3.5 py-3 text-[length:var(--text-secondary)] text-danger"
         >
           {REFUSALS[params.error ?? ""]}
         </p>
@@ -134,7 +134,7 @@ export default async function SettingsPage({
             href={tabHref(item.key)}
             role="tab"
             aria-selected={tab === item.key}
-            className={`inline-flex min-h-11 flex-none items-center border-b-2 px-3.5 text-[13px] font-semibold ${
+            className={`inline-flex min-h-11 flex-none items-center border-b-2 px-3.5 text-[length:var(--text-secondary)] font-semibold ${
               tab === item.key
                 ? "border-b-primary text-heading"
                 : "border-b-transparent text-text-muted hover:text-heading"
@@ -177,7 +177,7 @@ export default async function SettingsPage({
                 Address
                 <input name="address" defaultValue={user.clinic.address ?? ""} className={field} />
               </label>
-              <button className="min-h-11 w-fit cursor-pointer rounded-control border border-primary bg-primary px-5 text-[13px] font-semibold text-white hover:bg-primary-hover">
+              <button className="min-h-11 w-fit cursor-pointer rounded-control border border-primary bg-primary px-5 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover">
                 Save
               </button>
             </form>
@@ -230,7 +230,7 @@ export default async function SettingsPage({
                   ))}
                 </select>
               </label>
-              <button className="min-h-11 w-fit cursor-pointer rounded-control border border-primary bg-primary px-5 text-[13px] font-semibold text-white hover:bg-primary-hover">
+              <button className="min-h-11 w-fit cursor-pointer rounded-control border border-primary bg-primary px-5 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover">
                 Add the login
               </button>
             </form>
@@ -246,7 +246,7 @@ export default async function SettingsPage({
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-heading">
                       {member.fullName}
-                      <span className="ml-2 rounded-pill bg-muted px-2 py-0.5 text-[11px] font-semibold text-text-muted">
+                      <span className="ml-2 rounded-pill bg-muted px-2 py-0.5 text-[length:var(--text-micro)] font-semibold text-text-muted">
                         {ROLE_WORDS.get(member.role) ?? humanLabel(member.role)}
                       </span>
                     </p>
@@ -280,7 +280,7 @@ export default async function SettingsPage({
                     <form action={toggleStaffAction}>
                       <input type="hidden" name="userId" value={member.id} />
                       <input type="hidden" name="active" value={String(!member.active)} />
-                      <button className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-4 text-[13px] font-semibold text-heading hover:bg-muted">
+                      <button className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-4 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted">
                         {member.active ? "Switch off" : "Switch back on"}
                       </button>
                     </form>
@@ -355,7 +355,7 @@ export default async function SettingsPage({
                       </p>
                     </div>
                     <time
-                      className="text-[13px] text-text-muted"
+                      className="text-[length:var(--text-secondary)] text-text-muted"
                       dateTime={entry.createdAt.toISOString()}
                       title={exactStamp(entry.createdAt)}
                     >

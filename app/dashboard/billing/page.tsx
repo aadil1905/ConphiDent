@@ -148,7 +148,7 @@ export default async function MoneyPage({
         actions={
           <Link
             href="/dashboard/billing/new"
-            className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+            className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
           >
             New invoice
           </Link>
@@ -170,7 +170,7 @@ export default async function MoneyPage({
             key={tile.label}
             className="rounded-card border border-border bg-card px-4 py-3.5 shadow-[var(--shadow)]"
           >
-            <p className="text-[11px] font-semibold tracking-[0.14em] text-text-muted uppercase">
+            <p className="text-[length:var(--text-micro)] font-semibold tracking-[0.14em] text-text-muted uppercase">
               {tile.label}
             </p>
             <p className={`text-[length:var(--text-metric)] leading-[var(--text-metric-lh)] font-bold tabular-nums ${tile.tone}`}>{tile.value}</p>

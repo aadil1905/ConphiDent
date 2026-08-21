@@ -68,7 +68,7 @@ export default function ConversationComposer({
               setReply(item.text);
               box.current?.focus();
             }}
-            className="min-h-[34px] cursor-pointer rounded-pill border border-border-strong bg-card px-3 text-xs font-semibold whitespace-nowrap text-heading hover:bg-muted"
+            className="min-h-11 cursor-pointer rounded-pill border border-border-strong bg-card px-3 text-xs font-semibold whitespace-nowrap text-heading hover:bg-muted"
           >
             {item.label}
           </button>
@@ -90,7 +90,7 @@ export default function ConversationComposer({
           maxLength={4096}
           aria-label="Write a reply"
           placeholder={`Write to ${firstName} — Enter sends, Shift+Enter for a new line`}
-          className="min-h-[44px] min-w-0 flex-1 resize-none rounded-[1.4rem] border border-border bg-card px-4 py-3 text-[13.5px] text-foreground outline-none focus:border-primary"
+          className="min-h-[44px] min-w-0 flex-1 resize-none rounded-[1.4rem] border border-border bg-card px-4 py-3 text-[length:var(--text-secondary)] text-foreground outline-none focus:border-primary"
         />
         <button
           type="button"
@@ -98,7 +98,7 @@ export default function ConversationComposer({
           disabled={sending || !reply.trim()}
           aria-label={sending ? "Sending" : "Send message"}
           title="Send"
-          className="grid h-11 w-11 flex-none cursor-pointer place-items-center rounded-full border border-primary bg-primary text-white hover:bg-primary-hover disabled:opacity-60"
+          className="grid h-11 w-11 flex-none cursor-pointer place-items-center rounded-full border border-primary bg-primary text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
         >
           <Send className={`h-[17px] w-[17px] ${sending ? "animate-pulse" : ""}`} strokeWidth={2} aria-hidden />
         </button>
