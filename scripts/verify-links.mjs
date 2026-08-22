@@ -129,6 +129,18 @@ const REACHED_ANOTHER_WAY = new Set([
   // ⌘K from every screen, and the search box in the top bar.
   "/dashboard/search",
   // The five tabs across the top of Messages.
+
+  // Clinical work is reached through a patient, not through the sidebar. These
+  // three were taken out of the sidebar, the Today grid and ⌘K deliberately —
+  // a dentist arrives at a chart because of who is in the chair, never by
+  // browsing a list of everyone's prescriptions. Every one of them is linked
+  // from the patient profile.
+  "/dashboard/clinical-workspace",
+  "/dashboard/prescriptions",
+  "/dashboard/treatment-plans",
+  // Blank letterhead pads. Linked from Settings → The clinic; printed in a
+  // stack now and then, not opened daily.
+  "/dashboard/stationery",
 ]);
 
 const stranded = [];

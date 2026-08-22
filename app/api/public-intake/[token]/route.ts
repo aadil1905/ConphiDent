@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 
 const formSchema = z.object({
   medicalHistory: z.array(z.string().trim().min(1).max(80)).max(20).default([]),
+  medicalHistoryAsked: z.array(z.string().trim().min(1).max(80)).max(40).optional(),
   drugAllergies: z.string().trim().max(1000).optional().default(""),
   medications: z.string().trim().max(1000).optional().default(""),
   // A regex alone admits 2026-02-31, which becomes an Invalid Date and a 500.
@@ -66,6 +67,7 @@ export async function POST(request: Request, context: { params: Promise<{ token:
         data: {
         status: "COMPLETED",
         medicalHistory: JSON.stringify(input.medicalHistory),
+        medicalHistoryAsked: input.medicalHistoryAsked?.length ? JSON.stringify(input.medicalHistoryAsked) : null,
         drugAllergies: input.drugAllergies || null,
         medications: input.medications || null,
         otherHistory: input.otherHistory || null,

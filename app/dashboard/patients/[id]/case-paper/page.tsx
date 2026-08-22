@@ -6,7 +6,7 @@ import { requirePermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { exactStamp } from "@/lib/format";
 import BackLink from "@/components/navigation/BackLink";
-import PrintButton from "@/components/dashboard/PrintButton";
+import { conditionLabel } from "@/lib/medical-history";
 
 /** What PatientIntakeFlow.tsx sends: a JSON array of ticked condition names. */
 function parseConditions(value: string | null) {
@@ -55,7 +55,12 @@ export default async function CasePaperPage({ params }: { params: Promise<{ id: 
   if (!patient) notFound();
 
   const age = patient.dateOfBirth ? new Date().getFullYear() - patient.dateOfBirth.getFullYear() : null;
-  const conditions = parseConditions(intake?.medicalHistory ?? null);
+  // Stored as stable keys since the printed and digital lists were unified, so
+  // the screen has to render them back through the same list the sheet uses —
+  // otherwise this page shows "hypertension" where the pad shows "Hypertension".
+  const conditions = parseConditions(intake?.medicalHistory ?? null).map(
+    (entry) => conditionLabel(entry) ?? entry,
+  );
 
   return (
     <div className="mx-auto flex w-full max-w-[50rem] flex-col gap-5">
@@ -66,7 +71,17 @@ export default async function CasePaperPage({ params }: { params: Promise<{ id: 
         >
           ← Back to the patient
         </BackLink>
-        {intake && <PrintButton label="Print case paper" />}
+        {/* The printed sheet is the clinic's own letterheaded record, not this
+            screen with its chrome hidden — so this hands over to the document
+            route the way prescriptions and bills already do. */}
+        {intake && (
+          <Link
+            href={`/dashboard/patients/${patient.id}/case-paper/print`}
+            className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
+          >
+            Print case paper
+          </Link>
+        )}
       </div>
 
       <header className="flex flex-col gap-1 rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">

@@ -34,7 +34,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
           if (paidSoFar + data.amount > invoice.totalAmount) throw new PaymentExceedsOutstandingError();
 
           const created = await tx.payment.create({
-            data: { clinicId: user.clinicId, encounterId: invoice.encounterId, invoiceId, amount: data.amount, method: data.method, paidAt: new Date(data.paidAt), notes: data.notes || null, recordedBy: user.fullName, recordedByUserId: user.id },
+            data: { clinicId: user.clinicId, encounterId: invoice.encounterId, invoiceId, amount: data.amount, method: data.method, paidAt: new Date(data.paidAt), notes: data.notes || null, referenceNumber: data.referenceNumber || null, recordedBy: user.fullName, recordedByUserId: user.id },
           });
           const receiptNumber = `${user.clinic.receiptPrefix || "RCT"}-${new Date(data.paidAt).getFullYear()}-${String(created.id).padStart(6, "0")}`;
           const receipted = await tx.payment.update({ where: { id: created.id }, data: { receiptNumber } });

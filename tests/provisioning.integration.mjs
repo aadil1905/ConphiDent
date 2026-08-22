@@ -279,13 +279,18 @@ test("server activation requires a matching preflight claim and stays off-line",
 
 test("provisioned credentials require first-sign-in password rotation", () => {
   assert.match(actions, /mustChangePassword: true/);
+  // The sign-in redirect gained `RedirectType.replace` when the back-button
+  // trap was fixed — inside a Server Action, Next 16's `redirect()` pushes
+  // history by default, which left /login reachable by pressing Back. What
+  // this test guards is the rotation gate, not how history is written, so the
+  // argument list is matched loosely enough to survive that.
   assert.match(
     auth,
-    /if \(user\.mustChangePassword\) redirect\("\/change-password"\)/,
+    /if \(user\.mustChangePassword\) redirect\("\/change-password"/,
   );
   assert.match(
     loginActions,
-    /if \(user\.mustChangePassword\) redirect\("\/change-password"\)/,
+    /if \(user\.mustChangePassword\) redirect\("\/change-password"/,
   );
   assert.match(loginActions, /mustChangePassword: false/);
   assert.match(

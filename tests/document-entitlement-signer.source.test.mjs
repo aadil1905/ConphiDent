@@ -83,9 +83,22 @@ test("billing workflow is role-neutral and feature-aware", async () => {
   assert.match(source, /requireApiFeature\("billing"\)/);
 });
 
-test("immutable billing documents keep their issued accent color", async () => {
+test("immutable billing documents keep the letterhead they were issued under", async () => {
   const source = await read("lib/billing-document.ts");
-  assert.match(source, /accentColor: frozen \? text\(snapshotClinic\?\.accentColor, "#0e7490"\)!/);
+  assert.match(source, /accentColor: frozen \? text\(snapshotClinic\?\.accentColor, "#b68235"\)!/);
+  // Every brand field the sheet prints has to read from the snapshot when one
+  // exists. A field added to the letterhead but not to this branch would let a
+  // re-branded clinic silently re-head bills it issued years ago.
+  for (const field of ["letterheadPrefix", "letterheadName", "tagline", "principalName", "principalCredentials", "hoursLine"]) {
+    assert.match(source, new RegExp(`${field}: frozen \\? text\\(snapshotClinic\\?\\.${field},`), `${field} is not read from the frozen snapshot`);
+  }
+});
+
+test("new billing documents freeze the whole letterhead into their snapshot", async () => {
+  const source = await read("app/api/invoices/route.ts");
+  for (const field of ["letterheadPrefix", "letterheadName", "tagline", "principalName", "principalCredentials"]) {
+    assert.match(source, new RegExp(`${field}: clinic\\.${field}`), `${field} is missing from immutableSnapshot`);
+  }
 });
 
 test("paid invoices explain why voiding is blocked", async () => {

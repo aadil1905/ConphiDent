@@ -14,7 +14,7 @@ import { useUnsavedGuard } from "@/components/ui/unsaved-guard";
 type AppointmentVisit = { id: number; appointmentDate: string | Date; appointmentTime: string; treatment: string; status: string };
 type Patient = { id: number; fullName: string; phone: string; dateOfBirth?: string | Date | null; gender?: string | null; allergySummary?: string | null; appointments?: AppointmentVisit[] };
 type Template = { id: number; name: string; diagnosis: string | null; items: StructuredMedication[] };
-type EditingPrescription = { id: number; patientId: number; prescribedOn: string | Date; diagnosis: string | null; instructions: string | null; issuePlace?: string | null; medicationItems: Array<StructuredMedication & { id?: number }> };
+type EditingPrescription = { id: number; patientId: number; prescribedOn: string | Date; diagnosis: string | null; instructions: string | null; nextVisit?: string | null; issuePlace?: string | null; medicationItems: Array<StructuredMedication & { id?: number }> };
 
 const blankMedicine = (): StructuredMedication => ({ genericName: "", brandName: "", formulation: "", strength: "", dosageForm: "Tablet", dose: "1", doseUnit: "tablet", route: "Oral", frequency: "Twice daily", timing: "", mealRelation: "After food", startDate: "", duration: "5 days", endDate: "", quantity: "", asNeeded: false, maxDose: "", indication: "", instructions: "", substitutionAllowed: true });
 const field = "min-h-11 w-full rounded-control border border-border bg-card px-3 text-sm font-normal text-foreground outline-none";
@@ -280,9 +280,13 @@ export default function PrescriptionForm({ patients, templates = [], initialPati
           <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">No allergy, duplicate or age warnings on this script. Your judgment still applies.</p>
         )}
 
-        <section className="rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
+        <section className="flex flex-col gap-3.5 rounded-card border border-border bg-card px-5.5 py-4 shadow-[var(--shadow)]">
           <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">Advice printed under the medicines
             <textarea name="instructions" defaultValue={editingPrescription?.instructions ?? ""} rows={3} placeholder="Rinse with warm saline from tomorrow. Call us if the swelling gets worse." className="rounded-control border border-border bg-card p-3 text-sm font-normal text-foreground outline-none" />
+          </label>
+          <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">Next visit
+            <input name="nextVisit" defaultValue={editingPrescription?.nextVisit ?? ""} placeholder="5 days — 27 Aug, for canal obturation" className="min-h-11 rounded-control border border-input bg-card px-3 text-sm font-normal text-foreground outline-none" />
+            <span className="font-normal text-text-muted">Printed at the foot of the script. Leave it empty and the line is left off.</span>
           </label>
         </section>
 

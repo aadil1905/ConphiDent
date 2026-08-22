@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { InvoiceDocument, PrescriptionDocument, type ClinicDocumentBrand } from "@/components/documents/B6ClinicalDocuments";
 import { PrintActions } from "@/components/documents/PrintActions";
 import { buildInvoiceDocument } from "@/lib/billing-document";
+import { clinicDocumentName, loadClinicDocumentBrand } from "@/lib/clinic-document";
 import { prisma } from "@/lib/prisma";
 import { secureDocumentTokenHash } from "@/lib/secure-documents";
 
@@ -27,10 +28,7 @@ export default async function SharedClinicalDocumentPage({ params }: { params: P
  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }).catch(() => null);
  if (!access) notFound();
 
- const clinic = await prisma.clinic.findUnique({
- where: { id: access.clinicId },
- select: { name: true, brandName: true, logoUrl: true, accentColor: true, address: true, phone: true, email: true, gstin: true, registrationNumber: true, invoiceFooter: true, paymentDetails: true },
- });
+ const clinic = await loadClinicDocumentBrand(access.clinicId);
  if (!clinic) notFound();
 
  if (access.documentType === "PRESCRIPTION") {
@@ -56,10 +54,13 @@ export default async function SharedClinicalDocumentPage({ params }: { params: P
 }
 
 function PatientDocumentPortal({ clinic, expiresAt, label, children }: { clinic: ClinicDocumentBrand; expiresAt: Date; label: string; children: ReactNode }) {
- const brand = clinic.brandName?.trim() || clinic.name;
+ const brand = clinicDocumentName(clinic);
+ // Plain white, like every other surface. The cyan radial gradient here was the
+ // last survivor of the retired indigo/sky palette — a different register from
+ // the rest of the product, on the one page a patient actually sees.
  return (
- <main className="min-h-screen bg-[radial-gradient(circle_at_top,#cffafe_0,#f1f5f9_34rem)] px-3 py-5 text-heading print:bg-white print:p-0">
- <header className="mx-auto mb-4 w-full max-w-[125mm] rounded-card border border-border bg-white/95 p-4 shadow-[var(--shadow)] print:hidden">
+ <main className="min-h-screen bg-background px-3 py-5 text-heading print:bg-white print:p-0">
+ <header className="mx-auto mb-4 w-full max-w-[210mm] rounded-card border border-border bg-white/95 p-4 shadow-[var(--shadow)] print:hidden">
  <p className="text-[11px] font-bold uppercase tracking-[.18em] text-primary">Patient Document Portal</p>
  <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2"><h1 className="text-xl font-bold">{brand}</h1><span className="rounded-full bg-secondary px-3 py-1 text-xs font-bold text-heading">{label}</span></div>
  <p className="mt-2 flex items-start gap-2 text-xs leading-relaxed text-text-muted"><LockKeyhole className="mt-0.5 size-3.5 shrink-0 text-primary" />Private patient document. This link expires {expiresAt.toLocaleString("en-IN")}. Do not forward it.</p>

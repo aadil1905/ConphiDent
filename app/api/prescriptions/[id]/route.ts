@@ -47,6 +47,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         prescribedOn: localDate(data.prescribedOn),
         diagnosis: data.diagnosis || null,
         instructions: data.instructions || null,
+        nextVisit: data.nextVisit || null,
         medicines: medicationSummary(data.medicationItems),
         allergySnapshot: allergies,
         patientAgeSnapshot: age === null ? null : String(age),

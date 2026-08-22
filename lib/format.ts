@@ -7,6 +7,41 @@ export function rupees(amount: number) {
   return `₹${Math.round(amount).toLocaleString("en-IN")}`;
 }
 
+const ONES = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
+const TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
+
+function underThousand(value: number): string {
+  if (value < 20) return ONES[value];
+  if (value < 100) return [TENS[Math.floor(value / 10)], ONES[value % 10]].filter(Boolean).join(" ");
+  return [`${ONES[Math.floor(value / 100)]} hundred`, underThousand(value % 100)].filter(Boolean).join(" ");
+}
+
+/**
+ * "Four thousand two hundred only" — the words line a receipt carries beside
+ * the figure, so an altered amount is contradicted by its own sheet.
+ *
+ * Grouped the Indian way (crore, lakh, thousand), because that is how the
+ * amount would be read aloud at the desk.
+ */
+export function rupeesInWords(amount: number) {
+  const whole = Math.max(0, Math.round(amount));
+  if (whole === 0) return "Zero only";
+
+  const parts: string[] = [];
+  const crore = Math.floor(whole / 10_000_000);
+  const lakh = Math.floor((whole % 10_000_000) / 100_000);
+  const thousand = Math.floor((whole % 100_000) / 1_000);
+  const rest = whole % 1_000;
+
+  if (crore) parts.push(`${underThousand(crore)} crore`);
+  if (lakh) parts.push(`${underThousand(lakh)} lakh`);
+  if (thousand) parts.push(`${underThousand(thousand)} thousand`);
+  if (rest) parts.push(underThousand(rest));
+
+  const sentence = parts.join(" ");
+  return `${sentence.charAt(0).toUpperCase()}${sentence.slice(1)} only`;
+}
+
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;

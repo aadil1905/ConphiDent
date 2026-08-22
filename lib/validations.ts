@@ -76,6 +76,7 @@ export const prescriptionSchema = z.object({
   prescribedOn: isoDate,
   diagnosis: z.string().trim().max(1000).optional(),
   instructions: z.string().trim().max(3000).optional(),
+  nextVisit: z.string().trim().max(300).optional(),
   medicines: z.string().trim().max(5000).optional().default(""),
   issuePlace: z.string().trim().max(200).optional(),
   allergyAcknowledged: z.coerce.boolean().optional().default(false),
@@ -115,11 +116,17 @@ export const invoiceSchema = z.object({
   totalAmount: z.coerce.number().int().positive("Invoice amount must be greater than zero"),
   discountAmount: z.coerce.number().int().nonnegative().optional().default(0),
   terms: z.string().trim().max(2000).optional(),
+  diagnosis: z.string().trim().max(1000).optional(),
   lineItems: z.array(z.object({ description: z.string().trim().min(2).max(300), quantity: z.coerce.number().int().positive().max(10000), unitPrice: z.coerce.number().int().nonnegative(), discount: z.coerce.number().int().nonnegative().optional().default(0), taxPercent: z.coerce.number().int().min(0).max(100).optional().default(0) })).min(1).max(50),
   notes: z.string().max(2000).optional(),
   amountPaidToday: z.union([z.literal(""), z.coerce.number().int().positive()]).optional(),
   paymentMethod: z.enum(["Cash", "UPI", "Card", "Bank transfer", "Other"]).optional(),
   paymentNotes: z.string().max(1000).optional(),
+  // A UPI or bank reference is the thing a patient quotes back when a payment
+  // is disputed, so it belongs in `Payment.referenceNumber` and on the printed
+  // receipt — not buried in free-text notes, which is where the field the form
+  // already labels "Reference" used to land.
+  paymentReference: z.string().trim().max(120).optional(),
 });
 
 export const paymentSchema = z.object({
@@ -127,4 +134,5 @@ export const paymentSchema = z.object({
   method: z.enum(["Cash", "UPI", "Card", "Bank transfer", "Other"]),
   paidAt: isoDate,
   notes: z.string().max(1000).optional(),
+  referenceNumber: z.string().trim().max(120).optional(),
 });

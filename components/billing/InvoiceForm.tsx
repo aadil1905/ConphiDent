@@ -361,9 +361,12 @@ export default function InvoiceForm({
                   <option>Other</option>
                 </select>
               </label>
+              {/* Named for where it lands. It used to be `paymentNotes`, so the
+                  reference a patient quotes back in a dispute went into free
+                  text and the receipt's own Ref line stayed empty. */}
               <label className={label}>
                 Reference
-                <input name="paymentNotes" placeholder="UPI or bank reference" className={field} />
+                <input name="paymentReference" placeholder="UPI or bank reference" className={field} />
               </label>
             </div>
           )}
@@ -385,6 +388,10 @@ export default function InvoiceForm({
             <label className={label}>
               Pay by
               <input name="dueDate" type="date" className={`${field} max-w-xs`} />
+            </label>
+            <label className={label}>
+              What it was for
+              <input name="diagnosis" placeholder="e.g. Irreversible pulpitis 36 — RCT initiated" className={field} />
             </label>
             <label className={label}>
               A note on the bill

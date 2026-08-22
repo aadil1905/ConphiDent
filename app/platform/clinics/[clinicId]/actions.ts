@@ -78,7 +78,11 @@ export async function updatePlatformClinicProfileAction(formData: FormData) {
   const slug = slugifyClinic(slugSource);
   const existing = await prisma.clinic.findFirst({ where: { slug, NOT: { id: clinicId } }, select: { id: true } });
   if (existing) return;
-  await prisma.clinic.update({ where: { id: clinicId }, data: { name, slug, accentColor, brandName: value(formData, "brandName", 120), phone: value(formData, "phone", 50), email: value(formData, "email", 254), address: value(formData, "address", 1000), gstin: value(formData, "gstin", 20), registrationNumber: value(formData, "registrationNumber", 100) } });
+  // Only fields this form actually posts. `value()` returns null for a missing
+  // key, and the form carries no GSTIN or registration input — so listing them
+  // here silently wiped both every time an admin pressed Save, and they print
+  // on every bill and prescription. The owner sets them in Billing identity.
+  await prisma.clinic.update({ where: { id: clinicId }, data: { name, slug, accentColor, brandName: value(formData, "brandName", 120), phone: value(formData, "phone", 50), email: value(formData, "email", 254), address: value(formData, "address", 1000) } });
   await recordAudit({ clinicId, userId: admin.id, action: "PLATFORM_CLINIC_PROFILE_UPDATED", entityType: "Clinic", entityId: String(clinicId), detail: "Updated by platform control portal" });
   revalidatePath(`/platform/clinics/${clinicId}`); revalidatePath("/platform");
 }

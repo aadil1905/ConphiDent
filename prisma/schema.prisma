@@ -106,6 +106,8 @@ model Invoice {
   status            String            @default("Unpaid")
   notes             String?
   terms             String?
+  /// What the bill was raised for, printed under the totals on the receipt.
+  diagnosis         String?
   immutableSnapshot Json?
   finalizedAt       DateTime?
   parentInvoiceId   Int?
@@ -278,6 +280,9 @@ model Prescription {
   prescribedOn                  DateTime           @default(now())
   diagnosis                     String?
   instructions                  String?
+  /// Free text, not a date: "5 days — 27 Aug, for canal obturation". The
+  /// interval and the reason are both what the patient needs to read.
+  nextVisit                     String?
   medicines                     String
   allergySnapshot               String?
   patientAgeSnapshot            String?
@@ -828,7 +833,16 @@ model Clinic {
   status                         String                          @default("ACTIVE")
   brandName                      String?
   logoUrl                        String?
-  accentColor                    String                          @default("#0369a1")
+  accentColor                    String                          @default("#b68235")
+  /// The five letterhead lines. A printed pad reads as a masthead, not a row of
+  /// database columns: a small possessive above the name, the name itself, a
+  /// descriptor under it, and the principal dentist's block on the right. None
+  /// of it is derivable from `name`/`brandName`, which are app-display strings.
+  letterheadPrefix               String?
+  letterheadName                 String?
+  tagline                        String?
+  principalName                  String?
+  principalCredentials           String?
   phone                          String?
   email                          String?
   address                        String?
@@ -2185,7 +2199,12 @@ model PatientIntakeRequest {
   completedAt       DateTime?
   reviewedAt        DateTime?
   reviewedBy        String?
+  /// JSON array of condition keys the patient ticked. See lib/medical-history.ts.
   medicalHistory    String?
+  /// JSON array of the condition keys this patient was actually shown. Null on
+  /// rows written before the list was unified — the printed sheet then lists
+  /// what was recorded rather than ticking rows it cannot vouch for.
+  medicalHistoryAsked String?
   drugAllergies     String?
   medications       String?
   otherHistory      String?

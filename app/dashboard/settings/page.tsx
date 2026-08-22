@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/permissions";
 import { exactStamp, humanLabel, humanTime } from "@/lib/format";
 import WorkPage from "@/components/lists/WorkPage";
-import { createStaffAction, toggleStaffAction, updateClinicAction } from "./actions";
+import { createStaffAction, toggleStaffAction, updateClinicAction, updateLetterheadAction } from "./actions";
 
 const TABS = [
   { key: "clinic", label: "The clinic" },
@@ -187,6 +187,46 @@ export default async function SettingsPage({
             title="Services, hours and slots"
             sub="What you offer, when you are open, and how long each treatment takes."
             href="/dashboard/settings/operations"
+            label="Open"
+          />
+          <Card
+            title="What prints at the top of every sheet"
+            sub="The letterhead on prescriptions, bills and consent forms. Leave a line empty and it is simply left off the sheet."
+          >
+            <form action={updateLetterheadAction} className="grid gap-4 sm:grid-cols-2">
+              <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">
+                Small line above the name
+                <input name="letterheadPrefix" defaultValue={user.clinic.letterheadPrefix ?? ""} placeholder="e.g. Dr. Deepika&rsquo;s" className={field} />
+              </label>
+              <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">
+                The name, set large
+                <input name="letterheadName" defaultValue={user.clinic.letterheadName ?? ""} placeholder={user.clinic.brandName ?? user.clinic.name} className={field} />
+              </label>
+              <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading sm:col-span-2">
+                Line underneath it
+                <input name="tagline" defaultValue={user.clinic.tagline ?? ""} placeholder="e.g. Complete Family Oral Care &amp; Implant Center" className={field} />
+              </label>
+              <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">
+                Dentist named on the sheet
+                <input name="principalName" defaultValue={user.clinic.principalName ?? ""} placeholder="e.g. Dr. Deepika Jain Mandot" className={field} />
+              </label>
+              <label className="flex flex-col gap-1.5 text-xs font-semibold text-heading">
+                Their qualifications, one per line
+                <textarea name="principalCredentials" rows={2} defaultValue={user.clinic.principalCredentials ?? ""} placeholder={"BDS (Dental Surgeon)\nGDC (Aurangabad)"} className={`${field} min-h-20 py-2`} />
+                <span className="font-normal text-text-muted">
+                  The dental council registration number prints under these — set it in Billing identity.
+                </span>
+              </label>
+              <button className="min-h-11 w-fit cursor-pointer rounded-control border border-primary bg-primary px-5 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover">
+                Save
+              </button>
+            </form>
+          </Card>
+
+          <LinkCard
+            title="Blank pads"
+            sub="Consent forms, prescription and receipt pads on the clinic letterhead, to print and fill in by hand."
+            href="/dashboard/stationery"
             label="Open"
           />
           <LinkCard

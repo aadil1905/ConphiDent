@@ -5,21 +5,7 @@ import { AlertCircle, Check } from "lucide-react";
 import { toast } from "sonner";
 import SignaturePad, { type SignaturePadHandle } from "./SignaturePad";
 
-/** The Phase A medical-history list, as the clinic asks it at the desk. */
-const CONDITIONS = [
-  "Diabetes",
-  "High blood pressure",
-  "Heart problem",
-  "Thyroid problem",
-  "Asthma",
-  "Bleeding disorder",
-  "Epilepsy",
-  "Hepatitis or jaundice",
-  "Tuberculosis",
-  "Kidney problem",
-  "Pregnant or breastfeeding",
-  "Smoking or tobacco use",
-] as const;
+import { CURRENT_CONDITION_KEYS, MEDICAL_CONDITIONS } from "@/lib/medical-history";
 
 export type IntakeFlowProps = {
   token: string;
@@ -109,6 +95,9 @@ export default function PatientIntakeFlow({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           medicalHistory: conditions,
+          // What was on screen, so the printed sheet can tick Yes and No
+          // honestly rather than guessing which list this patient answered.
+          medicalHistoryAsked: CURRENT_CONDITION_KEYS,
           drugAllergies: allergies,
           medications: medication,
           // Who they are and their date of birth/gender are taken down by
@@ -180,15 +169,18 @@ export default function PatientIntakeFlow({
       <Section title="Medical history">
         <p className="-mt-3 text-[length:var(--text-secondary)] text-text-muted">Tick anything that applies to you.</p>
         <div className="grid gap-x-5 gap-y-2.5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))]">
-          {CONDITIONS.map((name) => (
-            <label key={name} className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm">
+          {/* Asked in plain English, stored as the stable key. The printed
+              consent sheet renders the same rows in the clinic's own clinical
+              wording — one list, two labels. */}
+          {MEDICAL_CONDITIONS.map((condition) => (
+            <label key={condition.key} className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm">
               <input
                 type="checkbox"
-                checked={conditions.includes(name)}
-                onChange={() => toggleCondition(name)}
+                checked={conditions.includes(condition.key)}
+                onChange={() => toggleCondition(condition.key)}
                 className="h-[18px] w-[18px] accent-primary"
               />
-              {name}
+              {condition.patient}
             </label>
           ))}
         </div>

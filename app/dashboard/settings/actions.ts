@@ -34,6 +34,46 @@ export async function updateClinicAction(formData: FormData) {
   revalidatePath("/dashboard/settings");
 }
 
+const trimmed = (formData: FormData, key: string, max: number) =>
+  String(formData.get(key) || "").trim().slice(0, max) || null;
+
+/**
+ * The masthead on every printed sheet.
+ *
+ * Kept apart from the clinic profile above because these five are typography,
+ * not contact details: the possessive above the name, the name as it is set on
+ * paper, the descriptor under it, and the principal dentist's block opposite.
+ * Until this existed the only way they were ever set was a hardcoded backfill
+ * in one migration, so a second clinic printed a pad with no doctor on it.
+ */
+export async function updateLetterheadAction(formData: FormData) {
+  const owner = await requireOwner();
+
+  await prisma.clinic.update({
+    where: { id: owner.clinicId },
+    data: {
+      letterheadPrefix: trimmed(formData, "letterheadPrefix", 120),
+      letterheadName: trimmed(formData, "letterheadName", 120),
+      tagline: trimmed(formData, "tagline", 160),
+      principalName: trimmed(formData, "principalName", 120),
+      // One qualification per line; the letterhead prints them stacked.
+      principalCredentials: trimmed(formData, "principalCredentials", 300),
+    },
+  });
+
+  await recordAudit({
+    clinicId: owner.clinicId,
+    userId: owner.id,
+    action: "CLINIC_LETTERHEAD_UPDATED",
+    entityType: "CLINIC",
+    entityId: String(owner.clinicId),
+    detail: "Updated the printed letterhead",
+  });
+
+  revalidatePath("/dashboard/settings");
+  revalidatePath("/dashboard/stationery");
+}
+
 export type BillingIdentityResult = { ok: boolean; message: string };
 
 /** 15 characters, exactly as the registration certificate prints them. */

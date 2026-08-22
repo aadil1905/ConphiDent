@@ -33,6 +33,7 @@ export async function POST(request: Request) {
           prescribedOn: localDate(data.prescribedOn),
           diagnosis: data.diagnosis || null,
           instructions: data.instructions || null,
+          nextVisit: data.nextVisit || null,
           medicines: medicationSummary(data.medicationItems),
           allergySnapshot: allergies,
           patientAgeSnapshot: age === null ? null : String(age),
