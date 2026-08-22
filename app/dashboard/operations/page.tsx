@@ -396,10 +396,16 @@ export default async function StockPage({
           {/* --- Auto-deduction note + governed extras -------------------- */}
           <section className="flex flex-wrap items-center gap-3.5 rounded-card border border-border bg-card px-5.5 py-3.5 shadow-[var(--shadow)]">
             <div className="min-w-0 flex-[1_1_260px]">
-              <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] font-semibold text-heading">Stock comes off by itself</p>
+              {/* Nothing deducts stock on its own — consumeInventoryFefo only
+                  ever runs from the three forms on this page (adjustment,
+                  "Used one", and this template's "Confirm & deduct stock").
+                  The old copy told staff not to bother recording usage, which
+                  is exactly backwards: skip it and the count silently goes
+                  stale. */}
+              <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] font-semibold text-heading">Deduct a treatment&rsquo;s stock in one tap</p>
               <p className="text-xs text-text-muted">
-                When a treatment is recorded, the items on its list are deducted automatically, oldest
-                batch first. &ldquo;Used one&rdquo; is only for the odd extra.
+                Nothing comes off automatically. Confirm a template below when a treatment is done, or
+                log &ldquo;Used one&rdquo; for the odd extra — oldest batch goes first either way.
               </p>
             </div>
             <details className="w-full">

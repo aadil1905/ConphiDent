@@ -161,9 +161,9 @@ export default function PatientIntakeWizard({
  };
  }, [step, request, refreshStatus]);
 
- async function createAndSend() {
+ async function submitIntakeRequest(mode: "send" | "fill-now") {
  const form = formRef.current;
- if (!form || !form.reportValidity()) return;
+ if (!form || !form.reportValidity()) return null;
  const data = new FormData(form);
  setWorking(true);
  try {
@@ -178,20 +178,41 @@ export default function PatientIntakeWizard({
  gender: String(data.get("gender") || ""),
  address: String(data.get("address") || ""),
  consentConfirmed: data.get("consentConfirmed") === "1",
+ mode,
  }),
  });
  const body = await response.json();
  if (!response.ok) throw new Error(body.error || "Could not create the intake request.");
+ return body;
+ } catch (error) {
+ toast.error(error instanceof Error ? error.message : "Could not create the intake request.");
+ return null;
+ } finally {
+ setWorking(false);
+ }
+ }
+
+ async function createAndSend() {
+ const body = await submitIntakeRequest("send");
+ if (!body) return;
  setRequest(body);
  setStep(2);
  if (body.warning) toast.warning("The secure link was created, but WhatsApp could not send it. Use Copy link.");
  else toast.success("Secure intake link sent on WhatsApp.");
  window.scrollTo({ top: 0, behavior: "smooth" });
- } catch (error) {
- toast.error(error instanceof Error ? error.message : "Could not create the intake request.");
- } finally {
- setWorking(false);
  }
+
+ // The patient is right here — no WhatsApp message goes out (see
+ // app/api/patient-intake/route.ts's fill-now branch). The one-page form at
+ // the other end of this link is the same one a patient would get; staff
+ // just fill it in on the desk device instead.
+ async function fillInNow() {
+ const body = await submitIntakeRequest("fill-now");
+ if (!body) return;
+ // A full navigation, not router.push: /intake/[token] is the public page,
+ // outside the dashboard's own layout and shell — this is a real page
+ // change, not a client-side route inside this app.
+ window.location.href = body.link;
  }
 
  async function copyLink() {
@@ -242,8 +263,16 @@ const inputClass = "mt-2 min-h-11 w-full rounded-control border border-input bg-
  <div className="mt-6 rounded-card border border-border bg-secondary p-4 text-sm leading-6 text-primary">
  They get a private link that works for {linkDays} days — allergies, medical history, the consent wording and their signature.
  </div>
- <label className="mt-4 flex items-start gap-3 rounded-card border border-success-border bg-success-bg p-4 text-sm leading-6 text-success"><input required type="checkbox" name="consentConfirmed" value="1" className="mt-1 size-4" /><span>I confirmed the patient agreed to receive this private intake link on the WhatsApp number above.</span></label>
- <div className="mt-6 flex justify-end">
+ {/* Neutral on purpose — this gates creating the intake record either
+ way, not just the WhatsApp send, so one checkbox covers both buttons
+ below without implying a message goes out when "Fill it in now" is
+ the one pressed. */}
+ <label className="mt-4 flex items-start gap-3 rounded-card border border-success-border bg-success-bg p-4 text-sm leading-6 text-success"><input required type="checkbox" name="consentConfirmed" value="1" className="mt-1 size-4" /><span>I confirmed the patient agreed to share their details for this intake record.</span></label>
+ <div className="mt-6 flex flex-wrap justify-end gap-2.5">
+ <button type="button" onClick={() => void fillInNow()} disabled={working} className="inline-flex min-h-11 items-center gap-2 rounded-control border border-border-strong bg-card px-6 text-sm font-semibold text-heading hover:bg-muted disabled:opacity-60">
+ {working ? <Loader2 className="size-4 animate-spin" /> : <ExternalLink className="size-4" />}
+ Fill it in myself now
+ </button>
  <button type="button" onClick={createAndSend} disabled={working} className="inline-flex min-h-11 items-center gap-2 rounded-control bg-primary px-6 text-sm font-semibold text-primary-foreground disabled:opacity-60">
  {working ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
  Create and send on WhatsApp

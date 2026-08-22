@@ -16,7 +16,10 @@ export const WORKSPACE_ACTIONS: WorkspaceAction[] = [
   { kind: "Action", title: "Add a patient", detail: "Register a walk-in in four fields", href: "/dashboard/patients?add=1", hint: "Run" },
   { kind: "Action", title: "New invoice", detail: "Bill the patient in the chair", href: "/dashboard/billing/new", hint: "Run" },
   { kind: "Action", title: "Log an enquiry", detail: "Someone who just called", href: "/dashboard/growth?log=1", hint: "Run" },
-  { kind: "Action", title: "Start charting", detail: "Open the clinical workspace for a patient", href: "/dashboard/clinical-workspace", hint: "Run" },
+  // "Start charting" (bare /dashboard/clinical-workspace) used to sit here.
+  // Clinical, Treatment plans and Prescriptions are reachable only from a
+  // patient's own profile now — a generic entry point with no patient
+  // attached worked against that on purpose.
 ];
 
 /** Where the palette keeps what you opened last, read by Find anything too. */

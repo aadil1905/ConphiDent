@@ -66,7 +66,7 @@ export default async function PublicIntakePage({ params }: { params: Promise<{ t
   return (
     <div className={`cf-portal ${brandFontVariables} flex min-h-screen flex-col text-sm leading-relaxed text-foreground`}>
       <header className="border-b border-border bg-white">
-        <div className="mx-auto flex max-w-[60rem] items-center gap-3 px-[clamp(1rem,1.5vw,2rem)] py-5">
+        <div className="mx-auto flex max-w-[90rem] items-center gap-3 px-[clamp(1rem,1.5vw,2rem)] py-5">
           <div className="grid h-12 w-12 flex-none place-items-center rounded-[0.75rem] bg-secondary text-xl font-bold text-heading">
             {intake.clinic.name.slice(0, 1).toUpperCase()}
           </div>
@@ -79,10 +79,19 @@ export default async function PublicIntakePage({ params }: { params: Promise<{ t
         </div>
       </header>
 
-      <main className="flex flex-1 justify-center p-[clamp(1rem,1.5vw,2rem)]">
-        <div className="flex w-full max-w-[60rem] flex-col gap-6">
+      {/* items-center: this wrapper is min-h-screen, and the content below it
+          used to run four sections — tall enough to fill that on its own. Two
+          sections (name/reason moved to the desk) left it pinned to the top
+          with a block of empty page below. Centering only matters when the
+          content is shorter than the viewport; on a phone, where this is
+          usually read, the form still exceeds it and scrolls exactly as before. */}
+      <main className="flex flex-1 items-center justify-center p-[clamp(1rem,1.5vw,2rem)]">
+        <div className="flex w-full max-w-[90rem] flex-col gap-6">
           {expired ? (
-            <section className="flex flex-col gap-2 rounded-card bg-white p-[clamp(1.25rem,5vw,2rem)] text-center shadow-[var(--shadow)]">
+            // max-w here, not on the shared wrapper: the wrapper is wide to
+            // match the rest of the app, but a two-line message stretched
+            // across that full width looks lost, not spacious.
+            <section className="mx-auto flex w-full max-w-[36rem] flex-col gap-2 rounded-card bg-white p-[clamp(1.25rem,5vw,2rem)] text-center shadow-[var(--shadow)]">
               <h1 className="text-[22px] font-bold text-heading">This link has run out</h1>
               <p className="text-base text-foreground">
                 Links last a week so your details stay private. Reply to the clinic&rsquo;s WhatsApp message and
@@ -90,7 +99,7 @@ export default async function PublicIntakePage({ params }: { params: Promise<{ t
               </p>
             </section>
           ) : completed ? (
-            <section className="flex flex-col gap-2 rounded-card bg-white p-[clamp(1.25rem,5vw,2rem)] text-center shadow-[var(--shadow)]">
+            <section className="mx-auto flex w-full max-w-[36rem] flex-col gap-2 rounded-card bg-white p-[clamp(1.25rem,5vw,2rem)] text-center shadow-[var(--shadow)]">
               <h1 className="text-[22px] font-bold text-heading">
                 We already have this, {intake.patient.fullName.split(" ")[0]}
               </h1>

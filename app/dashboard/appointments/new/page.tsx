@@ -159,6 +159,7 @@ export default async function BookAVisitPage({
         defaultTime={params.time}
         defaultPatientName={patient?.fullName ?? params.name}
         defaultPhone={patient?.phone ?? params.phone}
+        isOwner={user.role === "OWNER"}
       />
     </div>
   );

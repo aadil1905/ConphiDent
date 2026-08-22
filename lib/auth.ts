@@ -84,7 +84,16 @@ export async function createSession(userId: number, remember = false) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    expires: expiresAt,
+    // `expiresAt` above is the server-side lifetime — enforced regardless via
+    // the signed timestamp `readSessionCookie` checks and the DB row's own
+    // `expiresAt` — but the cookie's OWN persistence is what "Keep me signed
+    // in on this device" actually promises. Setting `expires` unconditionally
+    // made every login a 30-day-or-7-day cookie that survives closing the
+    // browser either way, so unchecking the box never logged anyone out and
+    // checking it never changed anything a person could observe: the box had
+    // no effect. Only a `remember`-ed session gets a persistent cookie; an
+    // unremembered one is a true session cookie the browser drops on close.
+    ...(remember ? { expires: expiresAt } : {}),
     path: "/",
   });
 }

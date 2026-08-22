@@ -409,6 +409,10 @@ export async function logEnquiryAction(formData: FormData) {
     redirect(`${GROWTH}?log=1&invalid=1`);
   }
 
+  // The card promises "a reminder is set for tomorrow morning" every time it
+  // is logged — the update branch used to leave nextFollowUpAt untouched, so
+  // that was only ever true the first time someone called.
+  const nextFollowUpAt = atHour(new Date(), 1, 10);
   const lead = await prisma.lead.upsert({
     where: { clinicId_phone: { clinicId: user.clinicId, phone } },
     create: {
@@ -418,11 +422,19 @@ export async function logEnquiryAction(formData: FormData) {
       phone,
       source: "Phone enquiry",
       serviceInterest,
-      nextFollowUpAt: atHour(new Date(), 1, 10),
+      nextFollowUpAt,
       activities: { create: { type: "LEAD_CREATED", content: "Logged from the queue" } },
     },
-    update: { fullName, serviceInterest },
+    update: { fullName, serviceInterest, nextFollowUpAt, lastContactedAt: new Date() },
     select: { id: true, patientId: true },
+  });
+
+  // Same shape reopenQueueItemAction uses — a lead someone marked LOST is
+  // live again the moment they call back, not stuck off the queue with a
+  // follow-up date nothing surfaces.
+  await prisma.lead.updateMany({
+    where: { id: lead.id, clinicId: user.clinicId, stage: "LOST" },
+    data: { stage: "CONTACTED", lossReason: null, recoveredAt: new Date() },
   });
 
   revalidateQueue();

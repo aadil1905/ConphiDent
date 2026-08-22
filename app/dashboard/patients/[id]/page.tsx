@@ -442,7 +442,11 @@ export default async function Patient360Page({
                       <div key={script.id} className="border-t border-border px-5.5 py-3">
                         <div className="flex flex-wrap items-baseline justify-between gap-2">
                           <Link
-                            href={`/dashboard/prescriptions/${script.id}`}
+                            // No /dashboard/prescriptions/[id] page exists —
+                            // only .../edit and .../print. Every other link to
+                            // a past script (lib/workspace-search.ts) already
+                            // goes to print; this one just never matched.
+                            href={`/dashboard/prescriptions/${script.id}/print`}
                             className="text-[length:var(--text-secondary)] font-semibold text-primary hover:underline"
                           >
                             {script.prescribedOn.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
@@ -586,7 +590,7 @@ export default async function Patient360Page({
                   </p>
                 </div>
                 <Link
-                  href={`/dashboard/billing/new?patientId=${patient.id}`}
+                  href={`/dashboard/billing/new?patientId=${patient.id}&fromPatient=1`}
                   className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-3.5 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
                 >
                   Raise an invoice

@@ -259,7 +259,14 @@
     color-scheme: dark;
   }
 
-  .clinic-theme {
+  /* body:has(.clinic-theme): sonner's toaster and any base-ui portal mount
+     straight into <body>, outside .clinic-theme — the same gap the font
+     repoint below this block exists to close. Without this, every toast
+     (status changes, the 8-second Undo actions) read the light-mode tokens
+     regardless of the class scoping its trigger sat inside, and popped up as
+     a bright card on a dark page. */
+  .clinic-theme,
+  body:has(.clinic-theme) {
     color-scheme: dark;
 
     --background: #000000;
@@ -783,6 +790,42 @@ button, input, select, textarea { transition: border-color .18s ease, background
    piece worth keeping, the tighter form-label leading, is repointed here. */
 .clinic-theme :is(label, legend) { line-height: 1.35; }
 
+/* Workspace motion: one orchestrated entrance, not scattered effects.
+   The app router remounts main's child on soft navigation, so the page rise
+   replays exactly once per page change. .rise-in is the staggered variant for
+   a strip of children — the call site sets animation-delay per child, 40ms a
+   step, which keeps a four-tile strip well inside the 400ms the motion spec
+   caps a full sequence at.
+
+   Opacity only — no transform, translate, scale or rotate, animated or not.
+   `.clinic-theme main` is AppShell's single content wrapper, and any of
+   those properties makes its element the containing block for `position:
+   fixed` descendants for as long as the property is "in effect" — which
+   `fill-mode: both` extends forever, well past the animation's own
+   duration. That silently caught every in-tree `fixed inset-0` overlay
+   rendered inside it (ConfirmDialog, the imaging viewer, sheets), pinning
+   them to the wrapper instead of the viewport. Writing the `to` keyframe as
+   `transform: none` does not dodge this: interpolating between `none` and
+   `translateY(8px)` requires treating `none` as an equivalent identity
+   transform for blending, and browsers keep that matrix representation as
+   the animation's held effect value even once finished, rather than
+   reverting to the literal keyword — verified live, a `position: fixed;
+   inset: 0` probe placed inside the wrapper after the animation settled
+   still measured the wrapper's box, not the viewport. Opacity is the only
+   property left in this keyframe with no containing-block side effect at
+   all, at the cost of the y-offset. */
+@keyframes workspace-rise {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.clinic-theme main > * { animation: workspace-rise .28s cubic-bezier(.2, .8, .2, 1) both; }
+.clinic-theme .rise-in { animation: workspace-rise .32s cubic-bezier(.2, .8, .2, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .clinic-theme main > *,
+  .clinic-theme .rise-in { animation: none; }
+}
+
 .feature-skeleton {
   overflow: hidden;
   background: linear-gradient(100deg, var(--muted) 35%, var(--card) 50%, var(--muted) 65%);
@@ -1017,6 +1060,14 @@ main { background: transparent; }
    token it is correct on every surface and in both modes. */
 .rounded-2xl.border.bg-card, .rounded-2xl.border.bg-white, .rounded-xl.border.bg-card { border-color: var(--border); box-shadow: var(--shadow); }
 
+/* A row popover (CollectRow's payment panel, its kebab menu) renders inside a
+   `td.relative.z-10` (ListCell interactive). Every later row carries an
+   identical td — equal z-index, later in the DOM — so it paints over anything
+   an earlier row opens, and no z-index INSIDE the cell can win from inside its
+   own stacking context. The open popover marks its root, and the cell that
+   contains it is lifted above its siblings for as long as it is open. */
+.clinic-theme :is(td, th, div):has(> [data-row-popover="open"]) { z-index: 40; }
+
 /* The clinic workspace's focus ring. The palette declared --ring and
    --focus-ring but nothing in the live DOM ever drew them: the rules that did
    are scoped to .dashboard-shell, a class no element carries. This is the one
@@ -1077,6 +1128,14 @@ main { background: transparent; }
   border-radius: var(--radius-card);
   background: var(--card);
   box-shadow: var(--shadow);
+}
+/* The context rail (patient card, quick actions) was `hidden` at every
+   width with no breakpoint that un-hid it — dead markup. There is room for
+   it beside the thread from xl up; the component pairs this with
+   `hidden xl:flex`. Its own scroll, independent of the thread's. */
+@media (min-width: 1280px) {
+  .wa { grid-template-columns: minmax(320px, 27rem) minmax(0, 1fr) 19rem; }
+  .wa > aside { min-height: 0; overflow-y: auto; border-left: 1px solid var(--border); padding: 1rem; }
 }
 /* min-height: 0 is load-bearing. A grid item's default min-height is auto, so
    a long thread stretches the item past its track and the page scrolls instead

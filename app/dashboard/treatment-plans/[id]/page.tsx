@@ -108,7 +108,7 @@ export default async function TreatmentPlanPage({ params }: { params: Promise<{ 
           )}
           {can(user.role, "manageBilling") && (
             <Link
-              href={`/dashboard/billing/new?patientId=${plan.patientId}`}
+              href={`/dashboard/billing/new?patientId=${plan.patientId}&fromPatient=1`}
               className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
             >
               Raise an invoice

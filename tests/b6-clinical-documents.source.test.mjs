@@ -17,11 +17,14 @@ const source = lf(await readFile(
   "utf8",
 ));
 
-test("B6 print output uses one exact physical page definition without double padding", () => {
+test("print output uses one exact physical page definition without double padding", () => {
+  // A4, not B6, since 21 Aug 2026: the B6 sheet declared its own 125×176mm
+  // page and a clinic printer loaded with A4 rendered it as a small block
+  // floating on the sheet. The class names keep their b6- prefix as history.
   assert.equal(source.match(/@page \{/g)?.length, 1);
-  assert.match(source, /@page \{[\s\S]*?size: 125mm 176mm;[\s\S]*?margin: 8mm;/);
-  assert.match(source, /\.b6-document-sheet \{[\s\S]*?min-height: 160mm !important;[\s\S]*?padding: 0 !important;/);
-  assert.match(source, /data-document-format="B6-125x176mm"/);
+  assert.match(source, /@page \{[\s\S]*?size: A4;[\s\S]*?margin: 12mm;/);
+  assert.match(source, /\.b6-document-sheet \{[\s\S]*?min-height: 265mm !important;[\s\S]*?padding: 0 !important;/);
+  assert.match(source, /data-document-format="A4-210x297mm"/);
 });
 
 test("every printed page repeats clinic, document, footer, and page identity", () => {

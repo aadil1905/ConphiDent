@@ -187,7 +187,9 @@ export default async function PatientClinicalWorkspace({
           </span>
           <div className="min-w-0">
             <BackLink
-              fallback={fromPatient === "1" ? `/dashboard/patients/${patient.id}?visit=${selectedVisitDate}` : "/dashboard/clinical-workspace"}
+              // The patient page never read ?visit= — it has no per-visit
+              // anchor, only tab=Visits, which is the one it actually honours.
+              fallback={fromPatient === "1" ? `/dashboard/patients/${patient.id}?tab=Visits` : "/dashboard/clinical-workspace"}
               className="text-xs font-semibold text-primary hover:underline"
             >
               ← {fromPatient === "1" ? "Back to the patient" : "Clinical"}
@@ -209,7 +211,7 @@ export default async function PatientClinicalWorkspace({
             New lab order
           </Link>
           <Link
-            href={`/dashboard/patients/${patient.id}?visit=${selectedVisitDate}`}
+            href={`/dashboard/patients/${patient.id}?tab=Visits`}
             className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
           >
             Patient 360

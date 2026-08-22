@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Search } from "lucide-react";
 import { toast } from "sonner";
@@ -70,6 +71,7 @@ export default function BookAVisit({
   defaultTime,
   defaultPatientName,
   defaultPhone,
+  isOwner,
 }: {
   days: BookableDay[];
   chairs: string[];
@@ -79,6 +81,9 @@ export default function BookAVisit({
   defaultTime?: string;
   defaultPatientName?: string;
   defaultPhone?: string;
+  /** /dashboard/settings/operations hard-gates to OWNER; anyone else who
+   *  followed the "Set up hours" link below would just get bounced home. */
+  isOwner: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -94,10 +99,19 @@ export default function BookAVisit({
     params.delete("time");
     if (picked && !isNew && picked.id) {
       params.set("patient", String(picked.id));
+      params.delete("name");
+      params.delete("phone");
     } else {
+      // Arriving here from ?patient=A (Patients list, Add-patient sheet,
+      // Conversations) leaves `patient` sitting in searchParams even after
+      // the receptionist types over it with a new name — the page reads
+      // `patient` first, so the old record kept winning across a date jump.
+      params.delete("patient");
       const name = (picked?.name ?? who).trim();
       if (name) params.set("name", name);
+      else params.delete("name");
       if (phone.trim()) params.set("phone", phone.trim());
+      else params.delete("phone");
     }
     router.push(`/dashboard/appointments/new?${params.toString()}`);
   };
@@ -232,7 +246,7 @@ export default function BookAVisit({
           appointmentDate: day.iso,
           appointmentTime: time,
           treatment: reason,
-          status: "Pending",
+          status: "Confirmed",
           notes: note || undefined,
         }),
       });
@@ -557,24 +571,40 @@ export default function BookAVisit({
                     aria-pressed={slot === time}
                     className={`flex min-h-[52px] flex-col items-start gap-px px-3.5 py-1.5 ${chip(slot === time)}`}
                   >
+                    {/* No chair label here on purpose. It used to show
+                        chairs[index % chairs.length] — the slot's position in
+                        the list, not an actual assignment — so two different
+                        times could claim the same chair and the booking
+                        itself carries no chairId either way. */}
                     <span className="text-sm font-semibold tabular-nums whitespace-nowrap">
                       {pretty(time)}
                     </span>
-                    {chairs.length > 0 && (
-                      <span className="text-[length:var(--text-micro)] whitespace-nowrap text-text-muted">
-                        {chairs[index % chairs.length]}
-                      </span>
-                    )}
                   </button>
                 ))}
               </div>
             </div>
           ) : (
-            <p className="rounded-chip border-l-[3px] border-l-warning bg-warning-bg px-3.5 py-3 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-warning">
-              {day.closed
-                ? `The clinic is closed on ${day.label}. Pick another day.`
-                : `Nothing is set up for ${day.label} yet. Pick another day, or book a time manually — it will still save.`}
-            </p>
+            <div className="flex flex-wrap items-center gap-2.5 rounded-chip border-l-[3px] border-l-warning bg-warning-bg px-3.5 py-3 text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-warning">
+              <p className="min-w-0 flex-1">
+                {day.closed
+                  ? `The clinic is closed on ${day.label}. Pick another day.`
+                  : /* There is no manual-time fallback anywhere in this
+                       component — only `day.slots` renders a pickable time,
+                       and an empty day has none. The old copy sent the
+                       receptionist hunting for a control that never existed. */
+                    isOwner
+                    ? `No hours are set up for ${day.label} yet. Pick another day, or set them up now.`
+                    : `No hours are set up for ${day.label} yet. Pick another day, or ask the clinic owner to set them up.`}
+              </p>
+              {!day.closed && isOwner && (
+                <Link
+                  href="/dashboard/settings/operations"
+                  className="inline-flex min-h-11 flex-none items-center rounded-control border border-warning bg-card px-3 text-[length:var(--text-secondary)] font-semibold text-warning hover:bg-muted"
+                >
+                  Set up hours
+                </Link>
+              )}
+            </div>
           )}
 
         </section>

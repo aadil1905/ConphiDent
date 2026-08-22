@@ -199,7 +199,11 @@ export default function GrowthQueue({
         <div
           role="region"
           aria-label="What to do with the ones you picked"
-          className="flex flex-wrap items-center justify-between gap-3 rounded-card bg-heading px-4 py-3 text-white"
+          // --heading is a text colour: it goes near-white in dark mode by
+          // design, which made this "always-dark chrome" band invert into
+          // white-on-white. --sidebar is the token built to stay dark in both
+          // modes — the same one the nav rail uses.
+          className="flex flex-wrap items-center justify-between gap-3 rounded-card bg-sidebar px-4 py-3 text-sidebar-foreground"
         >
           <span className="text-[length:var(--text-secondary)] font-semibold">
             {chosen.length} {chosen.length === 1 ? "person" : "people"} selected
@@ -224,7 +228,7 @@ export default function GrowthQueue({
                   id="growth-assignee"
                   value={assignee}
                   onChange={(event) => setAssignee(Number(event.target.value))}
-                  className="min-h-11 cursor-pointer rounded-control border border-white/40 bg-heading px-2 text-[length:var(--text-secondary)] font-semibold text-white"
+                  className="min-h-11 cursor-pointer rounded-control border border-white/40 bg-sidebar px-2 text-[length:var(--text-secondary)] font-semibold text-white"
                 >
                   {teammates.map((mate) => (
                     <option key={mate.id} value={mate.id} className="text-heading">

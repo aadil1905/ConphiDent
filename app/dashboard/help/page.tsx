@@ -13,7 +13,7 @@ const ANSWERS = [
   {
     question: "How do I take a payment without losing my place?",
     answer:
-      "On Money, press Collect on the row. Put in the amount, pick how they paid, done. Part payments are fine and the receipt goes out on WhatsApp on its own.",
+      "On Money, press Collect on the row. Put in the amount, pick how they paid, done. Part payments are fine — print or open the receipt from the same row afterwards.",
     href: "/dashboard/billing",
     label: "Open Money",
   },

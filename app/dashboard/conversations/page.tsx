@@ -484,10 +484,12 @@ export default async function MessagesInboxPage({
           </section>
 
           {/* --- Context rail -----------------------------------------------
-              The grid is two columns now, so the patient card sits under the
-              thread list rather than claiming a third column of its own. */}
+              A third grid column from xl up (app/globals.css); below that
+              there is nowhere to put a patient card beside an already-narrow
+              thread, so it does not render at all rather than push in as a
+              fourth thing to scroll past on a tablet. */}
           {active && (
-            <aside className="hidden min-w-0 flex-col gap-3">
+            <aside className="hidden min-w-0 flex-col gap-3 xl:flex">
               <section className="flex flex-col gap-2 rounded-card border border-border bg-card px-4 py-3.5 shadow-[var(--shadow)]">
                 <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] font-semibold text-heading">{activeName}</p>
                 {active.patient && context ? (

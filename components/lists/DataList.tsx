@@ -43,10 +43,14 @@ function SortHeader({
   const Icon = active ? (query.dir === "asc" ? ArrowUp : ArrowDown) : ChevronsUpDown;
 
   return (
+    // The visible header is 11.5px uppercase text — the target sorting is the
+    // only way to reorder every list in the product has to reach 44px anyway.
+    // -py-3 cancels the th's own padding so the link's box, not the text,
+    // carries the height.
     <Link
       href={listHref(basePath, query, { sort: column.sortKey, dir: nextDir, page: 1 })}
       aria-label={`Sort by ${column.label}, ${nextDir === "asc" ? "smallest first" : "largest first"}`}
-      className="inline-flex items-center gap-1 text-inherit hover:text-heading"
+      className="-my-3 inline-flex min-h-11 items-center gap-1 py-3 text-inherit hover:text-heading"
     >
       {column.label}
       <Icon className={`h-3 w-3 ${active ? "text-primary" : "text-text-muted/60"}`} aria-hidden />

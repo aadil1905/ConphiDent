@@ -8,7 +8,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const PLATFORM_NAME =
-  process.env.NEXT_PUBLIC_PLATFORM_NAME || "ConPhiDent";
+  process.env.NEXT_PUBLIC_PLATFORM_NAME || "ConphiDent";
 /**
  * Platform roles are intentionally independent of clinic roles.  `platformRole`
  * remains a string while the platform is in this transition, so legacy values

@@ -55,6 +55,11 @@ export async function POST(request: Request, context: { params: Promise<{ token:
       const claimed = await tx.patientIntakeRequest.updateMany({
         where: {
           id: intake.id,
+          // The id alone already pins the row; clinicId is here because the
+          // tenant guard refuses an updateMany that cannot name a clinic —
+          // same shape as the patient.updateMany calls below and the sign-in
+          // writes in app/login/actions.ts.
+          clinicId: intake.clinicId,
           expiresAt: { gt: completedAt },
           status: { notIn: ["COMPLETED", "REVIEWED"] },
         },

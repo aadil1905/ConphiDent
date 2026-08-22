@@ -182,17 +182,15 @@ export default async function SchedulePage({
       />
 
       <div className="flex flex-wrap items-center justify-between gap-2.5">
-        <div
-          role="tablist"
-          aria-label="Schedule view"
-          className="flex gap-1 rounded-control border border-border bg-card p-1"
-        >
+        {/* role="tab"/"tablist" promises arrow-key switching between panels;
+            these are plain navigation links to a new URL, so aria-current is
+            the correct role for "which one am I on", not aria-selected. */}
+        <nav aria-label="Schedule view" className="flex gap-1 rounded-control border border-border bg-card p-1">
           {(["day", "week", "list"] as const).map((option) => (
             <Link
               key={option}
               href={listHref(BASE, query, { view: option, page: 1 })}
-              role="tab"
-              aria-selected={view === option}
+              aria-current={view === option ? "page" : undefined}
               className={`inline-flex min-h-11 items-center rounded-chip px-3.5 text-[length:var(--text-secondary)] leading-[var(--text-secondary-lh)] font-semibold ${
                 view === option ? "bg-secondary text-heading" : "text-text-muted hover:bg-muted"
               }`}
@@ -200,7 +198,7 @@ export default async function SchedulePage({
               {option === "day" ? "Day" : option === "week" ? "Week" : "List"}
             </Link>
           ))}
-        </div>
+        </nav>
 
         <div className="flex flex-wrap items-center gap-2">
           <Link
@@ -296,7 +294,7 @@ export default async function SchedulePage({
                   {/* The time leads the row the receptionist scans down to find
                       "now" — the same size ChairList settled on for the same
                       column, for the reason documented there. */}
-                  <div className="text-[length:var(--text-section)] leading-none font-semibold tabular-nums text-heading">
+                  <div className="font-[family-name:var(--font-workspace-display)] text-[length:var(--text-section)] leading-none font-semibold tabular-nums text-heading">
                     {visit.appointmentTime}
                   </div>
                   <div className="min-w-0">
@@ -394,7 +392,10 @@ export default async function SchedulePage({
                           key={visit.id}
                           href={`${BASE}/${visit.id}`}
                           title={`${visit.appointmentTime} · ${visit.patientName} · ${visit.treatment}`}
-                          className={`block rounded-chip border-l-2 px-1.5 py-1 ${
+                          // min-h-11: the empty-cell "+ book" link beside this
+                          // already carries the 44px floor; a booked chip is
+                          // the more-tapped of the two and was smaller.
+                          className={`flex min-h-11 flex-col justify-center rounded-chip border-l-2 px-1.5 py-1 ${
                             visit.status === "Pending"
                               ? "border-l-warning bg-warning-bg"
                               : visit.status === "Completed"

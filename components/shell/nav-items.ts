@@ -1,5 +1,4 @@
 import {
-  Activity,
   BarChart3,
   CalendarDays,
   FlaskConical,
@@ -67,13 +66,6 @@ export const NAV_DESTINATIONS: readonly NavDestination[] = [
     href: "/dashboard/patients", label: "Patients", icon: Users, hint: "Everyone on your list", feature: "patients", permission: "managePatients",
     children: [
       { href: "/dashboard/patient-intake", label: "Intake links", feature: "patients", permission: "managePatients" },
-    ],
-  },
-  {
-    href: "/dashboard/clinical-workspace", label: "Clinical", icon: Activity, hint: "Charting, notes and prescriptions", feature: "clinical", permission: "viewClinical",
-    children: [
-      { href: "/dashboard/treatment-plans", label: "Treatment plans", feature: "clinical", permission: "viewClinical" },
-      { href: "/dashboard/prescriptions", label: "Prescriptions", feature: "clinical", permission: "viewClinical" },
     ],
   },
   {

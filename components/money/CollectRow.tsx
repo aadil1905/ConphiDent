@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { MoreVertical } from "lucide-react";
 import { toast } from "sonner";
 import { rupees } from "@/lib/format";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   reversePaymentAction,
   takePaymentAction,
@@ -16,7 +19,8 @@ const UNDO_MS = 8000;
 
 /**
  * Collecting money never leaves the list. Amount + method in a popover, the row
- * updates straight away, and the receipt goes out on WhatsApp.
+ * updates straight away. The receipt itself is printed or opened from the
+ * row — nothing here sends it anywhere.
  */
 export default function CollectRow({
   invoiceId,
@@ -42,11 +46,28 @@ export default function CollectRow({
   const [outstanding, setOutstanding] = useState(due);
   const [busy, setBusy] = useState(false);
   const [, startTransition] = useTransition();
+  const router = useRouter();
   const wrap = useRef<HTMLDivElement>(null);
+  // The pay/menu popovers portal to <body> (see below), so they are no longer
+  // DOM descendants of `wrap` — a click inside them would otherwise look like
+  // a click "away" and close them mid-interaction. This ref is what closes
+  // that gap.
+  const pop = useRef<HTMLDivElement>(null);
+  // The trigger that opened the popover, so focus has somewhere real to land
+  // back on — the portaled menu leaves the DOM order the browser would
+  // otherwise use to figure that out on its own.
+  const trigger = useRef<HTMLButtonElement | null>(null);
+  // Screen position for the portaled pay/menu popover, captured from `wrap`
+  // at the moment it opens. Anchored popovers this transient are simpler to
+  // close on scroll than to keep repositioned — see the scroll listener below.
+  const [anchor, setAnchor] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
 
   useEffect(() => {
     const away = (event: PointerEvent) => {
-      if (wrap.current && !wrap.current.contains(event.target as Node)) setOpen(null);
+      const target = event.target as Node;
+      if (wrap.current?.contains(target)) return;
+      if (pop.current?.contains(target)) return;
+      setOpen(null);
     };
     const esc = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -61,6 +82,67 @@ export default function CollectRow({
       document.removeEventListener("keydown", esc);
     };
   }, []);
+
+  // The popover's screen position is only valid until whatever scrolls — the
+  // Money list's own scroll container, or the page — and closing on scroll is
+  // simpler and safer than tracking the anchor through it. Separate effect,
+  // armed a frame after open: opening a menu can itself trigger a native
+  // scroll-into-view on the trigger button, and listening from the same tick
+  // closed the popover it had just opened.
+  //
+  // Skipped while focus sits inside the popover: the pay panel's amount input
+  // autofocuses, and on a phone the on-screen keyboard sliding in scrolls the
+  // page well after that first frame, closing a popover nobody scrolled on
+  // purpose — the moment someone is actively typing into it is exactly when a
+  // scroll should not be read as "dismiss".
+  useEffect(() => {
+    if (!open) return;
+    const onScroll = () => {
+      if (pop.current?.contains(document.activeElement)) return;
+      setOpen(null);
+    };
+    const armed = requestAnimationFrame(() => window.addEventListener("scroll", onScroll, true));
+    return () => {
+      cancelAnimationFrame(armed);
+      window.removeEventListener("scroll", onScroll, true);
+    };
+  }, [open]);
+
+  // Focus the popover on open — the portal leaves it out of the trigger's tab
+  // order entirely, so without this a keyboard user's next Tab lands in the
+  // NEXT row instead. Restored to the trigger on close, since that reference
+  // is what a portaled node can't give the browser for free.
+  useEffect(() => {
+    if (!open) return;
+    const first = pop.current?.querySelector<HTMLElement>("input, a, button");
+    first?.focus();
+    return () => trigger.current?.focus();
+  }, [open]);
+
+  const openAt = (next: "pay" | "menu", from: HTMLButtonElement) => {
+    trigger.current = from;
+    const rect = wrap.current?.getBoundingClientRect();
+    if (rect) {
+      // clientWidth excludes a classic scrollbar; innerWidth does not — using
+      // innerWidth here quietly shifted every popover ~15-17px left of the
+      // row's edge on a non-overlay-scrollbar desktop.
+      const viewportWidth = document.documentElement.clientWidth;
+      const panelWidth = 280;
+      const panelHeight = next === "pay" ? 300 : 130;
+      const right = Math.min(Math.max(8, viewportWidth - rect.right), viewportWidth - panelWidth - 8);
+      // Flip above the trigger when there isn't room below — a fixed popover
+      // can't be scrolled into view, so opening off-screen made it
+      // unreachable rather than just awkwardly placed. Clamped to 8: on a
+      // viewport shorter than the panel itself, "above" can compute negative
+      // too, which would push it off the top edge instead of the bottom one.
+      if (rect.bottom + panelHeight + 6 > window.innerHeight) {
+        setAnchor({ bottom: Math.max(8, window.innerHeight - rect.top + 6), right });
+      } else {
+        setAnchor({ top: rect.bottom + 6, right });
+      }
+    }
+    setOpen((current) => (current === next ? null : next));
+  };
 
   const take = () => {
     const value = Number(String(amount).replace(/[^0-9]/g, "")) || 0;
@@ -105,8 +187,17 @@ export default function CollectRow({
     startTransition(() => {
       void voidInvoiceAction(invoiceId, "Voided from the Money list").then((result) => {
         setBusy(false);
-        if (result.ok) toast.success(result.note);
-        else toast.error(result.message);
+        if (result.ok) {
+          toast.success(result.note);
+          // The invoice detail page queries `voidedAt: null` and calls
+          // notFound() otherwise — voiding from that page (canVoid is true
+          // there too) used to strand the receptionist on the site's 404 the
+          // moment this revalidated. The Money list is the one place a voided
+          // invoice still has a row to look at.
+          router.push("/dashboard/billing");
+        } else {
+          toast.error(result.message);
+        }
       });
     });
   };
@@ -114,18 +205,26 @@ export default function CollectRow({
   const collectable = outstanding > 0;
 
   return (
-    <div ref={wrap} className="relative">
+    // data-row-popover lifts the CELL this sits in, not just this div: the
+    // popover renders inside a `td.relative.z-10` (ListCell interactive), and
+    // every later row has an identical td — equal z-index, later in the DOM —
+    // so it paints over anything this row opens, no matter the z-index in
+    // here. globals.css raises any cell that :has() an open popover.
+    <div ref={wrap} data-row-popover={open ? "open" : undefined} className="relative">
       <div className="flex gap-1.5">
         <button
           type="button"
           disabled={busy}
-          onClick={() => {
+          onClick={(event) => {
             if (!collectable) {
-              toast.success(`Receipt sent to ${patientName.split(" ")[0]} on WhatsApp.`);
+              // "Receipt" opens the receipt. This used to fire a success toast
+              // claiming a WhatsApp send that no code performed — a fake
+              // confirmation on a money surface.
+              router.push(`/dashboard/billing/${invoiceId}/print`);
               return;
             }
             setAmount(String(outstanding));
-            setOpen(open === "pay" ? null : "pay");
+            openAt("pay", event.currentTarget);
           }}
           className={`min-h-11 flex-1 cursor-pointer rounded-control border px-3 text-[length:var(--text-secondary)] font-semibold whitespace-nowrap disabled:opacity-70 ${
             collectable
@@ -137,7 +236,7 @@ export default function CollectRow({
         </button>
         <button
           type="button"
-          onClick={() => setOpen(open === "menu" ? null : "menu")}
+          onClick={(event) => openAt("menu", event.currentTarget)}
           aria-label={`More for ${invoiceNumber}`}
           aria-expanded={open === "menu"}
           className="grid min-h-11 w-11 flex-none cursor-pointer place-items-center rounded-control border border-border-strong bg-card text-heading hover:bg-muted"
@@ -146,11 +245,16 @@ export default function CollectRow({
         </button>
       </div>
 
-      {open === "pay" && (
+      {open === "pay" && anchor && createPortal(
         <div
+          ref={pop}
           role="dialog"
           aria-label={`Take a payment on ${invoiceNumber}`}
-          className="absolute right-0 top-[calc(100%+6px)] z-30 flex w-[280px] flex-col gap-2.5 rounded-[0.8rem] border border-border-strong bg-card p-3.5 shadow-[var(--shadow-overlay)] motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-150"
+          style={{ top: anchor.top, bottom: anchor.bottom, right: anchor.right }}
+          // Portaled to <body>: a td in a scrolling, z-10-stacked table row is
+          // no ancestor any more, so neither clips nor buries this. Position
+          // is fixed-to-viewport from the anchor captured in openAt().
+          className="fixed z-[100] flex w-[280px] flex-col gap-2.5 rounded-[0.8rem] border border-border-strong bg-card p-3.5 shadow-[var(--shadow-overlay)] motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-150"
         >
           <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] font-semibold text-heading">Take a payment · {invoiceNumber}</p>
           <label className="flex flex-col gap-1.5">
@@ -161,7 +265,6 @@ export default function CollectRow({
               value={amount}
               onChange={(event) => setAmount(event.target.value)}
               inputMode="numeric"
-              autoFocus
               className="min-h-11 rounded-control border border-border-strong bg-card px-3 text-[length:var(--text-body)] tabular-nums text-foreground"
             />
           </label>
@@ -196,14 +299,17 @@ export default function CollectRow({
               Cancel
             </button>
           </div>
-          <p className="text-[length:var(--text-micro)] text-text-muted">Receipt goes out on WhatsApp automatically.</p>
-        </div>
+          <p className="text-[length:var(--text-micro)] text-text-muted">Print or open the receipt from this row afterwards.</p>
+        </div>,
+        document.body,
       )}
 
-      {open === "menu" && (
+      {open === "menu" && anchor && createPortal(
         <div
+          ref={pop}
           role="menu"
-          className="absolute right-0 top-[calc(100%+6px)] z-30 w-[220px] overflow-hidden rounded-[0.8rem] border border-border-strong bg-card shadow-[var(--shadow-overlay)] motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-150"
+          style={{ top: anchor.top, bottom: anchor.bottom, right: anchor.right }}
+          className="fixed z-[100] w-[220px] overflow-hidden rounded-[0.8rem] border border-border-strong bg-card shadow-[var(--shadow-overlay)] motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-150"
         >
           <Link
             href={`/dashboard/billing/${invoiceId}`}
@@ -232,48 +338,36 @@ export default function CollectRow({
               Void this invoice
             </button>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
 
-      {confirmVoid && (
-        <div
-          role="presentation"
-          onClick={() => setConfirmVoid(false)}
-          className="fixed inset-0 z-[95] flex items-center justify-center bg-[var(--overlay)] p-4 backdrop-blur-[4px]"
-        >
-          <div
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby={`void-${invoiceId}`}
-            onClick={(event) => event.stopPropagation()}
-            className="flex w-full max-w-[460px] flex-col gap-3 rounded-card border border-border-strong bg-card p-5.5 shadow-[var(--shadow-overlay)]"
-          >
-            <h2 id={`void-${invoiceId}`} className="text-[length:var(--text-section)] leading-[var(--text-section-lh)] font-semibold text-heading">
-              Void {invoiceNumber} for {rupees(total)}?
-            </h2>
-            <p className="text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
-              {paid > 0
+      {/* The shared ConfirmDialog, not a hand-rolled one — it already focuses
+          the first button on open, handles Escape, and restores focus to
+          whoever opened it. The hand-rolled version had none of that despite
+          claiming aria-modal. Still portaled: ConfirmDialog itself doesn't,
+          and rendered in place it would hit the exact stacking-context trap
+          the kebab menu and pay panel did.
+
+          Gated on confirmVoid, not always-mounted with open={confirmVoid}:
+          createPortal's second argument is document.body, evaluated eagerly
+          wherever this expression sits — unconditionally, that runs on the
+          server too, where document does not exist. */}
+      {confirmVoid && createPortal(
+        <ConfirmDialog
+          open={confirmVoid}
+          onCancel={() => setConfirmVoid(false)}
+          onConfirm={doVoid}
+          copy={{
+            title: `Void ${invoiceNumber} for ${rupees(total)}?`,
+            body:
+              paid > 0
                 ? `${patientName} keeps the ${rupees(paid)} already paid as credit, and the invoice stops counting towards collections. This cannot be undone.`
-                : `${patientName}'s invoice stops counting towards collections. This cannot be undone — a credit note is the reversible option.`}
-            </p>
-            <div className="flex flex-wrap justify-end gap-2.5">
-              <button
-                type="button"
-                onClick={() => setConfirmVoid(false)}
-                className="min-h-11 cursor-pointer rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
-              >
-                Keep it
-              </button>
-              <button
-                type="button"
-                onClick={doVoid}
-                className="min-h-11 cursor-pointer rounded-control border border-danger-mark bg-danger-mark px-4 text-[length:var(--text-secondary)] font-semibold text-white"
-              >
-                Void it
-              </button>
-            </div>
-          </div>
-        </div>
+                : `${patientName}'s invoice stops counting towards collections. This cannot be undone — a credit note is the reversible option.`,
+            confirmLabel: "Void it",
+          }}
+        />,
+        document.body,
       )}
     </div>
   );

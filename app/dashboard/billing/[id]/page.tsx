@@ -124,8 +124,11 @@ export default async function InvoiceDetailPage({
     ? invoice.treatmentPlan.selectedTeeth.map((tooth) => tooth.toothNumber).join(", ")
     : invoice.treatmentPlan?.toothNumber;
 
+  // The patient page has no per-visit anchor, only ?tab=, which is the one it
+  // actually reads — `visit` here just marks that this invoice came from a
+  // specific visit's context, worth landing back on the Visits tab for.
   const backHref = fromPatient
-    ? `/dashboard/patients/${fromPatient}${visit ? `?visit=${visit}` : ""}`
+    ? `/dashboard/patients/${fromPatient}${visit ? "?tab=Visits" : ""}`
     : "/dashboard/billing";
 
   return (
@@ -205,7 +208,11 @@ export default async function InvoiceDetailPage({
                   />
                 </div>
               ) : (
-                <div className="grid size-12 shrink-0 place-items-center rounded-card bg-heading font-[family-name:var(--font-display)] text-xl font-semibold text-white">
+                // bg-sidebar/text-sidebar-foreground, not bg-heading/text-white:
+                // --heading is a text token that goes near-white in dark mode
+                // by design, so this fallback tile inverted to a near-invisible
+                // white-on-white initial. --sidebar stays dark in both modes.
+                <div className="grid size-12 shrink-0 place-items-center rounded-card bg-sidebar font-[family-name:var(--font-display)] text-xl font-semibold text-sidebar-foreground">
                   {clinicName.slice(0, 1).toUpperCase()}
                 </div>
               )}

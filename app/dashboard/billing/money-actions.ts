@@ -94,7 +94,10 @@ export async function takePaymentAction(
     return {
       ok: true,
       paymentId: result.paymentId,
-      note: `${rupees(amount)} taken by ${method} from ${result.who}. Receipt sent.`,
+      // Nothing sends a receipt anywhere in this action — it only writes the
+      // Payment row. "Receipt sent." told the receptionist to tell a patient
+      // it was on its way, and it never arrived.
+      note: `${rupees(amount)} taken by ${method} from ${result.who}.`,
     };
   } catch {
     return { ok: false, message: OFFLINE };

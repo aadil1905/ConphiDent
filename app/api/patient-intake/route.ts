@@ -2,10 +2,11 @@ import { reportError } from "@/lib/monitoring";
 import { randomBytes } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireApiFeature, requireApiPermission } from "@/lib/tenant";
+import { requireApiFeature, requireApiPermission, requireApiUser } from "@/lib/tenant";
 import { prisma } from "@/lib/prisma";
 import { PatientWhatsAppPolicyError, queuePatientWhatsAppMessage } from "@/lib/patient-whatsapp";
 import { processScheduledWhatsAppMessages } from "@/lib/scheduled-whatsapp";
+import { INTAKE_LINK_DAYS } from "@/lib/patient-intake-link";
 
 const patientSchema = z.object({
   fullName: z.string().trim().min(2).max(160),
@@ -15,6 +16,10 @@ const patientSchema = z.object({
   gender: z.union([z.literal(""), z.enum(["Female", "Male", "Non-binary", "Prefer not to say"])]).optional().default(""),
   address: z.string().trim().max(500).optional().default(""),
   consentConfirmed: z.literal(true),
+  // "send" (default) queues the WhatsApp message, same as always. "fill-now"
+  // is the desk path: the patient is right there, so nothing is sent — staff
+  // are handed the same link to open on the desk device instead.
+  mode: z.enum(["send", "fill-now"]).optional().default("send"),
 });
 
 const finalizeSchema = z.object({
@@ -29,12 +34,33 @@ function patientLink(request: NextRequest, token: string) {
 }
 
 export async function POST(request: NextRequest) {
-  const { user, response } = await requireApiFeature("whatsapp", "sendWhatsApp");
-  if (!user) return response;
+  // Authenticate before touching the body: parsing/validating first meant an
+  // unauthenticated caller with a bad payload got a schema 400 (or a 500 via
+  // reportError, for malformed JSON) instead of a clean 401, and every such
+  // request landed in error monitoring as if it were a real failure.
+  const gateAuth = await requireApiUser();
+  if (!gateAuth.user) return gateAuth.response;
   try {
-    const input = patientSchema.parse(await request.json());
+    const body = await request.json();
+    const input = patientSchema.parse(body);
+    // Sending needs the WhatsApp feature and permission on, same as before.
+    // Filling it in at the desk is just registering a patient and opening a
+    // page — it must not be blocked on a clinic that hasn't set up WhatsApp.
+    const gate =
+      input.mode === "fill-now"
+        ? await requireApiPermission("managePatients")
+        : await requireApiFeature("whatsapp", "sendWhatsApp");
+    const { user, response } = gate;
+    if (!user) return response;
     const token = randomBytes(32).toString("hex");
-    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    // Same lifetime as lib/patient-intake-link.ts's createAndSendIntakeLink —
+    // "one place that mints an intake link, so a link never means two
+    // different things" was the point of that helper, but this route grew
+    // its own separate 48-hour token in parallel. Every surface around this
+    // wizard (its own info box, this page's step copy, the public form)
+    // promises the INTAKE_LINK_DAYS week, so the token needs to actually live
+    // that long rather than the copy being fixed to admit two days.
+    const expiresAt = new Date(Date.now() + INTAKE_LINK_DAYS * 24 * 60 * 60 * 1000);
 
     const patient = await prisma.patient.upsert({
       where: { clinicId_phone: { clinicId: user.clinicId, phone: input.phone } },
@@ -74,42 +100,56 @@ export async function POST(request: NextRequest) {
     const link = patientLink(request, token);
     let warning = "";
 
-    try {
-      const queued = await queuePatientWhatsAppMessage({
-        clinicId: user.clinicId,
-        patientId: patient.id,
-        phone: patient.phone,
-        content: `Hello ${input.fullName}, ${user.clinic.brandName || user.clinic.name} has sent your secure patient-intake form. Please complete your medical history, consent, and signature within 48 hours:\n\n${link}`,
-        purpose: "PATIENT_INTAKE",
-        sourceType: "PATIENT_INTAKE",
-        sourceId: String(intake.id),
-        idempotencyKey: `patient-intake:${intake.id}`,
-        actorUserId: user.id,
-        actorRole: user.role,
-        consentConfirmed: input.consentConfirmed,
-        consentEvidence: "Staff confirmed the patient agreed to receive the private intake link on this WhatsApp number",
-        auditAction: "PATIENT_INTAKE_WHATSAPP_QUEUED",
-        preferredTemplateName: process.env.WHATSAPP_INTAKE_TEMPLATE,
-        preferredTemplateLanguage: process.env.WHATSAPP_INTAKE_TEMPLATE_LANG || "en",
-        templateParameters: [input.fullName, link],
-        redactContent: true,
-      });
-      await processScheduledWhatsAppMessages(new Date(), queued.message.id);
-      const delivered = await prisma.scheduledWhatsAppMessage.findFirst({ where: { id: queued.message.id, clinicId: user.clinicId }, select: { status: true, failureReason: true } });
-      if (delivered?.status === "SENT") {
-        await prisma.patientIntakeRequest.update({ where: { id: intake.id }, data: { status: "SENT", sentAt: new Date() } });
-      } else {
-        warning = delivered?.failureReason || "The secure link is queued and awaiting WhatsApp delivery.";
+    if (input.mode === "fill-now") {
+      // Staff are about to open this link themselves — a WhatsApp message to
+      // the patient's phone right now would be redundant at best, confusing
+      // at worst (they're sitting at the desk, not reaching for their phone).
+      await prisma.patientIntakeRequest.update({ where: { id: intake.id, clinicId: user.clinicId }, data: { status: "OPENED", openedAt: new Date() } });
+    } else {
+      try {
+        const queued = await queuePatientWhatsAppMessage({
+          clinicId: user.clinicId,
+          patientId: patient.id,
+          phone: patient.phone,
+          content: `Hello ${input.fullName}, ${user.clinic.brandName || user.clinic.name} has sent your secure patient-intake form. Please complete your medical history, consent, and signature within ${INTAKE_LINK_DAYS} days:\n\n${link}`,
+          purpose: "PATIENT_INTAKE",
+          sourceType: "PATIENT_INTAKE",
+          sourceId: String(intake.id),
+          idempotencyKey: `patient-intake:${intake.id}`,
+          actorUserId: user.id,
+          actorRole: user.role,
+          consentConfirmed: input.consentConfirmed,
+          // Matches what the on-screen checkbox actually asks staff to
+          // confirm now that one checkbox covers both "send" and "fill-now" —
+          // it no longer specifically attests to a WhatsApp-number consent,
+          // so the compliance record this becomes must not claim more than
+          // that. The WhatsApp delivery itself is stated as fact, not as
+          // something staff attested to.
+          consentEvidence: "Staff confirmed the patient agreed to share their details for this intake record; the link was sent to this number on WhatsApp.",
+          auditAction: "PATIENT_INTAKE_WHATSAPP_QUEUED",
+          preferredTemplateName: process.env.WHATSAPP_INTAKE_TEMPLATE,
+          preferredTemplateLanguage: process.env.WHATSAPP_INTAKE_TEMPLATE_LANG || "en",
+          templateParameters: [input.fullName, link],
+          redactContent: true,
+        });
+        await processScheduledWhatsAppMessages(new Date(), queued.message.id);
+        const delivered = await prisma.scheduledWhatsAppMessage.findFirst({ where: { id: queued.message.id, clinicId: user.clinicId }, select: { status: true, failureReason: true } });
+        if (delivered?.status === "SENT") {
+          await prisma.patientIntakeRequest.update({ where: { id: intake.id }, data: { status: "SENT", sentAt: new Date() } });
+        } else {
+          warning = delivered?.failureReason || "The secure link is queued and awaiting WhatsApp delivery.";
+        }
+      } catch (error) {
+        warning = error instanceof Error ? error.message : "WhatsApp could not send the link.";
       }
-    } catch (error) {
-      warning = error instanceof Error ? error.message : "WhatsApp could not send the link.";
     }
 
     return NextResponse.json({
       id: intake.id,
       patientId: patient.id,
       link,
-      status: warning ? "CREATED" : "SENT",
+      mode: input.mode,
+      status: input.mode === "fill-now" ? "OPENED" : warning ? "CREATED" : "SENT",
       expiresAt,
       warning,
     });

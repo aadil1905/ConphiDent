@@ -2,7 +2,8 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { ClipboardList } from "lucide-react";
 import { Prisma } from "@prisma/client";
-import { requirePermission } from "@/lib/permissions";
+import { can, requirePermission } from "@/lib/permissions";
+import TreatmentPlanRowAction from "@/components/clinical/TreatmentPlanRowAction";
 import { prisma } from "@/lib/prisma";
 import { exactStamp, humanTime, rupees } from "@/lib/format";
 import { pageWindow, parseListQuery, type RawSearchParams } from "@/lib/list-params";
@@ -64,6 +65,7 @@ export default async function TreatmentPlansPage({
   searchParams: Promise<RawSearchParams>;
 }) {
   const user = await requirePermission("viewClinical");
+  const canComplete = can(user.role, "manageClinical");
   const params = await searchParams;
   const query = parseListQuery(params, { defaultSort: "agreed", defaultDir: "desc", filterKeys: ["show"] });
   const now = new Date();
@@ -243,7 +245,6 @@ export default async function TreatmentPlansPage({
           const priced = plan.estimatedCost ?? 0;
           const pct = priced > 0 ? Math.min(100, Math.round((invoiced / priced) * 100)) : 0;
           const chase = plan.status === "Proposed";
-          const running = plan.status === "Accepted" || plan.status === "In Progress";
           return (
             <ListRow key={plan.id} needsAttention={chase}>
               <ListCell interactive>
@@ -291,20 +292,12 @@ export default async function TreatmentPlansPage({
                 </span>
               </ListCell>
               <ListCell align="right" interactive>
-                <Link
-                  href={
-                    running
-                      ? `/dashboard/appointments/new?patientId=${plan.patientId}`
-                      : `${BASE}/${plan.id}/edit`
-                  }
-                  className={`inline-flex min-h-11 items-center justify-center rounded-control px-3.5 text-[length:var(--text-secondary)] font-semibold whitespace-nowrap ${
-                    chase
-                      ? "border border-primary bg-primary text-primary-foreground hover:bg-primary-hover"
-                      : "border border-border-strong bg-card text-heading hover:bg-muted"
-                  }`}
-                >
-                  {chase ? "Chase it" : running ? "Book next" : "Open plan"}
-                </Link>
+                <TreatmentPlanRowAction
+                  planId={plan.id}
+                  planHref={`${BASE}/${plan.id}/edit`}
+                  completed={plan.status === "Completed"}
+                  canComplete={canComplete}
+                />
               </ListCell>
             </ListRow>
           );

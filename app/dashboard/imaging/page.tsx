@@ -27,10 +27,19 @@ function modalityLabel(value: string) {
   return IMAGING_MODALITY_LABELS[value as ImagingModality] || value.replaceAll("_", " ");
 }
 
-function filterHref(key: string, q: string) {
+function filterHref(key: string, q: string, patient: number | null) {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
-  if (key !== "unread") params.set("show", key);
+  // Always explicit, never omitted for the "unread" default: the actual
+  // default flips to "all" when a patient scope is present (below), so a
+  // link that relied on omission to mean "unread" silently resolved to "all"
+  // instead the moment `patient` carried through — the chip looked clickable
+  // but could never activate.
+  params.set("show", key);
+  // A chip click used to silently drop a patient-scoped view back to the
+  // clinic-wide list — the one thing a filter should never do to a scope
+  // the receptionist didn't ask to leave.
+  if (patient) params.set("patient", String(patient));
   const search = params.toString();
   return search ? `${BASE}?${search}` : BASE;
 }
@@ -208,6 +217,7 @@ export default async function ImagingPage({
           </Link>
           <form action={BASE} className="flex items-center gap-2">
             {show !== "unread" && <input type="hidden" name="show" value={show} />}
+            {focusedPatient && <input type="hidden" name="patient" value={focusedPatient} />}
             <label className="flex min-h-11 items-center gap-2 rounded-control border border-border bg-card px-3">
               <span className="sr-only">Search X-rays</span>
               <input
@@ -240,7 +250,11 @@ export default async function ImagingPage({
             {unmatchedStudies.map((study) => (
               <div key={study.id} className="flex flex-col gap-2">
                 <div className="flex flex-wrap items-center gap-3">
-                  <span className="flex h-12 w-16 flex-none items-center justify-center rounded-[0.4rem] bg-heading text-[10px] font-semibold tracking-[0.14em] text-primary">
+                  {/* Pinned dark on purpose — it imitates a radiograph plate,
+                      the same chrome ImagingGallery's viewer stays dark in
+                      both modes. bg-heading inverted to near-white in dark
+                      mode and turned this into a bright tile instead. */}
+                  <span className="flex h-12 w-16 flex-none items-center justify-center rounded-chip bg-[#0b1f27] text-[10px] font-semibold tracking-[0.14em] text-[var(--gold-on-ink)]">
                     {modalityLabel(study.modality).toUpperCase().slice(0, 10)}
                   </span>
                   <div className="min-w-0">
@@ -288,7 +302,7 @@ export default async function ImagingPage({
         {FILTERS.map((filter) => (
           <Link
             key={filter.key}
-            href={filterHref(filter.key, q)}
+            href={filterHref(filter.key, q, focusedPatient)}
             aria-current={show === filter.key ? "true" : undefined}
             className={`inline-flex min-h-11 items-center gap-1.5 rounded-pill border px-3 text-xs font-semibold whitespace-nowrap text-heading ${
               show === filter.key ? "border-primary bg-primary-soft" : "border-border bg-card hover:bg-muted"
@@ -317,8 +331,18 @@ export default async function ImagingPage({
           <p className="max-w-[32rem] text-[length:var(--text-body)] leading-[var(--text-body-lh)] text-text-muted">
             {q
               ? "Try a patient name or a tooth number like 36."
-              : "X-rays from connected devices land here automatically and file themselves against the patient in the chair."}
+              : /* No sensor integration exists — the only way a study lands
+                   here is POST /api/imaging/import, behind the form below. */
+                "Nothing arrives on its own. Import an X-ray and file it against the patient in the chair — it takes one form."}
           </p>
+          {!q && (
+            <Link
+              href="/dashboard/imaging/new"
+              className="mt-2 inline-flex min-h-11 items-center rounded-control bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
+            >
+              Import an X-ray
+            </Link>
+          )}
         </section>
       ) : (
         <ImagingGallery
@@ -332,7 +356,7 @@ export default async function ImagingPage({
         <nav aria-label="X-ray pages" className="flex items-center justify-between rounded-card border border-border bg-card p-3">
           <Link
             aria-disabled={page === 1}
-            href={`${BASE}?${new URLSearchParams({ ...(q ? { q } : {}), ...(show !== "unread" ? { show } : {}), page: String(Math.max(1, page - 1)) })}`}
+            href={`${BASE}?${new URLSearchParams({ ...(q ? { q } : {}), ...(show !== "unread" ? { show } : {}), ...(focusedPatient ? { patient: String(focusedPatient) } : {}), page: String(Math.max(1, page - 1)) })}`}
             className={`inline-flex min-h-11 items-center rounded-control border border-border-strong px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading ${page === 1 ? "pointer-events-none opacity-40" : "hover:bg-muted"}`}
           >
             Back
@@ -342,7 +366,7 @@ export default async function ImagingPage({
           </span>
           <Link
             aria-disabled={page === pages}
-            href={`${BASE}?${new URLSearchParams({ ...(q ? { q } : {}), ...(show !== "unread" ? { show } : {}), page: String(Math.min(pages, page + 1)) })}`}
+            href={`${BASE}?${new URLSearchParams({ ...(q ? { q } : {}), ...(show !== "unread" ? { show } : {}), ...(focusedPatient ? { patient: String(focusedPatient) } : {}), page: String(Math.min(pages, page + 1)) })}`}
             className={`inline-flex min-h-11 items-center rounded-control border border-border-strong px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading ${page === pages ? "pointer-events-none opacity-40" : "hover:bg-muted"}`}
           >
             Next

@@ -48,7 +48,11 @@ function stateTone(study: ImagingGalleryStudy) {
   return "bg-secondary text-heading";
 }
 
-const darkButton = "cursor-pointer rounded-control border border-white/25 p-2 text-white hover:bg-white/10";
+// grid + size-11, not padding around the icon: this is the full-screen
+// chairside viewer, and 8px padding around a 16-20px icon landed near 36px —
+// under the 44px floor everywhere else, for the one screen most likely
+// operated with gloved fingers.
+const darkButton = "grid size-11 cursor-pointer place-items-center rounded-control border border-white/25 text-white hover:bg-white/10";
 
 function Viewer({ study, canAnnotate, close }: { study: ImagingGalleryStudy; canAnnotate: boolean; close: () => void }) {
   const router = useRouter();
@@ -57,9 +61,16 @@ function Viewer({ study, canAnnotate, close }: { study: ImagingGalleryStudy; can
   const [point, setPoint] = useState<{ x: number; y: number } | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   useEffect(() => {
+    // A dentist stepping through a long gallery by keyboard opened this on
+    // one study and, without this, landed back at <body> on close — Tab
+    // through the whole grid again to reach the next one.
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") close(); };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      opener?.focus();
+    };
   }, [close]);
 
   const asset = study.asset;
@@ -89,37 +100,50 @@ function Viewer({ study, canAnnotate, close }: { study: ImagingGalleryStudy; can
         <div className="relative min-h-[45vh] overflow-auto bg-black p-4">
           {(asset?.renderable || asset?.thumbnailUrl) && !loadFailed ? (
             <div className="relative mx-auto h-full min-h-[420px] w-full overflow-hidden" style={{ cursor: placing ? "crosshair" : zoom > 1 ? "move" : "default" }}>
-              <img
-                src={asset.renderable ? asset.accessUrl : asset.thumbnailUrl!}
-                alt={`${study.modalityLabel} taken ${dateLabel(study.acquisitionDate)}`}
-                onError={() => setLoadFailed(true)}
-                onClick={(event) => {
-                  if (!placing) return;
-                  const bounds = event.currentTarget.getBoundingClientRect();
-                  setPoint({
-                    x: Math.max(0, Math.min(100, ((event.clientX - bounds.left) / bounds.width) * 100)),
-                    y: Math.max(0, Math.min(100, ((event.clientY - bounds.top) / bounds.height) * 100)),
-                  });
-                  setPlacing(false);
-                }}
-                className="h-full min-h-[420px] w-full transition-transform select-none object-contain"
-                style={{ transform: `scale(${zoom})` }}
-              />
-              {study.annotations.map((item) => (
-                <span
-                  key={item.id}
-                  role="img"
-                  aria-label={`${item.toothCode ? `Tooth ${item.toothCode}: ` : ""}${item.label}`}
-                  title={`${item.toothCode ? `Tooth ${item.toothCode}: ` : ""}${item.label}`}
-                  className="absolute grid size-6 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-pill border-2 border-white bg-[var(--gold-on-ink)] text-[10px] font-bold text-heading"
-                  style={{ left: `${item.x}%`, top: `${item.y}%` }}
-                >
-                  {item.toothCode || "•"}
-                </span>
-              ))}
-              {point ? (
-                <span className="absolute grid size-7 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-pill border-2 border-white bg-primary font-bold" style={{ left: `${point.x}%`, top: `${point.y}%` }}>+</span>
-              ) : null}
+              {/* Markers used to sit outside the zoom transform, positioned by
+                  percentage against this outer box's UNSCALED size — so they
+                  stayed put while the image content moved under them at any
+                  zoom but 100%. Image and markers now share one inner wrapper
+                  that carries the transform, so they scale as one rigid unit
+                  and a marker stays pinned to the same point on the tooth. */}
+              <div className="relative h-full min-h-[420px] w-full transition-transform" style={{ transform: `scale(${zoom})` }}>
+                <img
+                  src={asset.renderable ? asset.accessUrl : asset.thumbnailUrl!}
+                  alt={`${study.modalityLabel} taken ${dateLabel(study.acquisitionDate)}`}
+                  onError={() => setLoadFailed(true)}
+                  onClick={(event) => {
+                    if (!placing) return;
+                    const bounds = event.currentTarget.getBoundingClientRect();
+                    setPoint({
+                      x: Math.max(0, Math.min(100, ((event.clientX - bounds.left) / bounds.width) * 100)),
+                      y: Math.max(0, Math.min(100, ((event.clientY - bounds.top) / bounds.height) * 100)),
+                    });
+                    setPlacing(false);
+                  }}
+                  className="h-full min-h-[420px] w-full select-none object-contain"
+                />
+                {study.annotations.map((item) => (
+                  <span
+                    key={item.id}
+                    role="img"
+                    aria-label={`${item.toothCode ? `Tooth ${item.toothCode}: ` : ""}${item.label}`}
+                    title={`${item.toothCode ? `Tooth ${item.toothCode}: ` : ""}${item.label}`}
+                    // text-[#0b1f27], not text-heading: --heading flips to
+                    // near-white in dark mode, same as the viewer chrome
+                    // around it, but this pill's background is the pinned
+                    // gold that never flips — the pairing needs a pinned dark
+                    // ink too, the same one the modality plate uses in
+                    // reverse (app/dashboard/imaging/page.tsx).
+                    className="absolute grid size-6 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-pill border-2 border-white bg-[var(--gold-on-ink)] text-[10px] font-bold text-[#0b1f27]"
+                    style={{ left: `${item.x}%`, top: `${item.y}%` }}
+                  >
+                    {item.toothCode || "•"}
+                  </span>
+                ))}
+                {point ? (
+                  <span className="absolute grid size-7 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-pill border-2 border-white bg-primary font-bold" style={{ left: `${point.x}%`, top: `${point.y}%` }}>+</span>
+                ) : null}
+              </div>
             </div>
           ) : (
             <div className="grid h-full min-h-[420px] place-items-center text-center">

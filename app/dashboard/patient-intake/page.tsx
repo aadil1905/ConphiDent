@@ -9,14 +9,13 @@ export const dynamic = "force-dynamic";
 const STEPS = [
   {
     icon: Send,
-    title: "You send them a link",
-    detail: `Their name and number is enough. It opens on their phone and works for ${INTAKE_LINK_DAYS} days.`,
+    title: "You take their name and number",
+    detail: `Send it on WhatsApp for them to open at home, or open it yourself if they're at the desk. Either way it works for ${INTAKE_LINK_DAYS} days.`,
   },
   {
     icon: FileSignature,
-    title: "They fill it in before they arrive",
-    detail:
-      "Three short pages — who they are, why they are coming, and their health. They sign with a finger.",
+    title: "One page — their health, then their signature",
+    detail: "Allergies, conditions and medication, the consent wording, then they sign with a finger.",
   },
   {
     icon: ShieldAlert,

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TickerValue } from "@/components/ui/number-ticker";
 import {
   AlertTriangle,
   CalendarDays,
@@ -100,7 +101,7 @@ function sparkline(series: number[]) {
   return { line, area: `0,30 ${line} 100,30`, lastX: last[0], lastY: last[1] };
 }
 
-function Tile({ tile }: { tile: GlanceTile }) {
+function Tile({ tile, index }: { tile: GlanceTile; index: number }) {
   const Icon = ICONS[tile.icon];
   const tone = TONE[tile.tone];
   const { line, area, lastX, lastY } = sparkline(tile.series);
@@ -109,10 +110,11 @@ function Tile({ tile }: { tile: GlanceTile }) {
   return (
     <Link
       href={tile.href}
+      style={{ animationDelay: `${index * 40}ms` }}
       // The 3px tone stroke down the edge — the same mark the lists use for a
       // row that needs attention, and what keeps four white tiles on a grey
       // ground from reading as one flat sheet.
-      className={`flex w-full flex-col rounded-card border border-border border-l-[3px] ${tone.edge} bg-card px-4 pt-[15px] pb-3.5 text-left shadow-[var(--shadow)] transition-colors duration-150 hover:bg-surface-hover`}
+      className={`rise-in flex w-full flex-col rounded-card border border-border border-l-[3px] ${tone.edge} bg-card px-4 pt-[15px] pb-3.5 text-left shadow-[var(--shadow)] transition-colors duration-150 hover:bg-surface-hover`}
     >
       <span className="flex h-[22px] items-center gap-2">
         <span className={`grid h-[22px] w-[22px] flex-none place-items-center rounded-chip ${tone.plate} ${tone.ink}`}>
@@ -125,7 +127,7 @@ function Tile({ tile }: { tile: GlanceTile }) {
 
       <span className="mt-[11px] flex h-8 items-end gap-2 overflow-hidden">
         <span className="text-[length:var(--text-tile)] leading-[var(--text-tile-lh)] font-bold whitespace-nowrap tabular-nums text-heading">
-          {tile.value}
+          <TickerValue text={tile.value} />
         </span>
         {tile.delta && (
           <span
@@ -201,8 +203,8 @@ export default function GlanceStrip({ tiles }: { tiles: GlanceTile[] }) {
       aria-label="Today at a glance"
       className="grid grid-cols-[repeat(auto-fit,minmax(178px,1fr))] gap-3"
     >
-      {tiles.map((tile) => (
-        <Tile key={tile.key} tile={tile} />
+      {tiles.map((tile, index) => (
+        <Tile key={tile.key} tile={tile} index={index} />
       ))}
     </section>
   );
