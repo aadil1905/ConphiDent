@@ -52,9 +52,18 @@ export function buildInvoiceDocument(input: BillingDocumentInput) {
     : null;
   const frozen = Boolean(snapshot && snapshotClinic && snapshotPatient);
   const totalAmount = frozen ? amount(snapshot?.totalAmount, input.invoice.totalAmount) : input.invoice.totalAmount;
+  const type = frozen ? text(snapshot?.documentType, input.invoice.documentType)! : input.invoice.documentType;
+  const gstin = frozen ? text(snapshotClinic?.gstin) : input.clinic.gstin || null;
+  // "Tax invoice" is a GST term of art: without a GSTIN this sheet is a plain
+  // invoice, and saying otherwise is wrong on paper. Derived HERE, once, so the
+  // printed sheet and the on-screen view can never classify the same document
+  // differently — that divergence existed, briefly, when each derived its own.
+  const rawTitle = type.replaceAll("_", " ");
+  const documentTitle = gstin ? rawTitle : rawTitle.replace(/^TAX\s+/i, "");
   return {
     frozen,
-    type: frozen ? text(snapshot?.documentType, input.invoice.documentType)! : input.invoice.documentType,
+    type,
+    documentTitle,
     brandName: frozen ? text(snapshotClinic?.brandName, text(snapshotClinic?.legalName, "Clinic"))! : input.clinic.brandName || input.clinic.name,
     logoUrl: frozen ? text(snapshotClinic?.logoUrl) : input.clinic.logoUrl || null,
     accentColor: frozen ? text(snapshotClinic?.accentColor, "#b68235")! : input.clinic.accentColor || "#b68235",
@@ -73,7 +82,7 @@ export function buildInvoiceDocument(input: BillingDocumentInput) {
     address: frozen ? text(snapshotClinic?.address) : input.clinic.address || null,
     phone: frozen ? text(snapshotClinic?.phone) : input.clinic.phone || null,
     email: frozen ? text(snapshotClinic?.email) : input.clinic.email || null,
-    gstin: frozen ? text(snapshotClinic?.gstin) : input.clinic.gstin || null,
+    gstin,
     registrationNumber: frozen ? text(snapshotClinic?.registrationNumber) : input.clinic.registrationNumber || null,
     documentNumber: frozen ? text(snapshot?.invoiceNumber, input.invoice.invoiceNumber)! : input.invoice.invoiceNumber,
     issuedAt: frozen ? date(snapshot?.issueDate, input.invoice.issueDate)! : input.invoice.issueDate,

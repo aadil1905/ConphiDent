@@ -54,6 +54,36 @@ export function allergySummaryFrom(
   return parts.length ? [...new Set(parts)].join(" · ") : null;
 }
 
+/**
+ * The safety-relevant small print of one medication, composed once.
+ *
+ * Printed under the medicine's name on the sheet AND on the screen view —
+ * shared so a field can never be added to one surface and forgotten on the
+ * other. "Only if needed", the dose ceiling and "do not substitute" are the
+ * lines a dispensing chemist acts on; dropping them from either rendering is
+ * not a style difference, it is a different prescription.
+ */
+export function medicationDetail(item: {
+  // Nullable, not merely optional: these arrive straight off a Prisma row as
+  // well as from the form's own optional-string shape.
+  formulation?: string | null;
+  instructions?: string | null;
+  indication?: string | null;
+  asNeeded?: boolean | null;
+  maxDose?: string | null;
+  quantity?: string | null;
+  substitutionAllowed?: boolean | null;
+}) {
+  return [
+    item.formulation,
+    item.instructions,
+    item.indication && `For ${item.indication}`,
+    item.asNeeded ? `Only if needed${item.maxDose ? ` — no more than ${item.maxDose}` : ""}` : "",
+    item.quantity && `Quantity ${item.quantity}`,
+    item.substitutionAllowed === false ? "Do not substitute" : "",
+  ].filter(Boolean).join(" · ");
+}
+
 export function medicationSummary(items: StructuredMedication[]) {
   return items.map((item) => [
     `${item.genericName}${item.brandName ? ` (${item.brandName})` : ""} ${item.strength} ${item.dosageForm}`,

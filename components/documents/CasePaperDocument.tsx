@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { DocumentFrame, DocumentPageTable, DocumentTitle, Field, SectionRule, WriteLines } from "@/components/documents/B6ClinicalDocuments";
 import type { ClinicDocumentBrand } from "@/lib/clinic-document";
+import { patientAge } from "@/lib/prescription-core";
 import { rupees } from "@/lib/format";
 import { CONDITION_COLUMNS, resolveHistory } from "@/lib/medical-history";
 
@@ -39,14 +40,6 @@ export type CasePaperRecord = {
 
 const date = (value: Date) => value.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 
-/** Exact to the day, unlike the year-subtraction the screen page used. */
-function ageOn(dateOfBirth: Date, on: Date) {
-  let years = on.getFullYear() - dateOfBirth.getFullYear();
-  const month = on.getMonth() - dateOfBirth.getMonth();
-  if (month < 0 || (month === 0 && on.getDate() < dateOfBirth.getDate())) years -= 1;
-  return years;
-}
-
 /**
  * What a row says on a record somebody has already filled in.
  *
@@ -79,18 +72,23 @@ function ChecklistColumn({
 }) {
   return (
     <div>
-      <div className="flex justify-between border-b-[1.5px] border-[var(--dw-rule)] pb-[3px] text-[11px] tracking-[.06em]">
+      <div className="flex justify-between gap-[6px] border-b-[1.5px] border-[var(--dw-rule)] pb-[3px] text-[11px] tracking-[.06em]">
         <span>I have / had the following</span>
-        <span>{answers ? "" : <>Yes&nbsp;&nbsp;No</>}</span>
+        {answers ? null : <span className="inline-flex shrink-0 gap-[6px]"><span>Yes</span><span>No</span></span>}
       </div>
-      {/* `whitespace-nowrap`, and the size chosen so the longest condition
-          ("Abnormal Bleeding / Bruising") clears its column. A wrapped row
-          would push the rest of that column down and leave the three columns
-          reading out of step with each other. */}
+      {/* A label is allowed to wrap. It used to be `whitespace-nowrap` to keep
+          the three columns in vertical register, but that made the longest
+          condition ("Abnormal Bleeding / Bruising") the minimum width of ALL
+          three tracks — the sheet then needed ~184mm of a 186mm page and lost
+          an edge the moment anyone widened the print margins. `min-h` holds
+          the register instead, and holds it for real: the column heading above
+          was never nowrap and always could wrap. */}
       {items.map((item, index) => (
-        <div key={item.key} className="flex justify-between gap-[6px] py-px whitespace-nowrap">
+        <div key={item.key} className="flex min-h-[1.5em] items-baseline justify-between gap-[6px] py-px">
           <span>{start + index}. {item.clinical}</span>
-          {answers ? <Answer reported={answers.get(item.key) === true} /> : <span className="shrink-0">☐&nbsp;&nbsp;☐</span>}
+          {answers
+            ? <Answer reported={answers.get(item.key) === true} />
+            : <span className="inline-flex shrink-0 gap-[6px]"><span>☐</span><span>☐</span></span>}
         </div>
       ))}
     </div>
@@ -99,7 +97,7 @@ function ChecklistColumn({
 
 function HistoryGrid({ answers }: { answers?: Map<string, boolean> }) {
   return (
-    <div className="grid grid-cols-3 gap-x-[14px] pt-[4px] text-[11.6px]">
+    <div className="grid grid-cols-[1fr_1fr_1fr] gap-x-[2%] pt-[4px] text-[11.6px]">
       {CONDITION_COLUMNS.map((column, index) => (
         <ChecklistColumn key={index} items={column} start={index * column.length + 1} answers={answers} />
       ))}
@@ -115,9 +113,9 @@ function ConsentClauses({ doctorName }: { doctorName?: string | null }) {
     <ol className="mt-[5px] list-decimal pl-[18px] text-[11.4px] leading-[1.3]">
       <li className="pb-[2px]">
         I authorise Dr.{" "}
-        <span className="b6-fill-line inline-block min-w-[170px] align-bottom">{name || " "}</span>{" "}
+        <span className="b6-fill-line inline-block w-[38%] min-w-[90px] align-bottom">{name || " "}</span>{" "}
         , his / her associates and such assistants as may be selected by him / her, to treat or perform the dental procedure and administer the anaesthesia connected thereof —{" "}
-        <span className="b6-fill-line inline-block min-w-[230px] align-bottom"> </span>{" "}
+        <span className="b6-fill-line inline-block w-[46%] min-w-[90px] align-bottom"> </span>{" "}
         (consultant&rsquo;s description of the procedure) — on me / my child.
       </li>
       {CONSENT_CLAUSES.map((clause) => <li key={clause} className="pb-[1px]">{clause}</li>)}
@@ -125,15 +123,14 @@ function ConsentClauses({ doctorName }: { doctorName?: string | null }) {
   );
 }
 
-function CasePaperSheet({ clinic, children }: { clinic: ClinicDocumentBrand; children: ReactNode }) {
+function CasePaperSheet({ clinic, signatures, children }: { clinic: ClinicDocumentBrand; signatures: ReactNode; children: ReactNode }) {
   return (
     <DocumentFrame clinic={clinic}>
-      {/* No footer at all. On a consent form the signatures that matter are the
-          patient's and the guardian's, and they have their own ruled block at
-          the foot of the sheet — a clinic countersignature would muddle that.
-          The form is also set to fill an A4 page exactly, so a footer band is
-          the difference between one sheet and two. */}
-      <DocumentPageTable clinic={clinic}>
+      {/* No footer band: the signatures ARE the foot of a consent form, and
+          they are passed as bottomRows so they sit on the bottom rule of the
+          page rather than wherever the clauses happen to stop. fillPage keeps
+          the spacer alive in print to push them down there. */}
+      <DocumentPageTable clinic={clinic} fillPage bottomRows={signatures}>
         <tr><td><DocumentTitle>Patient Record &amp; Consent</DocumentTitle></td></tr>
         {children}
       </DocumentPageTable>
@@ -144,9 +141,20 @@ function CasePaperSheet({ clinic, children }: { clinic: ClinicDocumentBrand; chi
 /** The blank pad: printed in a stack and filled in by hand at the desk. */
 export function BlankCasePaperDocument({ clinic }: { clinic: ClinicDocumentBrand }) {
   return (
-    <CasePaperSheet clinic={clinic}>
+    <CasePaperSheet
+      clinic={clinic}
+      signatures={
+        <tr className="b6-break-avoid"><td className="pt-[10px]">
+          <div className="grid grid-cols-3 gap-[26px]">
+            {["Patient's signature", "Doctor's signature", "Date"].map((label) => (
+              <div key={label} className="border-t-2 border-[var(--dw-rule-strong)] pt-[4px] uppercase tracking-[.1em]">{label}</div>
+            ))}
+          </div>
+        </td></tr>
+      }
+    >
       <tr className="b6-break-avoid"><td>
-        <section className="grid grid-cols-[1fr_210px] gap-x-[22px] gap-y-[11px] border-b-[1.5px] border-[var(--dw-rule)] pb-[10px]">
+        <section className="grid grid-cols-[minmax(0,1fr)_32%] gap-x-[22px] gap-y-[11px] border-b-[1.5px] border-[var(--dw-rule)] pb-[10px]">
           <Field label="Name" labelWidth="78px" />
           <Field label="Date" labelWidth="auto" />
           <Field label="Address" labelWidth="78px" />
@@ -173,7 +181,7 @@ export function BlankCasePaperDocument({ clinic }: { clinic: ClinicDocumentBrand
 
       <tr className="b6-break-avoid"><td className="pt-[6px]">
         <SectionRule right="Estimate ₹">Dental Treatment</SectionRule>
-        <div className="grid grid-cols-[1fr_180px] gap-x-[22px] pt-[5px]">
+        <div className="grid grid-cols-[minmax(0,1fr)_26%] gap-x-[22px] pt-[5px]">
           <div><WriteLines count={4} /></div>
           <div><WriteLines count={4} /></div>
         </div>
@@ -182,14 +190,6 @@ export function BlankCasePaperDocument({ clinic }: { clinic: ClinicDocumentBrand
       <tr className="b6-break-avoid"><td className="pt-[6px]">
         <SectionRule>Consent by the Patient</SectionRule>
         <ConsentClauses />
-      </td></tr>
-
-      <tr className="b6-break-avoid"><td className="pt-[10px]">
-        <div className="grid grid-cols-3 gap-[26px]">
-          {["Patient's signature", "Guardian's signature", "Date"].map((label) => (
-            <div key={label} className="border-t-2 border-[var(--dw-rule-strong)] pt-[4px] uppercase tracking-[.1em]">{label}</div>
-          ))}
-        </div>
       </td></tr>
     </CasePaperSheet>
   );
@@ -201,7 +201,9 @@ export function BlankCasePaperDocument({ clinic }: { clinic: ClinicDocumentBrand
  */
 export function CasePaperDocument({ clinic, patient, record }: { clinic: ClinicDocumentBrand; patient: CasePaperPatient; record: CasePaperRecord }) {
   const signedOn = record.completedAt ?? null;
-  const age = patient.dateOfBirth ? ageOn(patient.dateOfBirth, signedOn ?? new Date()) : null;
+  // Age as of the day the form was signed — the same call the screen header
+  // makes, so the two renderings of this record can never disagree by a year.
+  const age = patientAge(patient.dateOfBirth ?? null, signedOn ?? undefined);
   const { ticked, unmatched } = resolveHistory(record.conditions);
   // Reported or not, and nothing in between. Because the "not" case prints N/A
   // rather than No, this reads correctly whether the row was answered in the
@@ -218,9 +220,26 @@ export function CasePaperDocument({ clinic, patient, record }: { clinic: ClinicD
   ].filter(Boolean) as string[];
 
   return (
-    <CasePaperSheet clinic={clinic}>
+    <CasePaperSheet
+      clinic={clinic}
+      signatures={
+        <tr className="b6-break-avoid"><td className="pt-[16px]">
+          {/* A guardian gets their own line whenever one signed, rather than
+              being folded into the patient's. On a minor's consent those are
+              two different people and the guardian's is the signature the
+              consent legally rests on — picking one of the two to print would
+              drop it from the record entirely. */}
+          <div className={`grid gap-[26px] ${record.guardianSignature ? "grid-cols-4" : "grid-cols-3"}`}>
+            <SignatureLine label="Patient's signature" image={record.patientSignature} alt={`${patient.fullName}'s signature`} />
+            {record.guardianSignature ? <SignatureLine label="Guardian's signature" image={record.guardianSignature} alt="Guardian's signature" /> : null}
+            <SignatureLine label="Doctor's signature" />
+            <SignatureLine label="Date" caption={signedOn ? date(signedOn) : null} />
+          </div>
+        </td></tr>
+      }
+    >
       <tr className="b6-break-avoid"><td>
-        <section className="grid grid-cols-[1fr_210px] gap-x-[22px] gap-y-[11px] border-b-[1.5px] border-[var(--dw-rule)] pb-[10px]">
+        <section className="grid grid-cols-[minmax(0,1fr)_32%] gap-x-[22px] gap-y-[11px] border-b-[1.5px] border-[var(--dw-rule)] pb-[10px]">
           <Field label="Name" labelWidth="78px" value={patient.fullName} />
           <Field label="Date" labelWidth="auto" value={signedOn ? date(signedOn) : "Not recorded"} />
           <Field label="Address" labelWidth="78px" value={patient.address} />
@@ -250,7 +269,7 @@ export function CasePaperDocument({ clinic, patient, record }: { clinic: ClinicD
       {record.treatmentDone || record.estimateAmount ? (
         <tr className="b6-break-avoid"><td className="pt-[6px]">
           <SectionRule right="Estimate ₹">Dental Treatment</SectionRule>
-          <div className="grid grid-cols-[1fr_180px] gap-x-[22px] pt-[5px]">
+          <div className="grid grid-cols-[minmax(0,1fr)_26%] gap-x-[22px] pt-[5px]">
             <p className="whitespace-pre-wrap">{record.treatmentDone || " "}</p>
             <p className="text-right tabular-nums">{record.estimateAmount ? rupees(record.estimateAmount) : " "}</p>
           </div>
@@ -263,13 +282,6 @@ export function CasePaperDocument({ clinic, patient, record }: { clinic: ClinicD
         {record.consentNotes ? <p className="pt-[4px] text-[11.4px] text-[var(--dw-muted)]">{record.consentNotes}</p> : null}
       </td></tr>
 
-      <tr className="b6-break-avoid"><td className="pt-[16px]">
-        <div className="grid grid-cols-3 gap-[26px]">
-          <SignatureLine label="Patient's signature" image={record.patientSignature} alt={`${patient.fullName}'s signature`} />
-          <SignatureLine label="Guardian's signature" image={record.guardianSignature} alt="Guardian's signature" />
-          <SignatureLine label="Date" caption={signedOn ? date(signedOn) : null} />
-        </div>
-      </td></tr>
     </CasePaperSheet>
   );
 }

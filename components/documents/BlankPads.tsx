@@ -49,13 +49,13 @@ export function BlankPrescriptionDocument({ clinic }: { clinic: ClinicDocumentBr
         </td></tr>
 
         <tr><td className="pt-[14px]">
-          <div className="grid grid-cols-[1fr_110px_210px] border-b-2 border-[var(--dw-dot)] font-[family-name:var(--font-document-display)] text-[13.2px] uppercase tracking-[.12em] text-[var(--dw-muted)]">
+          <div className="grid grid-cols-[minmax(0,1fr)_16%_30%] border-b-2 border-[var(--dw-dot)] font-[family-name:var(--font-document-display)] text-[13.2px] uppercase tracking-[.12em] text-[var(--dw-muted)]">
             <span className="px-[6px] py-[5px]">Medicine</span>
             <span className="px-[6px] py-[5px] text-center">Dosage</span>
             <span className="px-[6px] py-[5px]">Timing · Duration</span>
           </div>
           {Array.from({ length: 6 }, (_, index) => (
-            <div key={index} className="grid h-[30px] grid-cols-[1fr_110px_210px] border-b-[1.5px] border-[var(--dw-rule)]">
+            <div key={index} className="grid h-[30px] grid-cols-[minmax(0,1fr)_16%_30%] border-b-[1.5px] border-[var(--dw-rule)]">
               <span />
               <span className="border-l-[1.5px] border-[var(--dw-rule)]" />
               <span className="border-l-[1.5px] border-[var(--dw-rule)]" />
@@ -101,7 +101,7 @@ export function BlankReceiptDocument({ clinic }: { clinic: ClinicDocumentBrand }
 
         <tr className="border-b-2 border-[var(--dw-dot)] font-[family-name:var(--font-document-display)] text-[12.6px] uppercase tracking-[.14em]">
           <th className="p-[6px] text-left font-[inherit]">Treatment</th>
-          <th className="w-[150px] border-l-[1.5px] border-[var(--dw-rule)] p-[6px] text-right font-[inherit]">Amount ₹</th>
+          <th className="w-[22%] border-l-[1.5px] border-[var(--dw-rule)] p-[6px] text-right font-[inherit]">Amount ₹</th>
         </tr>
 
         {RECEIPT_TREATMENTS.map((treatment) => (

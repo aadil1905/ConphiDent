@@ -1,7 +1,7 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
 import type { BillingDocument } from "@/lib/billing-document";
-import { formatPatientAgeSnapshot } from "@/lib/prescription-core";
+import { formatPatientAgeSnapshot, medicationDetail } from "@/lib/prescription-core";
 import { rupeesInWords } from "@/lib/format";
 import { documentFontVariables } from "@/lib/document-fonts";
 import { type ClinicDocumentBrand, clinicDocumentName, letterheadLines } from "@/lib/clinic-document";
@@ -84,6 +84,13 @@ const B6_PRINT_CSS = `
       max-width: none !important;
       min-height: 265mm !important;
       padding: 0 !important;
+      /* A gutter of the sheet's own, because the @page margin is not ours to
+         rely on: Chrome discards it outright the moment anyone touches the
+         Margins dropdown, and at "None" the ink would otherwise run into the
+         printer's unprintable strip and lose an edge. Appended rather than
+         merged so the zero-padding declaration above still reads literally —
+         a source-level test pins that string — and wins here on source order. */
+      padding-inline: 5mm !important;
       print-color-adjust: exact;
       -webkit-print-color-adjust: exact;
     }
@@ -91,6 +98,23 @@ const B6_PRINT_CSS = `
     .b6-page-table thead { display: table-header-group; }
     .b6-page-table tfoot { display: table-footer-group; }
     .b6-page-fill { display: none !important; }
+    /* A one-page document keeps its spacer in print, so whatever follows it
+       lands on the bottom rule instead of floating under the last section.
+       260mm, not the sheet's 265mm min-height: the spacer has to be shorter
+       than the page or it invents a second one.
+
+       All three rules are load-bearing and none can be inherited from the
+       @media screen block, which a paged context never evaluates. Giving a
+       table a height taller than its content leaves the distribution of the
+       surplus UA-defined, and browsers spread it across every row unless the
+       others are pinned — so without the zero-height line the sheet would not
+       pin the signatures, it would simply grow every gap on the page. Rows
+       still grow past zero to fit their own content; this only stops them
+       claiming a share of the slack. (No backticks in these comments — this
+       whole stylesheet is a JS template literal.) */
+    .b6-page-table--fill { height: 260mm !important; }
+    .b6-page-table--fill > tbody > tr:not(.b6-page-fill) { height: 0 !important; }
+    .b6-page-table--fill > tbody > .b6-page-fill { display: table-row !important; height: 100% !important; }
     .b6-break-avoid { break-inside: avoid-page; page-break-inside: avoid; }
   }
   @media screen {
@@ -165,7 +189,11 @@ function DocumentHeader({ clinic }: { clinic: ClinicDocumentBrand }) {
     <header className="b6-break-avoid">
       <div className="flex items-start gap-[16px]">
         {clinic.logoUrl ? (
-          <Image src={clinic.logoUrl} alt={`${name} logo`} width={116} height={116} unoptimized className="size-[58px] shrink-0 object-contain" />
+          /* `loading="eager"`, because the sheet is hidden on screen and only
+             revealed for print. A lazy image inside a `display:none` subtree
+             is never in the viewport, so it never loads — and the letterhead
+             would print with a blank square where the clinic's logo goes. */
+          <Image src={clinic.logoUrl} alt={`${name} logo`} width={116} height={116} unoptimized loading="eager" className="size-[58px] shrink-0 object-contain" />
         ) : null}
         <div className="min-w-0 flex-1">
           {prefix ? <div className="font-[family-name:var(--font-document-display)] text-[15.6px] uppercase tracking-[.22em] text-[var(--dw-muted)]">{prefix}</div> : null}
@@ -235,7 +263,7 @@ function DocumentFooter({ left, right }: { left?: string; right?: ReactNode }) {
   return (
     <footer className="b6-break-avoid flex items-end justify-between gap-[30px] pt-[6px]">
       <div className="max-w-[56%] text-[11.4px] leading-[1.6] text-[var(--dw-muted)]">{left}</div>
-      {right ? <div className="min-w-[210px] text-right">{right}</div> : null}
+      {right ? <div className="w-[38%] min-w-0 text-right">{right}</div> : null}
     </footer>
   );
 }
@@ -257,6 +285,8 @@ export function DocumentPageTable({
   footerRight,
   columns = 1,
   repeatingHeader,
+  fillPage = false,
+  bottomRows,
   children,
 }: {
   clinic: ClinicDocumentBrand;
@@ -264,10 +294,18 @@ export function DocumentPageTable({
   footerRight?: ReactNode;
   columns?: number;
   repeatingHeader?: ReactNode;
+  /**
+   * Stretch the sheet to a full page so `bottomRows` sits on the bottom rule
+   * rather than wherever the content happens to stop. Only for documents set
+   * to be exactly one page — a bill that runs to two would stretch the first.
+   */
+  fillPage?: boolean;
+  /** Rendered after the spacer, so it lands at the foot of the page. */
+  bottomRows?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <table className="b6-page-table table-fixed">
+    <table className={`b6-page-table table-fixed${fillPage ? " b6-page-table--fill" : ""}`}>
       <thead>
         <tr><td colSpan={columns}><DocumentHeader clinic={clinic} /></td></tr>
         {repeatingHeader}
@@ -275,6 +313,7 @@ export function DocumentPageTable({
       <tbody>
         {children}
         <tr aria-hidden="true" className="b6-page-fill"><td colSpan={columns} /></tr>
+        {bottomRows}
       </tbody>
       {/* A sheet with nothing to say at the foot gets no tfoot at all — an
           empty band still costs its padding, which is the difference between
@@ -324,7 +363,7 @@ export function PrescriptionDocument({ clinic, prescription }: { clinic: ClinicD
         </td></tr>
 
         <tr className="b6-break-avoid"><td className="pt-[14px]">
-          <div className="grid grid-cols-[1fr_110px_210px] border-b-2 border-[var(--dw-dot)] font-[family-name:var(--font-document-display)] text-[13.2px] uppercase tracking-[.12em] text-[var(--dw-muted)]">
+          <div className="grid grid-cols-[minmax(0,1fr)_16%_30%] border-b-2 border-[var(--dw-dot)] font-[family-name:var(--font-document-display)] text-[13.2px] uppercase tracking-[.12em] text-[var(--dw-muted)]">
             <span className="px-[6px] py-[5px]">Medicine</span>
             <span className="px-[6px] py-[5px] text-center">Dosage</span>
             <span className="px-[6px] py-[5px]">Timing · Duration</span>
@@ -332,10 +371,10 @@ export function PrescriptionDocument({ clinic, prescription }: { clinic: ClinicD
         </td></tr>
 
         {prescription.medicationItems.map((item) => {
-          const detail = [item.formulation, item.instructions, item.indication && `For ${item.indication}`, item.asNeeded ? `Only if needed${item.maxDose ? ` — no more than ${item.maxDose}` : ""}` : "", item.quantity && `Quantity ${item.quantity}`, item.substitutionAllowed ? "" : "Do not substitute"].filter(Boolean).join(" · ");
+          const detail = medicationDetail(item);
           return (
             <tr key={item.id} className="b6-break-avoid"><td>
-              <div className="grid grid-cols-[1fr_110px_210px] border-b-[1.5px] border-[var(--dw-rule)] text-[13.8px]">
+              <div className="grid grid-cols-[minmax(0,1fr)_16%_30%] border-b-[1.5px] border-[var(--dw-rule)] text-[13.8px]">
                 <div className="px-[6px] py-[8px]">
                   {item.genericName} {item.strength} {item.dosageForm}{item.brandName ? ` (${item.brandName})` : ""}
                   {detail ? <div className="text-[12px] italic text-[var(--dw-muted)]">{detail}</div> : null}
@@ -377,10 +416,9 @@ export function PrescriptionDocument({ clinic, prescription }: { clinic: ClinicD
 export function InvoiceDocument({ document }: { document: BillingDocument }) {
   const lines = document.lineItems.length ? document.lineItems : [{ id: 0, description: "Dental treatment and clinical services", quantity: 1, unitPrice: document.totalAmount, discount: 0, taxPercent: 0, lineTotal: document.totalAmount }];
   const clinic: ClinicDocumentBrand = { name: document.legalName, brandName: document.brandName, logoUrl: document.logoUrl, accentColor: document.accentColor, letterheadPrefix: document.letterheadPrefix, letterheadName: document.letterheadName, tagline: document.tagline, principalName: document.principalName, principalCredentials: document.principalCredentials, address: document.address, phone: document.phone, email: document.email, gstin: document.gstin, registrationNumber: document.registrationNumber, hoursLine: document.hoursLine };
-  // "Tax invoice" is a GST term of art. Without a GSTIN on the clinic this
-  // sheet is a plain invoice, and saying otherwise is wrong on paper.
-  const rawTitle = document.type.replaceAll("_", " ");
-  const title = document.gstin ? rawTitle : rawTitle.replace(/^TAX\s+/i, "");
+  // The GSTIN-aware classification, derived once in buildInvoiceDocument so
+  // the screen view cannot call something a tax invoice that this sheet won't.
+  const title = document.documentTitle;
   const footerLeft = `${document.documentNumber} · ${document.frozen ? "Immutable issue snapshot" : "Clinic billing record"} · Kindly retain this receipt for your records.`;
   // A receipt acknowledges money that arrived. With nothing received this sheet
   // is a demand, not an acknowledgement, so it says who it is billed to instead
@@ -406,7 +444,7 @@ export function InvoiceDocument({ document }: { document: BillingDocument }) {
           </td></tr>
           <tr className="border-b-2 border-[var(--dw-dot)] font-[family-name:var(--font-document-display)] text-[12.6px] uppercase tracking-[.14em]">
             <th className="p-[6px] text-left font-[inherit]">Treatment</th>
-            <th className="w-[150px] border-l-[1.5px] border-[var(--dw-rule)] p-[6px] text-right font-[inherit]">Amount ₹</th>
+            <th className="w-[22%] border-l-[1.5px] border-[var(--dw-rule)] p-[6px] text-right font-[inherit]">Amount ₹</th>
           </tr>
         </>}
       >

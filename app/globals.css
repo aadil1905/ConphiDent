@@ -469,10 +469,18 @@ body:has(.clinic-theme) :is([class*="--text-metric"], [class*="--text-tile"]) {
     break-inside: avoid;
   }
   /* The shell caps content at 107.5rem for a screen; paper has its own margins
-     and every millimetre of them costs a line of the brief. */
+     and every millimetre of them costs a line of the brief.
+
+     `margin-inline` is load-bearing, not tidiness. A page that bleeds out of
+     the shell gutter does it with a negative inline margin, and this reset
+     used to clear only the padding — so the negative margin survived onto
+     paper. A block with `width:auto` and negative inline margins is laid out
+     WIDER than its containing block with its left edge outside it, which is
+     how a sheet ends up shaved on both edges at once. */
   main > div {
     max-width: none !important;
     padding: 0 !important;
+    margin-inline: 0 !important;
   }
   /* Tints that read as a soft highlight on screen turn into grey wash on a
      mono printer, so the sheet is printed as ink on white. */

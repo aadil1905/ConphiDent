@@ -167,9 +167,11 @@ export default async function InvoiceDetailPage({
           >
             {status === "Overdue" && late ? `Overdue, ${late}` : status}
           </span>
+          {/* Same tab. Printing a bill is part of settling it, not a detour —
+              a new tab left the invoice you were working on behind and the
+              printed sheet with no way back to it. */}
           <Link
             href={`/dashboard/billing/${invoice.id}/print`}
-            target="_blank"
             className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
           >
             Print

@@ -7,7 +7,9 @@ import { prisma } from "@/lib/prisma";
 import { loadClinicDocumentBrand } from "@/lib/clinic-document";
 import BackLink from "@/components/navigation/BackLink";
 import { CasePaperDocument } from "@/components/documents/CasePaperDocument";
-import { PrintActions } from "@/components/documents/PrintActions";
+import { CasePaperScreen, ScreenHeader, ScreenSheet } from "@/components/documents/DocumentScreenView";
+import PrintDocumentButton from "@/components/documents/PrintDocumentButton";
+import { patientAge } from "@/lib/prescription-core";
 
 /** What PatientIntakeFlow.tsx sends: a JSON array of ticked condition keys. */
 function parseConditions(value: string | null) {
@@ -79,29 +81,51 @@ export default async function CasePaperPage({ params }: { params: Promise<{ id: 
     );
   }
 
+  const record = {
+    conditions: parseConditions(intake.medicalHistory),
+    drugAllergies: intake.drugAllergies,
+    medications: intake.medications,
+    bloodPressure: intake.bloodPressure,
+    weightKg: intake.weightKg,
+    dentalHistory: intake.dentalHistory,
+    otherHistory: intake.otherHistory,
+    treatmentDone: intake.treatmentDone,
+    estimateAmount: intake.estimateAmount,
+    consentGiven: intake.consentGiven,
+    consentNotes: intake.consentNotes,
+    completedAt: intake.completedAt,
+    patientSignature: intake.patientSignature,
+    guardianSignature: intake.guardianSignature,
+  };
+  // Age as of the day the form was signed, from the same helper the printed
+  // sheet uses. Year subtraction against today drifted by up to a year and
+  // measured from the wrong date, so screen and paper disagreed on the record.
+  const age = patientAge(patient.dateOfBirth ?? null, intake.completedAt ?? undefined);
+
   return (
-    <div className="-mx-[clamp(1rem,1.5vw,2rem)] -my-4 min-h-screen bg-background px-3 py-6 text-heading print:bg-white print:p-0">
-      <PrintActions backHref={`/dashboard/patients/${patient.id}`} backLabel="← Back to the patient" printLabel="Print case paper" />
-      <CasePaperDocument
-        clinic={clinic}
-        patient={patient}
-        record={{
-          conditions: parseConditions(intake.medicalHistory),
-          drugAllergies: intake.drugAllergies,
-          medications: intake.medications,
-          bloodPressure: intake.bloodPressure,
-          weightKg: intake.weightKg,
-          dentalHistory: intake.dentalHistory,
-          otherHistory: intake.otherHistory,
-          treatmentDone: intake.treatmentDone,
-          estimateAmount: intake.estimateAmount,
-          consentGiven: intake.consentGiven,
-          consentNotes: intake.consentNotes,
-          completedAt: intake.completedAt,
-          patientSignature: intake.patientSignature,
-          guardianSignature: intake.guardianSignature,
-        }}
-      />
-    </div>
+    <>
+      <ScreenSheet>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <BackLink
+            fallback={`/dashboard/patients/${patient.id}`}
+            className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
+          >
+            ← Back to the patient
+          </BackLink>
+          <PrintDocumentButton label="Print case paper" />
+        </div>
+        <ScreenHeader
+          eyebrow="Case paper"
+          title={patient.fullName}
+          meta={[age !== null ? `${age} y` : "", patient.gender ?? "", patient.phone, patient.address ?? ""].filter(Boolean)}
+        />
+        <CasePaperScreen patient={patient} record={record} />
+      </ScreenSheet>
+
+      {/* Paper only. Hidden on screen, laid out for the printer. */}
+      <div className="hidden print:block">
+        <CasePaperDocument clinic={clinic} patient={patient} record={record} />
+      </div>
+    </>
   );
 }
