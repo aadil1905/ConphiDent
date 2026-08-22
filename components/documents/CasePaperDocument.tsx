@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { DocumentFrame, DocumentPageTable, DocumentTitle, Field, SectionRule, WriteLines } from "@/components/documents/B6ClinicalDocuments";
 import type { ClinicDocumentBrand } from "@/lib/clinic-document";
 import { rupees } from "@/lib/format";
-import { CONDITION_COLUMNS, parseAskedKeys, resolveHistory } from "@/lib/medical-history";
+import { CONDITION_COLUMNS, resolveHistory } from "@/lib/medical-history";
 
 const CONSENT_CLAUSES = [
   "The procedure necessary to treat my condition has been explained to me and I understand the same.",
@@ -22,8 +22,6 @@ export type CasePaperPatient = {
 
 export type CasePaperRecord = {
   conditions: string[];
-  /** Raw JSON of the keys this patient was shown; null on pre-unification rows. */
-  conditionsAsked?: string | null;
   drugAllergies?: string | null;
   medications?: string | null;
   bloodPressure?: string | null;
@@ -50,24 +48,25 @@ function ageOn(dateOfBirth: Date, on: Date) {
 }
 
 /**
- * Yes and No, or neither.
+ * What a row says on a record somebody has already filled in.
  *
- * `null` leaves both boxes empty, which is what a row nobody was asked has to
- * look like — the same as an unanswered row on a hand-filled pad. Ticking "No"
- * there would put an answer on the record that the patient never gave.
+ * Words, not boxes: a tick-box is for a pad you write on, and on a finished
+ * record it makes a reader work out whether an empty box means "no" or "nobody
+ * filled this in". YES is a reported condition. N/A covers everything else —
+ * and covers it honestly, because unlike "No" it does not put a denial on the
+ * record on behalf of a patient who may simply never have been asked.
  */
-function Tick({ answer }: { answer: boolean | null }) {
-  const yes = answer === true ? "☑" : "☐";
-  const no = answer === false ? "☑" : "☐";
-  return <span className="shrink-0">{yes}&nbsp;&nbsp;{no}</span>;
+function Answer({ reported }: { reported: boolean }) {
+  return reported
+    ? <span className="shrink-0 tracking-[.08em]">YES</span>
+    : <span className="shrink-0 tracking-[.08em] text-[var(--dw-muted)]">N/A</span>;
 }
 
 /**
- * One column of the printed grid. `start` continues the numbering across the
- * three columns so the list reads 1 to 15.
+ * One column of the grid. `start` continues the numbering across the three
+ * columns so the list reads 1 to 15.
  *
- * `answers` is absent on a blank pad (every box empty, to be ticked by hand)
- * and present on a filled one.
+ * `answers` absent is the blank pad: empty boxes, ticked by hand at the desk.
  */
 function ChecklistColumn({
   items,
@@ -76,13 +75,13 @@ function ChecklistColumn({
 }: {
   items: { key: string; clinical: string }[];
   start: number;
-  answers?: Map<string, boolean | null>;
+  answers?: Map<string, boolean>;
 }) {
   return (
     <div>
       <div className="flex justify-between border-b-[1.5px] border-[var(--dw-rule)] pb-[3px] text-[11px] tracking-[.06em]">
         <span>I have / had the following</span>
-        <span>Yes&nbsp;&nbsp;No</span>
+        <span>{answers ? "" : <>Yes&nbsp;&nbsp;No</>}</span>
       </div>
       {/* `whitespace-nowrap`, and the size chosen so the longest condition
           ("Abnormal Bleeding / Bruising") clears its column. A wrapped row
@@ -91,14 +90,14 @@ function ChecklistColumn({
       {items.map((item, index) => (
         <div key={item.key} className="flex justify-between gap-[6px] py-px whitespace-nowrap">
           <span>{start + index}. {item.clinical}</span>
-          <Tick answer={answers ? answers.get(item.key) ?? null : null} />
+          {answers ? <Answer reported={answers.get(item.key) === true} /> : <span className="shrink-0">☐&nbsp;&nbsp;☐</span>}
         </div>
       ))}
     </div>
   );
 }
 
-function HistoryGrid({ answers }: { answers?: Map<string, boolean | null> }) {
+function HistoryGrid({ answers }: { answers?: Map<string, boolean> }) {
   return (
     <div className="grid grid-cols-3 gap-x-[14px] pt-[4px] text-[11.6px]">
       {CONDITION_COLUMNS.map((column, index) => (
@@ -204,17 +203,11 @@ export function CasePaperDocument({ clinic, patient, record }: { clinic: ClinicD
   const signedOn = record.completedAt ?? null;
   const age = patient.dateOfBirth ? ageOn(patient.dateOfBirth, signedOn ?? new Date()) : null;
   const { ticked, unmatched } = resolveHistory(record.conditions);
-  // Which rows this record can be ticked against at all. Recorded on the intake
-  // row since the two question lists were unified; null for anything filled in
-  // before that, where there is no way to know whether the patient saw twelve
-  // questions or fifteen.
-  const asked = parseAskedKeys(record.conditionsAsked);
-  // With the asked list, every row it covers gets a definite Yes or No. Without
-  // it, only what the patient actually reported can be marked — the rest stay
-  // blank, meaning "not answered", exactly as an unticked row on a paper pad.
-  const answers = asked
-    ? new Map(asked.map((key) => [key, ticked.has(key)] as const))
-    : new Map([...ticked].map((key) => [key, true] as const));
+  // Reported or not, and nothing in between. Because the "not" case prints N/A
+  // rather than No, this reads correctly whether the row was answered in the
+  // negative or was never on the form the patient saw — which is why records
+  // predating the unified question list need no caveat of their own.
+  const answers = new Map([...ticked].map((key) => [key, true] as const));
   const extras = [
     record.drugAllergies && `Allergies — ${record.drugAllergies}`,
     record.medications && `Current medication — ${record.medications}`,
@@ -240,15 +233,6 @@ export function CasePaperDocument({ clinic, patient, record }: { clinic: ClinicD
       <tr className="b6-break-avoid"><td className="pt-[6px]">
         <SectionRule>Medical History</SectionRule>
         <HistoryGrid answers={answers} />
-        {/* Said plainly on the sheet itself, because a reader cannot otherwise
-            tell an empty box that means "no" from one that means "never
-            asked". Only shown for records taken before the two question lists
-            were unified, which are the only ones that can be ambiguous. */}
-        {asked ? null : (
-          <p className="pt-[4px] text-[10.5px] text-[var(--dw-muted)]">
-            Filled on an earlier version of this form. Only what the patient reported is marked; the remaining rows were not put to them.
-          </p>
-        )}
         {extras.length ? <p className="pt-[6px]">{extras.join(" · ")}</p> : null}
         {record.bloodPressure || record.weightKg ? (
           <div className="flex gap-[20px] pt-[8px]">
