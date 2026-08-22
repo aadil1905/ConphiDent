@@ -163,16 +163,24 @@ export default function PatientForm({
 
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-heading">Mobile number<span aria-hidden className="font-normal text-danger-mark"> *</span></span>
-            <input
-              required
-              name="phone"
-              inputMode="tel"
-              autoComplete="tel"
-              defaultValue={patient?.phone}
-              placeholder="+91 98XXX XXXXX"
-              aria-invalid={has("phone")}
-              className={`${field(has("phone"))} tabular-nums`}
-            />
+            <span className="relative flex items-center">
+              <span
+                aria-hidden
+                className="pointer-events-none absolute left-3 text-sm tabular-nums text-text-muted"
+              >
+                +91
+              </span>
+              <input
+                required
+                name="phone"
+                inputMode="tel"
+                autoComplete="tel"
+                defaultValue={patient?.phone}
+                placeholder="98XXX XXXXX"
+                aria-invalid={has("phone")}
+                className={`${field(has("phone")).replace("px-3", "pr-3 pl-11")} tabular-nums`}
+              />
+            </span>
             {has("phone") ? (
               <span className="text-[length:var(--text-secondary)] text-danger">
                 {problems.find((problem) => problem.field === "phone")?.text}

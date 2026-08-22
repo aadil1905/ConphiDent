@@ -30,6 +30,26 @@ export type BookableDay = {
 
 type Draft = { who: string; note: string; reason: string; iso: string; slot: string | null };
 
+/** The search box doubles as a phone lookup ("e.g. Meera, or 99870") — this
+ *  tells apart someone who typed a number to search from someone who typed a
+ *  name, so a failed phone search can't get quick-added as a patient literally
+ *  named after the digits. */
+function looksLikePhone(value: string) {
+  const trimmed = value.trim();
+  const digits = trimmed.replace(/\D/g, "");
+  return digits.length >= 7 && digits.length === trimmed.replace(/[\s+()-]/g, "").length;
+}
+
+/** The mobile field shows a fixed "+91" and holds only the local 10 digits —
+ *  this strips a country code or leading trunk zero from whatever arrives via
+ *  ?phone= or a patient record, the same convention lib/validations.ts uses. */
+function localMobileDigits(value: string) {
+  let digits = value.replace(/\D/g, "");
+  if (digits.length === 12 && digits.startsWith("91")) digits = digits.slice(2);
+  if (digits.length === 11 && digits.startsWith("0")) digits = digits.slice(1);
+  return digits.slice(0, 10);
+}
+
 function initialsOf(name: string) {
   return (
     name
@@ -135,7 +155,7 @@ export default function BookAVisit({
   const [lookupFailed, setLookupFailed] = useState(false);
   const [picked, setPicked] = useState<PatientMatch | null>(null);
   const [isNew, setIsNew] = useState(false);
-  const [phone, setPhone] = useState(defaultPhone ?? "");
+  const [phone, setPhone] = useState(() => localMobileDigits(defaultPhone ?? ""));
 
   const startIndex = Math.max(0, days.findIndex((day) => day.iso === defaultIso));
   const [dayIndex, setDayIndex] = useState(startIndex);
@@ -427,7 +447,19 @@ export default function BookAVisit({
                   <button
                     type="button"
                     onClick={() => {
-                      setPicked({ id: 0, name: who.trim(), phone: "", detail: "New patient", alert: "" });
+                      const typed = who.trim();
+                      if (looksLikePhone(typed)) {
+                        // What was typed here was a phone search, not a name —
+                        // adding it straight through used to create a patient
+                        // literally named after their own mobile number.
+                        setPhone(localMobileDigits(typed));
+                        setWho("");
+                        setMatches([]);
+                        toast.message("That looks like a phone number — type their name to add them as new.");
+                        bringToField(whoRef.current);
+                        return;
+                      }
+                      setPicked({ id: 0, name: typed, phone: "", detail: "New patient", alert: "" });
                       setIsNew(true);
                     }}
                     className="flex min-h-12 w-full cursor-pointer items-center gap-2.5 border-t border-border bg-background px-3.5 py-2.5 text-left hover:bg-muted"
@@ -459,6 +491,9 @@ export default function BookAVisit({
                   onClick={() => {
                     setPicked(null);
                     setIsNew(false);
+                    // Otherwise a mobile number typed for one pick quietly
+                    // survived a Change into whichever patient was picked next.
+                    setPhone("");
                   }}
                   className="min-h-11 flex-none cursor-pointer rounded-control border border-border-strong bg-card px-3.5 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
                 >
@@ -475,20 +510,27 @@ export default function BookAVisit({
               {isNew && (
                 <label className="flex max-w-xs flex-col gap-1.5">
                   <span className="text-xs font-semibold text-heading">Mobile number</span>
-                  <input
-                    ref={phoneRef}
-                    value={phone}
-                    onChange={(event) => setPhone(event.target.value)}
-                    placeholder="+91 98XXX XXXXX"
-                    inputMode="tel"
-                    aria-invalid={tried && isNew && phone.replace(/\D/g, "").length < 10}
-                    className={`min-h-[46px] rounded-control border bg-card px-3 text-[length:var(--text-body)] tabular-nums text-foreground ${
-                      tried && isNew && phone.replace(/\D/g, "").length < 10
-                        ? "border-danger-mark"
-                        : "border-border-strong"
-                    }`}
-                  />
-                  {tried && isNew && phone.replace(/\D/g, "").length < 10 && (
+                  <span className="relative flex items-center">
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute left-3 text-[length:var(--text-body)] tabular-nums text-text-muted"
+                    >
+                      +91
+                    </span>
+                    <input
+                      ref={phoneRef}
+                      value={phone}
+                      onChange={(event) => setPhone(localMobileDigits(event.target.value))}
+                      placeholder="98XXX XXXXX"
+                      inputMode="tel"
+                      maxLength={10}
+                      aria-invalid={tried && isNew && phone.length < 10}
+                      className={`min-h-[46px] w-full rounded-control border bg-card py-2 pr-3 pl-11 text-[length:var(--text-body)] tabular-nums text-foreground ${
+                        tried && isNew && phone.length < 10 ? "border-danger-mark" : "border-border-strong"
+                      }`}
+                    />
+                  </span>
+                  {tried && isNew && phone.length < 10 && (
                     <span role="alert" className="text-xs text-danger">
                       That number looks short — we need 10 digits to send reminders.
                     </span>

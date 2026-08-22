@@ -131,8 +131,11 @@ export default function ChairList({
             >
               {/* The time is the column a dentist scans down to find "now", and it was
                   the smallest thing in its own row — 13px against the 14px patient
-                  name beside it. It leads the row, so it reads like it. */}
-              <div className="text-[length:var(--text-section)] leading-none font-semibold tabular-nums text-heading">
+                  name beside it. It leads the row, so it reads like it. Same
+                  workspace serif as the Schedule day-view gives this same column
+                  (app/dashboard/appointments/page.tsx) — this was the size that
+                  page's time matched, but never picked up the font-family half of it. */}
+              <div className="font-[family-name:var(--font-workspace-display)] text-[length:var(--text-section)] leading-none font-semibold tabular-nums text-heading">
                 {visit.time}
               </div>
 

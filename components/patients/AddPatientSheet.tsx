@@ -222,14 +222,22 @@ function Sheet({
           </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-heading">Mobile number</span>
-            <input
-              value={draft.phone}
-              onChange={(event) => put("phone", event.target.value)}
-              placeholder="+91 98XXX XXXXX"
-              inputMode="tel"
-              aria-invalid={error?.field === "phone"}
-              className={`${fieldClass("phone")} tabular-nums`}
-            />
+            <span className="relative flex items-center">
+              <span
+                aria-hidden
+                className="pointer-events-none absolute left-3 text-sm tabular-nums text-text-muted"
+              >
+                +91
+              </span>
+              <input
+                value={draft.phone}
+                onChange={(event) => put("phone", event.target.value)}
+                placeholder="98XXX XXXXX"
+                inputMode="tel"
+                aria-invalid={error?.field === "phone"}
+                className={`${fieldClass("phone").replace("px-3", "pr-3 pl-11")} tabular-nums`}
+              />
+            </span>
           </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-heading">Age</span>

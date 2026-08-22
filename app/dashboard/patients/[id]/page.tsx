@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { clockTime, exactStamp, humanTime, overdueBy, rupees } from "@/lib/format";
 import { STATUS_LABELS } from "@/lib/visit-status";
 import ToothMap from "@/components/patients/ToothMap";
+import VisitRowAction from "@/components/patients/VisitRowAction";
 import ScrollToSection from "@/components/patients/ScrollToSection";
 import BackLink from "@/components/navigation/BackLink";
 import SafetyBanner from "@/components/clinical/SafetyBanner";
@@ -84,6 +85,7 @@ export default async function Patient360Page({
 
   const canSeeClinical = can(user.role, "viewClinical");
   const canSeeMoney = can(user.role, "manageBilling");
+  const canCompleteVisits = can(user.role, "manageSchedule");
 
   const [visits, invoices, plans, chart, studies, intakes, whatsappOn, prescriptions] = await Promise.all([
     prisma.appointment.findMany({
@@ -256,7 +258,7 @@ export default async function Patient360Page({
               the person and opens their case paper, nothing else. */}
           {canSeeClinical && (
             <Link
-              href={`/dashboard/clinical-workspace/${patient.id}?fromPatient=1`}
+              href={`/dashboard/patients/${patient.id}/case-paper`}
               className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 text-[length:var(--text-secondary)] font-semibold text-primary-foreground hover:bg-primary-hover"
             >
               View case paper
@@ -360,7 +362,7 @@ export default async function Patient360Page({
                   return (
                     <div
                       key={visit.id}
-                      className="grid grid-cols-1 items-center gap-3 border-t border-border px-5.5 py-2.5 sm:grid-cols-[170px_minmax(0,1fr)_140px_150px]"
+                      className="grid grid-cols-1 items-center gap-3 border-t border-border px-5.5 py-2.5 sm:grid-cols-[170px_minmax(0,1fr)_140px_240px]"
                     >
                       <span title={exactStamp(moment)} className="text-[length:var(--text-secondary)] tabular-nums">
                         {moment.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })},{" "}
@@ -381,12 +383,12 @@ export default async function Patient360Page({
                       >
                         {STATUS_LABELS[visit.status] ?? visit.status}
                       </Pill>
-                      <Link
-                        href={`/dashboard/appointments/${visit.id}`}
-                        className="inline-flex min-h-11 items-center justify-center rounded-control border border-border-strong bg-card px-3 text-[length:var(--text-secondary)] font-semibold text-heading hover:bg-muted"
-                      >
-                        Open
-                      </Link>
+                      <VisitRowAction
+                        appointmentId={visit.id}
+                        visitHref={`/dashboard/appointments/${visit.id}`}
+                        completed={visit.status === "Completed"}
+                        canComplete={canCompleteVisits && visit.status !== "Cancelled" && visit.status !== "No-show"}
+                      />
                     </div>
                   );
                 })

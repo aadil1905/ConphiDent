@@ -2,7 +2,7 @@
 
 import { createHash, randomBytes } from "crypto";
 import { Prisma } from "@prisma/client";
-import { redirect } from "next/navigation";
+import { redirect, RedirectType } from "next/navigation";
 import {
   consumeSecurityRateLimit,
   createSession,
@@ -109,8 +109,11 @@ export async function loginAction(formData: FormData) {
     entityType: "SESSION",
     detail: "Password sign-in succeeded",
   });
-  if (user.mustChangePassword) redirect("/change-password");
-  redirect("/dashboard");
+  // `redirect()` defaults to a history *push* inside a Server Action (Next.js
+  // 16), not a replace — so without this, /login stayed reachable by pressing
+  // Back from anywhere in the freshly-signed-in session.
+  if (user.mustChangePassword) redirect("/change-password", RedirectType.replace);
+  redirect("/dashboard", RedirectType.replace);
 }
 
 export async function requestPasswordResetAction(formData: FormData) {
