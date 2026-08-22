@@ -14,7 +14,11 @@
    ========================================================================== */
 
 .cf-portal {
-  --background: #faf9f6;
+  /* White, like every other ground in the product. This scope covers the sign-in
+     page as well as the operator portal, so the warm paper it used to carry was
+     the first thing anyone saw on the way in and the only surface still not
+     matching the workspace behind it. */
+  --background: #ffffff;
   --foreground: #4a5b61;
   --card: #ffffff;
   --card-foreground: #10262e;

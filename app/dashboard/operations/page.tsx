@@ -307,7 +307,7 @@ export default async function StockPage({
           {/* --- The cupboard -------------------------------------------- */}
           <section className="overflow-x-auto rounded-card border border-border bg-card shadow-[var(--shadow)]">
             <div className="min-w-[900px]">
-              <div className="grid grid-cols-[minmax(180px,1.4fr)_130px_150px_150px_270px] gap-3 border-b border-border bg-muted px-5.5 py-2.5 text-[length:var(--text-micro)] font-semibold tracking-[0.14em] text-text-muted uppercase">
+              <div className="grid grid-cols-[minmax(180px,1.4fr)_130px_150px_150px_270px] gap-3 border-b border-border bg-card px-5.5 py-2.5 text-[length:var(--text-micro)] font-semibold tracking-[0.14em] text-text-muted uppercase">
                 <span>Item</span>
                 <span>In the cupboard</span>
                 <span>How long it lasts</span>

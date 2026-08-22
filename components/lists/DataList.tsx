@@ -84,7 +84,11 @@ export default function DataList({
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-[length:var(--text-dense)] leading-[var(--text-dense-lh)]">
               <thead>
-                <tr className="bg-muted text-left">
+                {/* White, like the rows under it. The 2px bottom rule and the
+                    bold tracked caps are what mark this out as a header — the
+                    grey fill was a band of colour across the top of every list
+                    in the product and carried no information the type did not. */}
+                <tr className="bg-card text-left">
                   {columns.map((column) => (
                     <th
                       key={column.key}

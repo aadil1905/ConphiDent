@@ -96,12 +96,14 @@
 
      The public site (.cf-public) and the Control Center (.cf-portal) declare
      their own tokens at higher specificity, so they do not read from here. */
-  /* The ground is a half-step of neutral grey, not white — with the cards
-     staying white, the page reads in two layers instead of one flat sheet.
-     #f7f8f8 is achromatic to the eye (verified against the radiograph
-     concern that retired the old warm paper: no hue cast, and imagery sits
-     on white cards anyway). Every text-on-ground pair still clears AA. */
-  --background: #f7f8f8;
+  /* One ground, and it is white. The half-step grey (#f7f8f8) that used to sit
+     under white cards was there to read the page in two layers; Aadil asked for
+     a single white surface on 2026-08-22. Cards keep their `border-border`
+     hairline and shadow, so they still read as cards against it — the
+     separation moved from fill to edge rather than disappearing. Anything that
+     genuinely needs an inset fill uses --muted / --surface-muted, which stay
+     grey on purpose. */
+  --background: #ffffff;
   --foreground: #4a5b61;
   --card: #ffffff;
   --card-foreground: #10262e;
@@ -224,11 +226,17 @@
      A modal scrim, the translucent top bar, the plate a clinic logo sits on,
      and the message canvas. Naming them is what lets them follow the mode. */
   --overlay: rgba(16, 38, 46, 0.38);
-  --topbar-bg: rgba(247, 248, 248, 0.88);
+  /* Tracks --background. It was a literal copy of the old #f7f8f8 ground, so
+     when the ground went white the top bar stayed a grey band across the top of
+     every page. Kept translucent — content scrolling under it is the point. */
+  --topbar-bg: rgba(255, 255, 255, 0.88);
   /* Stays white in both modes on purpose: a clinic's uploaded logo is usually
      dark ink on transparent, and it disappears on anything else. */
   --logo-plate: #ffffff;
-  --wa-paper: #f2f2f2;
+  /* The message canvas is white too. The faint dot tile below still separates
+     it from the bubbles sitting on it, so the thread does not read as one flat
+     sheet once the fill is gone. */
+  --wa-paper: #ffffff;
   --wa-in: #ffffff;
   --wa-out: #d6f2df;
   --wa-bubble-text: #10262e;
@@ -1153,9 +1161,13 @@ main { background: transparent; }
   background-size: 172px 172px, 214px 214px, 148px 148px;
 }
 
-.wa__row { border-bottom: 1px solid color-mix(in srgb, var(--border) 65%, transparent); }
-.wa__row:hover { background: var(--muted); }
-.wa__row[aria-current="true"] { background: var(--muted); }
+/* Which thread is open has to stay obvious, so the grey fill becomes the teal
+   whisper rather than nothing at all — same job, and it reads as a selection
+   instead of as a second background colour. The open row also carries an edge,
+   so it is still tellable apart from the one merely under the pointer. */
+.wa__row { border-bottom: 1px solid color-mix(in srgb, var(--border) 65%, transparent); border-left: 3px solid transparent; }
+.wa__row:hover { background: var(--primary-soft); }
+.wa__row[aria-current="true"] { background: var(--primary-soft); border-left-color: var(--primary); }
 
 /* A bubble tail, the detail that makes a thread read as a chat. */
 .wa__bubble { position: relative; }
